@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+e2e-out/
+test-results/
+playwright-report/
+tools/out/
+# rules sources, PDFs and community data never leave the machine
+docs/sources/
+*.pdf
+# secrets
+.env*
+*.token*
+Tokens.txt
+tokens.txt*
+.hf_token
