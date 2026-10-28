@@ -14,3 +14,8 @@ docs/sources/
 Tokens.txt
 tokens.txt*
 .hf_token
+.claude/worktrees/
+scratch/
+refs-local/
+hf_token*
+tools/models/raw/

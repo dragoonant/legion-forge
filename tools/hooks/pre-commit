@@ -1,0 +1,13 @@
+#!/bin/sh
+# Refuses a commit whose staged diff adds the owner's real name, email or home path.
+# Patterns live untracked in <git-common-dir>/privacy-patterns.txt (one extended regex per line), so the check also
+# works inside git worktrees, where .git is a file (the KB's "privacy hook gap"). Install: tools/hooks/install.sh
+patterns="$(git rev-parse --git-common-dir)/privacy-patterns.txt"
+if [ ! -s "$patterns" ]; then
+  echo "pre-commit: $patterns is missing or empty; refusing to commit unchecked." >&2
+  exit 1
+fi
+if git diff --cached -U0 --no-color | grep '^+' | grep -v '^+++' | grep -i -E -f "$patterns" >/dev/null; then
+  echo "pre-commit: staged changes contain a private pattern (name, email or home path). Remove it and retry." >&2
+  exit 1
+fi
