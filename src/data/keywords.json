@@ -482,7 +482,7 @@
       {
         "grant": {
           "action": {
-            "id": "kw.jump.action",
+            "id": "neu.act.jump",
             "name": "Jump",
             "kind": "card",
             "effects": [

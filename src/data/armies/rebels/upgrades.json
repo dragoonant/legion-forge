@@ -1,0 +1,536 @@
+[
+  {
+    "id": "reb.up.z6-trooper",
+    "name": "Z-6 Trooper",
+    "slot": "heavy-weapon",
+    "points": 20,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "reb.u.rebel-troopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "Z-6 Trooper",
+      "weapon": "reb.w.z6"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds a figure armed with the Z-6 Rotary Blaster.",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.up.dlt20a-trooper",
+    "name": "DLT-20A Trooper",
+    "slot": "heavy-weapon",
+    "points": 26,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "reb.u.rebel-troopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "DLT-20A Trooper",
+      "weapon": "reb.w.dlt20a"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds a figure armed with the DLT-20A Blaster Rifle.",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.up.sx21-trooper",
+    "name": "SX-21 Trooper",
+    "slot": "heavy-weapon",
+    "points": 13,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "reb.u.rebel-troopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "SX-21 Trooper",
+      "weapon": "reb.w.sx21"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds a figure armed with the SX-21 Scatter Blaster.",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.up.mpl57-ion-trooper",
+    "name": "MPL-57 Ion Trooper",
+    "slot": "heavy-weapon",
+    "points": 27,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "reb.u.rebel-troopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "MPL-57 Ion Trooper",
+      "weapon": "reb.w.mpl57"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds a figure armed with the MPL-57 Ion Blaster. Ion has no target in v1, so it stays out of playable lists.",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.up.rebel-trooper",
+    "name": "Rebel Trooper",
+    "slot": "personnel",
+    "points": 7,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "reb.u.rebel-troopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "Rebel Trooper"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds one more Rebel Trooper figure to the unit.",
+    "source": {
+      "doc": "LHQ",
+      "url": "legionhq2 bundle id ah upgrade list",
+      "kind": "fan",
+      "covers": [
+        "points",
+        "text"
+      ]
+    }
+  },
+  {
+    "id": "reb.up.rebel-trooper-captain",
+    "name": "Rebel Trooper Captain",
+    "slot": "personnel",
+    "points": 9,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "reb.u.rebel-troopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "Rebel Trooper Captain",
+      "leader": true
+    },
+    "grantsSlots": [
+      "training"
+    ],
+    "keywords": [
+      {
+        "id": "kw.leader"
+      }
+    ],
+    "exhaust": "exhaust",
+    "effects": [
+      {
+        "trigger": {
+          "window": "activation.start",
+          "self": true
+        },
+        "optional": true,
+        "do": [
+          {
+            "applyModifier": {
+              "modifier": "suppressionRemovable",
+              "op": "set",
+              "value": false,
+              "duration": "activation"
+            }
+          },
+          {
+            "applyModifier": {
+              "modifier": "suppressible",
+              "op": "set",
+              "value": false,
+              "duration": "activation"
+            }
+          }
+        ],
+        "scope": "self",
+        "limit": "oncePerActivation"
+      }
+    ],
+    "text": "Adds a Captain figure who leads the unit and grants a training icon. Exhaust at the start of the unit's activation: it cannot remove suppression or become Suppressed this activation. Text assumed equal to the Stormtrooper Captain.",
+    "source": {
+      "doc": "LHQ",
+      "url": "legionhq2 bundle id ah upgrade list",
+      "kind": "fan",
+      "covers": [
+        "points",
+        "text"
+      ]
+    }
+  },
+  {
+    "id": "reb.up.rebel-trooper-specialist",
+    "name": "Rebel Trooper Specialist",
+    "slot": "personnel",
+    "points": 8,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "reb.u.rebel-troopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "Rebel Trooper Specialist"
+    },
+    "grantsSlots": [
+      "gear"
+    ],
+    "exhaust": "exhaust",
+    "effects": [
+      {
+        "grant": {
+          "action": {
+            "id": "reb.act.specialist",
+            "name": "Specialist",
+            "kind": "free",
+            "do": [
+              {
+                "choose": {
+                  "options": [
+                    [
+                      {
+                        "gainToken": {
+                          "token": "core.token.aim",
+                          "n": 1
+                        }
+                      }
+                    ],
+                    [
+                      {
+                        "gainToken": {
+                          "token": "core.token.surge",
+                          "n": 1
+                        }
+                      }
+                    ]
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "text": "Adds a Specialist figure and a gear icon. Exhaust for a free card action: gain 1 Aim token or 1 Surge token. Text assumed equal to the Stormtrooper Specialist.",
+    "source": {
+      "doc": "LHQ",
+      "url": "legionhq2 bundle id ah upgrade list",
+      "kind": "fan",
+      "covers": [
+        "points",
+        "text"
+      ]
+    }
+  },
+  {
+    "id": "reb.up.rebel-trooper-squad",
+    "name": "Rebel Trooper Squad",
+    "slot": "personnel",
+    "points": 40,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "reb.u.rebel-troopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 5,
+      "label": "Rebel Trooper Squad",
+      "persistent": {
+        "keywords": [
+          {
+            "id": "kw.indomitable"
+          }
+        ],
+        "modifiers": [
+          {
+            "modifier": "cohesionRange",
+            "op": "set",
+            "value": 6,
+            "scope": "self"
+          }
+        ]
+      }
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds five Rebel Troopers. The unit has Indomitable and stays in cohesion within range 1 of its leader, even after those figures are defeated. It cannot deploy or take orders through Transport.",
+    "source": [
+      {
+        "doc": "RUP",
+        "page": "1-5",
+        "kind": "primary",
+        "checked": "by-eye 2026-10-29",
+        "covers": [
+          "text",
+          "restrictions"
+        ]
+      },
+      {
+        "doc": "ERR",
+        "page": "2-3",
+        "kind": "primary",
+        "covers": [
+          "points"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "reb.up.proton-charge-saboteur",
+    "name": "Proton Charge Saboteur",
+    "slot": "heavy-weapon",
+    "points": 14,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "reb.u.rebel-commandos"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "Proton Charge Saboteur",
+      "weapon": "reb.w.proton-charge"
+    },
+    "exhaust": "none",
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.poolFormed",
+          "self": true
+        },
+        "when": {
+          "poolHasWeapon": "reb.w.proton-charge"
+        },
+        "do": [
+          {
+            "grantKeyword": {
+              "keyword": {
+                "id": "kw.assault",
+                "x": 1
+              },
+              "duration": "attack"
+            }
+          }
+        ],
+        "scope": {
+          "pool": "otherRangedWeapons"
+        }
+      }
+    ],
+    "text": "Adds a Saboteur with the Proton Charge. When the Proton Charge joins an attack pool, the other ranged weapons in that pool gain Assault 1.",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.up.dh447-sniper",
+    "name": "DH-447 Sniper",
+    "slot": "heavy-weapon",
+    "points": 20,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "reb.u.commando-strike-team"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "DH-447 Sniper",
+      "weapon": "reb.w.dh447"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds a sniper armed with the DH-447 Sniper Rifle; only the Commandos Strike Team may take it.",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.up.bowcaster-wookiee",
+    "name": "Bowcaster Wookiee",
+    "slot": "heavy-weapon",
+    "points": 31,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "reb.u.wookiee-warriors-ff"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "Bowcaster Wookiee",
+      "weapon": "reb.w.bowcaster"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds a Wookiee armed with the Bowcaster.",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.up.long-gun-wookiee",
+    "name": "Long Gun Wookiee",
+    "slot": "heavy-weapon",
+    "points": 26,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "reb.u.wookiee-warriors-ff"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "Long Gun Wookiee",
+      "weapon": "reb.w.long-gun"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds a Wookiee armed with the Long Gun.",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.up.battle-shield-wookiee",
+    "name": "Battle Shield Wookiee",
+    "slot": "heavy-weapon",
+    "points": 26,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "reb.u.wookiee-warriors-ff"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "Battle Shield Wookiee"
+    },
+    "exhaust": "none",
+    "effects": [
+      {
+        "code": "flipCard"
+      }
+    ],
+    "sides": [
+      {
+        "name": "Defensive",
+        "keywords": [
+          {
+            "id": "kw.armor",
+            "x": 1
+          }
+        ],
+        "weapons": [
+          "reb.w.battle-shield-defensive"
+        ],
+        "effects": [
+          {
+            "modifier": "moveSpeed",
+            "op": "add",
+            "value": -1,
+            "scope": "self"
+          }
+        ]
+      },
+      {
+        "name": "Offensive",
+        "keywords": [],
+        "weapons": [
+          "reb.w.battle-shield-offensive"
+        ],
+        "effects": []
+      }
+    ],
+    "flip": {
+      "window": "activation.start",
+      "optional": true
+    },
+    "text": "A two-sided card; pick a side at deployment and optionally flip it at the start of the unit's activation. Defensive side: the unit's maximum speed drops by 1 and it gains Armor 1. Offensive side: a stronger melee weapon.",
+    "source": [
+      {
+        "doc": "RUP",
+        "page": "1-5",
+        "kind": "primary",
+        "checked": "by-eye 2026-10-29",
+        "covers": [
+          "points",
+          "defensive side"
+        ]
+      },
+      {
+        "doc": "LHQ",
+        "url": "legionhq2 bundle Battle Shield Wookiee offensive side, card not seen",
+        "kind": "fan",
+        "covers": [
+          "offensive side"
+        ]
+      }
+    ]
+  }
+]

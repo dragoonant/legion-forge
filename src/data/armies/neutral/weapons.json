@@ -1,0 +1,26 @@
+[
+  {
+    "id": "core.w.unarmed-black",
+    "name": "Unarmed",
+    "range": {
+      "min": 0,
+      "max": 0
+    },
+    "dice": {
+      "red": 0,
+      "black": 1,
+      "white": 0
+    },
+    "keywords": [],
+    "flavour": "unarmed",
+    "source": {
+      "doc": "EU",
+      "page": "5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29",
+      "covers": [
+        "stats"
+      ]
+    }
+  }
+]

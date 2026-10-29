@@ -23,6 +23,8 @@ This file owns every decision (with date and who made it). The owner's answers a
 | D15 | 2026-10-29 | owner | Movement input | Click a destination, the engine fits a legal movement-tool path and draws the tool; the player can drag its hinge to fine-tune | |
 | D16 | 2026-10-29 | owner | Shared KB | One shared private KB repo (`dragoonant/tabletop-kb`) every game links to; each game keeps its own living entry | Copies drifted across repos |
 | D17 | 2026-10-29 | owner | Components | Dice face counts, movement tool lengths and silhouette heights use community values (RULINGs R-13.1, R-6.2, R-10.1 stay Unsourced) | Owner has no physical components to check |
+| D18 | 2026-10-29 | owner | Art timing | Art (Gemini concepts + Hunyuan3D) starts now in parallel from a session on the owner's Windows PC, streaming from the M1 figure list; procedural stand-ins until GLBs land | Murder Squad pattern: art from the first hours |
+| D19 | 2026-10-29 | owner | Insignia | Figures carry original faction insignia similar in spirit to the Imperial crest, Rebel starbird and rank markings, designed for this project; no Lucasfilm emblem is reproduced | "Create a similar insignia for all, respect copyrights" |
 
 ## Milestones
 | # | Milestone | Done when | Est. tokens |

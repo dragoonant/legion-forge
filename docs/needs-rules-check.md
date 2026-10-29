@@ -91,3 +91,13 @@ RULING: R-15.2 Commander courage range | An allied Commander counts when any of 
 RULING: R-15.5 Panic token loss | A unit that made no actions because of panic removes suppression equal to its own printed courage, not a borrowed Commander value | CRB p23 says "its" courage | Unsourced
 RULING: R-2.2 Tiebreak points | "Point value of defeated units" includes the upgrades equipped on those units | CRB p20 does not say; units are bought with their upgrades | Unsourced
 RULING: R-2.2 Wipe-out check | Checked after every step; undeployed units count as undefeated | CRB p20 "at any time" | Confirmed (CRB p20)
+
+## Data entry (M1)
+
+RULING: R-6.2 Movement tool prong width | Prong width 0.2" (placeholder next to the 1.0" tool width) in `core/movement-tool.json` | No source gives it; the engine needs a number for the two-prong edge-deployment check | Unsourced (measure the physical tool)
+RULING: R-3.3 Squad cohesion value | The persistent Squad cohesion rule ("within range 1, not half range") is stored as a `cohesionRange` modifier of 6" | Range 1 is 6" (R-8.2); the spec text says range 1 of the leader | Port choice
+RULING: R-3.2 Force alignment of generic Force upgrades | Force Choke, Fear and Anger are dark side, Hope is light side, Force Push, Force Reflexes, Force Barrier and Force Guidance are neutral | `14-armies.md` names the cards and costs but not their alignment; taken from the card icons as played, not re-read from the PDF | Unsourced (spot-check GUP pp19-21)
+RULING: R-3.3 Luke Jedi Knight in card restrictions | The Luke command cards restrict to Luke Skywalker, Hero of the Rebellion only (the Jedi Knight version is not in v1 data, and I Am a Jedi is not encoded) | `20-data-schema.md` section 9 lists both Lukes for My Ally Is the Force; a reference to a missing unit would fail V-04 | Port choice
+RULING: R-3.2 Generic upgrades not encoded | Only Force upgrades whose text is recorded in `14-armies.md` (Force Choke, Force Reflexes, Fear, Anger, Force Push, Force Barrier, Force Guidance, Hope) are in `armies/neutral/upgrades.json`; the other generic upgrades, command, gear, grenades, training and comms cards wait for their text to be read | Entering a card without its text would invent rules | Unsourced
+RULING: R-16 Battle Shield offensive side | Offensive side melee is 2 red dice (`reb.w.battle-shield-offensive`) | Card side not seen; Legion HQ 2 is the only source | Fan-source (V-21 warning lists it)
+RULING: R-3.3 Compel parameter | Compel stores "Corps" as its rank parameter and the Trooper type and range 2 in the `compel` hook params | The card says "Corps Trooper"; one keyword parameter cannot hold a rank and a type | Port choice

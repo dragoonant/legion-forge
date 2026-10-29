@@ -1,0 +1,14 @@
+{
+  "id": "empire",
+  "name": "Galactic Empire",
+  "prefix": "emp",
+  "playable": true,
+  "forceAffinity": "dark",
+  "icon": "faction-empire",
+  "source": {
+    "doc": "EU",
+    "page": 1,
+    "kind": "primary",
+    "checked": "by-eye 2026-10-29"
+  }
+}

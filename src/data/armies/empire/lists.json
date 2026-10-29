@@ -1,0 +1,132 @@
+[
+  {
+    "id": "emp.list.recon-a",
+    "name": "Full box",
+    "faction": "empire",
+    "format": "recon",
+    "assumedSet": "starter-v1",
+    "commandHand": [
+      "emp.cc.implacable",
+      "emp.cc.vaders-might",
+      "emp.cc.new-ways",
+      "emp.cc.fear-and-dead-men",
+      "emp.cc.master-of-evil",
+      "emp.cc.darkness-descends",
+      "neu.cc.standing-orders"
+    ],
+    "points": 588,
+    "source": {
+      "doc": "14-armies.md",
+      "page": "2.5",
+      "kind": "primary"
+    },
+    "units": [
+      {
+        "unit": "emp.u.darth-vader-dlots",
+        "upgrades": []
+      },
+      {
+        "unit": "emp.u.stormtroopers",
+        "upgrades": [
+          "emp.up.stormtrooper-squad",
+          "emp.up.dlt19-stormtrooper"
+        ]
+      },
+      {
+        "unit": "emp.u.stormtroopers",
+        "upgrades": [
+          "emp.up.stormtrooper-squad",
+          "emp.up.dlt19-stormtrooper"
+        ]
+      },
+      {
+        "unit": "emp.u.scout-troopers",
+        "upgrades": [
+          "emp.up.sonic-charge-saboteur"
+        ]
+      },
+      {
+        "unit": "emp.u.scout-troopers",
+        "upgrades": [
+          "emp.up.sonic-charge-saboteur"
+        ]
+      },
+      {
+        "unit": "emp.u.scout-strike-team",
+        "upgrades": [
+          "emp.up.dlt19x-sniper"
+        ]
+      },
+      {
+        "unit": "emp.u.scout-strike-team",
+        "upgrades": [
+          "emp.up.dlt19x-sniper"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "emp.list.recon-b",
+    "name": "Vader's Fist",
+    "faction": "empire",
+    "format": "recon",
+    "assumedSet": "starter-v1",
+    "commandHand": [
+      "emp.cc.implacable",
+      "emp.cc.vaders-might",
+      "emp.cc.new-ways",
+      "emp.cc.fear-and-dead-men",
+      "emp.cc.master-of-evil",
+      "emp.cc.darkness-descends",
+      "neu.cc.standing-orders"
+    ],
+    "points": 566,
+    "source": {
+      "doc": "14-armies.md",
+      "page": "2.5",
+      "kind": "primary"
+    },
+    "units": [
+      {
+        "unit": "emp.u.darth-vader-dlots",
+        "upgrades": [
+          "neu.up.force-choke",
+          "neu.up.force-reflexes",
+          "neu.up.fear"
+        ]
+      },
+      {
+        "unit": "emp.u.stormtroopers",
+        "upgrades": [
+          "emp.up.stormtrooper-squad",
+          "emp.up.t21-stormtrooper"
+        ]
+      },
+      {
+        "unit": "emp.u.stormtroopers",
+        "upgrades": [
+          "emp.up.stormtrooper-squad",
+          "emp.up.hh12-stormtrooper"
+        ]
+      },
+      {
+        "unit": "emp.u.scout-troopers",
+        "upgrades": [
+          "emp.up.sonic-charge-saboteur"
+        ]
+      },
+      {
+        "unit": "emp.u.scout-troopers",
+        "upgrades": [
+          "emp.up.sonic-charge-saboteur"
+        ]
+      },
+      {
+        "unit": "emp.u.scout-strike-team",
+        "upgrades": [
+          "emp.up.dlt19x-sniper"
+        ]
+      }
+    ]
+  }
+]

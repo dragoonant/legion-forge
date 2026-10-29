@@ -1,0 +1,425 @@
+[
+  {
+    "id": "emp.cc.implacable",
+    "name": "Implacable",
+    "pips": 1,
+    "faction": "empire",
+    "restriction": {
+      "units": [
+        "emp.u.darth-vader-dlots"
+      ],
+      "op": "or"
+    },
+    "orders": {
+      "named": [
+        "emp.u.darth-vader-dlots"
+      ],
+      "count": 0
+    },
+    "effects": [
+      {
+        "code": "implacable"
+      }
+    ],
+    "text": "This round Vader gains a Dodge at the start of each of his activations; after his first activation he may suffer 1 wound to put his order token back into the pool, and in his second activation he has one fewer action.",
+    "source": {
+      "doc": "EC",
+      "page": "1-3",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.cc.vaders-might",
+    "name": "Vader's Might",
+    "pips": 1,
+    "faction": "empire",
+    "restriction": {
+      "units": [
+        "emp.u.darth-vader-dlots"
+      ],
+      "op": "or"
+    },
+    "orders": {
+      "named": [
+        "emp.u.darth-vader-dlots"
+      ],
+      "count": 0
+    },
+    "effects": [
+      {
+        "code": "vadersMight"
+      }
+    ],
+    "text": "This round Vader has a free card action: choose another non-Heavy unit within range 1 and move its leader up to half range and height 1, the rest in cohesion; an enemy unit then rolls one white defence die per figure and suffers a wound per block or surge.",
+    "source": {
+      "doc": "EC",
+      "page": "1-3",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.cc.new-ways",
+    "name": "New Ways to Motivate Them",
+    "pips": 2,
+    "faction": "empire",
+    "restriction": null,
+    "orders": {
+      "count": 2,
+      "filter": {
+        "unitTypes": [
+          "trooper-any"
+        ]
+      }
+    },
+    "effects": [
+      {
+        "trigger": {
+          "window": "activation.start"
+        },
+        "when": {
+          "side": "ally",
+          "order": "faceUp",
+          "unitType": "trooper-any",
+          "notUnit": [
+            "emp.u.darth-vader-dlots"
+          ]
+        },
+        "do": [
+          {
+            "sufferWounds": {
+              "n": 1,
+              "who": "subject"
+            }
+          },
+          {
+            "extraAction": {
+              "n": 1
+            }
+          }
+        ],
+        "scope": "subject",
+        "duration": "round",
+        "optional": true
+      }
+    ],
+    "text": "This round an allied Trooper unit other than Vader may suffer 1 wound as it starts an activation with a face-up order, to take one extra action.",
+    "source": {
+      "doc": "EC",
+      "page": "1-3",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.cc.fear-and-dead-men",
+    "name": "Fear and Dead Men",
+    "pips": 2,
+    "faction": "empire",
+    "restriction": {
+      "units": [
+        "emp.u.darth-vader-dlots"
+      ],
+      "op": "or"
+    },
+    "orders": {
+      "named": [
+        "emp.u.darth-vader-dlots"
+      ],
+      "count": 0
+    },
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.resolved",
+          "self": true
+        },
+        "when": {
+          "role": "defender",
+          "woundsSuffered": {
+            "min": 1
+          }
+        },
+        "do": [
+          {
+            "dealWounds": {
+              "to": "attacker",
+              "amount": {
+                "count": "woundsSuffered"
+              }
+            }
+          }
+        ],
+        "scope": "self",
+        "duration": "round"
+      }
+    ],
+    "text": "This round, when an enemy attack wounds Vader, the attacking unit suffers the same number of wounds.",
+    "source": {
+      "doc": "EC",
+      "page": "1-3",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.cc.master-of-evil",
+    "name": "Master of Evil",
+    "pips": 3,
+    "faction": "empire",
+    "restriction": {
+      "units": [
+        "emp.u.darth-vader-dlots"
+      ],
+      "op": "or"
+    },
+    "orders": {
+      "named": [
+        "emp.u.darth-vader-dlots"
+      ],
+      "count": 2
+    },
+    "effects": [
+      {
+        "trigger": {
+          "event": "OrderIssued"
+        },
+        "when": {
+          "byThisCard": true,
+          "unit": "emp.u.darth-vader-dlots"
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.dodge",
+              "n": 1
+            }
+          }
+        ],
+        "scope": "subject"
+      },
+      {
+        "trigger": {
+          "window": "activation.start"
+        },
+        "when": {
+          "unit": "emp.u.darth-vader-dlots"
+        },
+        "limit": "oncePerRound",
+        "duration": "round",
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.suppression",
+              "n": 3,
+              "to": {
+                "aura": {
+                  "range": 2,
+                  "side": "enemy",
+                  "filter": {
+                    "unitTypes": [
+                      "trooper-any"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "scope": "subject"
+      }
+    ],
+    "text": "Vader gains a Dodge when ordered; at the start of his next activation every enemy Trooper unit within range 2 gains 3 suppression.",
+    "source": {
+      "doc": "EC",
+      "page": "1-3",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.cc.darkness-descends",
+    "name": "Darkness Descends",
+    "pips": 3,
+    "faction": "empire",
+    "restriction": {
+      "units": [
+        "emp.u.darth-vader-dlots"
+      ],
+      "op": "or"
+    },
+    "orders": {
+      "named": [
+        "emp.u.darth-vader-dlots"
+      ],
+      "count": 0
+    },
+    "effects": [
+      {
+        "code": "darknessDescends",
+        "params": {
+          "part": "permanent"
+        }
+      }
+    ],
+    "text": "Permanent: unless it was Divulged, Vader has Reliable 2. Divulge in the Resolve Setup Effects step: Vader gains Infiltrate for the game, and this must be the card played in round 1.",
+    "source": {
+      "doc": "EC",
+      "page": "1-3",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    },
+    "keywords": [
+      "permanent",
+      "divulge"
+    ],
+    "divulge": {
+      "window": "setup.resolve",
+      "effects": [
+        {
+          "code": "darknessDescends",
+          "params": {
+            "part": "divulge"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "emp.cc.covert-observation",
+    "name": "Covert Observation",
+    "pips": 1,
+    "faction": "empire",
+    "restriction": null,
+    "orders": {
+      "count": 1,
+      "filter": {
+        "ranks": [
+          "operative",
+          "special-forces"
+        ]
+      }
+    },
+    "effects": [
+      {
+        "trigger": {
+          "event": "OrderIssued"
+        },
+        "when": {
+          "side": "enemy",
+          "byCommandCard": true
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.suppression",
+              "n": 1
+            }
+          }
+        ],
+        "scope": "subject",
+        "duration": "round"
+      }
+    ],
+    "text": "This round each enemy unit that is issued an order through a command card gains 1 suppression.",
+    "source": {
+      "doc": "EC",
+      "page": "1-3",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.cc.pinned-down",
+    "name": "Pinned Down",
+    "pips": 2,
+    "faction": "empire",
+    "restriction": null,
+    "orders": {
+      "count": 2,
+      "filter": {
+        "ranks": [
+          "support",
+          "heavy"
+        ]
+      }
+    },
+    "effects": [
+      {
+        "code": "orderTokenToPool"
+      }
+    ],
+    "text": "This round, after an allied Support or Heavy unit attacks a unit with a face-up order, that order token returns to its owner's order pool.",
+    "source": {
+      "doc": "EC",
+      "page": "1-3",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.cc.coordinated-fire",
+    "name": "Coordinated Fire",
+    "pips": 3,
+    "faction": "empire",
+    "restriction": null,
+    "orders": {
+      "count": 3,
+      "filter": {
+        "ranks": [
+          "corps"
+        ]
+      }
+    },
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.rerolled"
+        },
+        "when": {
+          "side": "ally",
+          "rank": "corps",
+          "attackKind": "ranged",
+          "spent": {
+            "token": "core.token.aim",
+            "min": 1
+          }
+        },
+        "do": [
+          {
+            "chooseUnits": {
+              "n": 1,
+              "filter": {
+                "side": "ally",
+                "within": {
+                  "range": 2,
+                  "of": "subject"
+                },
+                "excludeSubject": true
+              },
+              "then": [
+                {
+                  "gainToken": {
+                    "token": "core.token.aim",
+                    "n": 1
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "scope": "subject",
+        "duration": "round",
+        "optional": true
+      }
+    ],
+    "text": "This round, after an allied Corps unit spends an Aim on a ranged attack, another allied unit within range 2 may gain 1 Aim.",
+    "source": {
+      "doc": "EC",
+      "page": "1-3",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  }
+]

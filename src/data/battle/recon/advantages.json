@@ -1,0 +1,118 @@
+[
+  {
+    "id": "rec.adv.advanced-intel",
+    "name": "Advanced Intel",
+    "type": "advantage",
+    "format": "recon",
+    "faction": null,
+    "setup": [],
+    "scoring": [],
+    "special": [
+      {
+        "trigger": {
+          "window": "activation.phaseStart"
+        },
+        "when": {
+          "round": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "limit": "oncePerGame",
+        "do": [
+          {
+            "addPassToken": {
+              "n": 1
+            }
+          }
+        ],
+        "scope": "seat"
+      }
+    ],
+    "text": "When the first Activation phase begins, add 1 Advantage token to your pass pool.",
+    "source": {
+      "doc": "RECON",
+      "page": "PDF p6",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "rec.adv.cunning-deployment",
+    "name": "Cunning Deployment",
+    "type": "advantage",
+    "format": "recon",
+    "faction": null,
+    "setup": [],
+    "scoring": [],
+    "special": [
+      {
+        "trigger": {
+          "window": "activation.phaseStart"
+        },
+        "when": {
+          "round": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "limit": "oncePerGame",
+        "do": [
+          {
+            "chooseUnits": {
+              "n": 3,
+              "filter": {
+                "side": "ally"
+              },
+              "then": [
+                {
+                  "gainToken": {
+                    "token": "core.token.dodge",
+                    "n": 1
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "scope": "seat"
+      }
+    ],
+    "text": "When the first Activation phase begins, pick 3 of your units; each gains a Dodge token.",
+    "source": {
+      "doc": "RECON",
+      "page": "PDF p6",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "rec.adv.fortified-position",
+    "name": "Fortified Position",
+    "type": "advantage",
+    "format": "recon",
+    "faction": null,
+    "setup": [
+      {
+        "placeTerrain": {
+          "piece": "core.terrain.barricade",
+          "max": 3,
+          "region": [
+            "allied",
+            "contested"
+          ],
+          "minApart": 6
+        }
+      }
+    ],
+    "scoring": [],
+    "special": [],
+    "text": "During setup, place up to 3 barricades in your own or Contested Territory, none within range 1 of another.",
+    "source": {
+      "doc": "RECON",
+      "page": "PDF p6",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  }
+]

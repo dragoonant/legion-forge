@@ -1,0 +1,385 @@
+[
+  {
+    "id": "reb.cc.son-of-skywalker",
+    "name": "Son of Skywalker",
+    "pips": 1,
+    "faction": "rebels",
+    "restriction": {
+      "units": [
+        "reb.u.luke-hotr"
+      ],
+      "op": "or"
+    },
+    "orders": {
+      "named": [
+        "reb.u.luke-hotr"
+      ],
+      "count": 0
+    },
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.resolved",
+          "self": true
+        },
+        "when": {
+          "role": "attacker"
+        },
+        "do": [
+          {
+            "grantFreeAction": {
+              "action": "core.action.attack",
+              "ignoreAttackLimit": true
+            }
+          }
+        ],
+        "scope": "self",
+        "duration": "round",
+        "optional": true,
+        "limit": "oncePerRound"
+      }
+    ],
+    "text": "After Luke's first attack this round resolves, he may make a free Attack action even if he has already attacked this turn.",
+    "source": {
+      "doc": "RC",
+      "page": "1,4",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.cc.my-ally-is-the-force",
+    "name": "My Ally Is the Force",
+    "pips": 2,
+    "faction": "rebels",
+    "restriction": {
+      "units": [
+        "reb.u.luke-hotr"
+      ],
+      "op": "or"
+    },
+    "orders": {
+      "count": 2,
+      "filter": {
+        "unitTypes": [
+          "trooper-any"
+        ]
+      }
+    },
+    "effects": [
+      {
+        "trigger": {
+          "event": "OrderIssued"
+        },
+        "when": {
+          "byThisCard": true
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.dodge",
+              "n": 1
+            }
+          }
+        ],
+        "scope": "subject"
+      }
+    ],
+    "text": "Each unit ordered with this card gains 1 Dodge.",
+    "source": {
+      "doc": "RC",
+      "page": "1,4",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.cc.full-of-surprises",
+    "name": "Full of Surprises",
+    "pips": 2,
+    "faction": "rebels",
+    "restriction": {
+      "units": [
+        "reb.u.luke-hotr"
+      ],
+      "op": "or"
+    },
+    "orders": {
+      "named": [
+        "reb.u.luke-hotr"
+      ],
+      "count": 0
+    },
+    "effects": [
+      {
+        "trigger": {
+          "event": "OrderIssued"
+        },
+        "when": {
+          "byThisCard": true,
+          "unit": "reb.u.luke-hotr"
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.dodge",
+              "n": 1
+            }
+          }
+        ],
+        "scope": "subject"
+      },
+      {
+        "modifier": "defenceDice",
+        "op": "add",
+        "value": {
+          "sub": [
+            {
+              "stat": "courage"
+            },
+            {
+              "tokens": "core.token.suppression"
+            }
+          ],
+          "min": 0
+        },
+        "when": {
+          "role": "defender",
+          "unit": "reb.u.luke-hotr"
+        },
+        "scope": "named",
+        "duration": "round"
+      }
+    ],
+    "text": "Luke gains 1 Dodge; this round, when he defends, he rolls extra white defence dice equal to his courage minus his suppression tokens (minimum 0).",
+    "source": {
+      "doc": "RC",
+      "page": "1,4",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.cc.return-of-the-jedi",
+    "name": "Return of the Jedi",
+    "pips": 3,
+    "faction": "rebels",
+    "restriction": {
+      "units": [
+        "reb.u.luke-hotr"
+      ],
+      "op": "or"
+    },
+    "orders": {
+      "named": [
+        "reb.u.luke-hotr"
+      ],
+      "count": 2
+    },
+    "effects": [
+      {
+        "trigger": {
+          "event": "OrderIssued"
+        },
+        "when": {
+          "byThisCard": true,
+          "unit": "reb.u.luke-hotr"
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.dodge",
+              "n": 1
+            }
+          }
+        ],
+        "scope": "subject"
+      },
+      {
+        "trigger": {
+          "window": "activation.start"
+        },
+        "when": {
+          "unit": "reb.u.luke-hotr"
+        },
+        "limit": "oncePerRound",
+        "duration": "round",
+        "optional": true,
+        "do": [
+          {
+            "removeToken": {
+              "token": "core.token.suppression",
+              "n": 1,
+              "to": {
+                "aura": {
+                  "range": 3,
+                  "side": "ally",
+                  "filter": {
+                    "unitTypes": [
+                      "trooper-any"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "scope": "subject"
+      }
+    ],
+    "text": "Luke gains 1 Dodge when ordered; at the start of his next activation each allied Trooper unit within range 3 of him may remove 1 suppression.",
+    "source": {
+      "doc": "RC",
+      "page": "1,4",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.cc.sabotaged-communications",
+    "name": "Sabotaged Communications",
+    "pips": 1,
+    "faction": "rebels",
+    "restriction": null,
+    "orders": {
+      "count": 1,
+      "filter": {
+        "ranks": [
+          "operative",
+          "special-forces"
+        ]
+      }
+    },
+    "effects": [
+      {
+        "modifier": "orderLimit",
+        "op": "max",
+        "value": 1,
+        "scope": "opponent",
+        "duration": "round"
+      }
+    ],
+    "text": "This round, an opponent who issues orders through a command card may issue only 1 order with it.",
+    "source": {
+      "doc": "RC",
+      "page": "1,4",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.cc.turning-the-tide",
+    "name": "Turning the Tide",
+    "pips": 2,
+    "faction": "rebels",
+    "restriction": null,
+    "orders": {
+      "count": 2,
+      "filter": {
+        "ranks": [
+          "support",
+          "heavy"
+        ]
+      }
+    },
+    "effects": [
+      {
+        "trigger": {
+          "window": "command.ordersIssued"
+        },
+        "do": [
+          {
+            "grantKeyword": {
+              "keyword": {
+                "id": "kw.inspire",
+                "x": 2
+              },
+              "duration": "round",
+              "to": {
+                "all": {
+                  "side": "ally",
+                  "filter": {
+                    "ranks": [
+                      "support",
+                      "heavy"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "scope": "chosen",
+        "duration": "round"
+      }
+    ],
+    "text": "Allied Support and Heavy units gain Inspire 2 this round.",
+    "source": {
+      "doc": "RC",
+      "page": "1,4",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.cc.covering-fire",
+    "name": "Covering Fire",
+    "pips": 3,
+    "faction": "rebels",
+    "restriction": null,
+    "orders": {
+      "count": 3,
+      "filter": {
+        "ranks": [
+          "corps"
+        ]
+      }
+    },
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.resolved"
+        },
+        "when": {
+          "side": "ally",
+          "rank": "corps",
+          "attackKind": "ranged",
+          "role": "attacker"
+        },
+        "do": [
+          {
+            "chooseUnits": {
+              "n": 1,
+              "filter": {
+                "side": "ally",
+                "within": {
+                  "range": 2,
+                  "of": "subject"
+                },
+                "excludeSubject": true
+              },
+              "then": [
+                {
+                  "gainToken": {
+                    "token": "core.token.dodge",
+                    "n": 1
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "scope": "subject",
+        "duration": "round",
+        "optional": true
+      }
+    ],
+    "text": "This round, after an allied Corps unit's ranged attack resolves, another allied unit within range 2 may gain 1 Dodge.",
+    "source": {
+      "doc": "RC",
+      "page": "1,4",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  }
+]

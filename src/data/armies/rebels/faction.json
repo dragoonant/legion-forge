@@ -1,0 +1,14 @@
+{
+  "id": "rebels",
+  "name": "Rebel Alliance",
+  "prefix": "reb",
+  "playable": true,
+  "forceAffinity": "light",
+  "icon": "faction-rebels",
+  "source": {
+    "doc": "RU",
+    "page": 1,
+    "kind": "primary",
+    "checked": "by-eye 2026-10-29"
+  }
+}

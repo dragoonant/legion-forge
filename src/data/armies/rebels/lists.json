@@ -1,0 +1,126 @@
+[
+  {
+    "id": "reb.list.recon-a",
+    "name": "Full box",
+    "faction": "rebels",
+    "format": "recon",
+    "assumedSet": "starter-v1",
+    "commandHand": [
+      "reb.cc.son-of-skywalker",
+      "reb.cc.sabotaged-communications",
+      "reb.cc.my-ally-is-the-force",
+      "reb.cc.full-of-surprises",
+      "reb.cc.return-of-the-jedi",
+      "reb.cc.covering-fire",
+      "neu.cc.standing-orders"
+    ],
+    "points": 549,
+    "source": {
+      "doc": "14-armies.md",
+      "page": "3.5",
+      "kind": "primary"
+    },
+    "units": [
+      {
+        "unit": "reb.u.luke-hotr",
+        "upgrades": [
+          "neu.up.force-push"
+        ]
+      },
+      {
+        "unit": "reb.u.rebel-troopers",
+        "upgrades": [
+          "reb.up.rebel-trooper-squad",
+          "reb.up.z6-trooper"
+        ]
+      },
+      {
+        "unit": "reb.u.rebel-troopers",
+        "upgrades": [
+          "reb.up.rebel-trooper-squad",
+          "reb.up.z6-trooper"
+        ]
+      },
+      {
+        "unit": "reb.u.rebel-commandos",
+        "upgrades": [
+          "reb.up.proton-charge-saboteur"
+        ]
+      },
+      {
+        "unit": "reb.u.commando-strike-team",
+        "upgrades": [
+          "reb.up.dh447-sniper"
+        ]
+      },
+      {
+        "unit": "reb.u.wookiee-warriors-ff",
+        "upgrades": [
+          "reb.up.bowcaster-wookiee"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "reb.list.recon-b",
+    "name": "Shield wall",
+    "faction": "rebels",
+    "format": "recon",
+    "assumedSet": "starter-v1",
+    "commandHand": [
+      "reb.cc.son-of-skywalker",
+      "reb.cc.sabotaged-communications",
+      "reb.cc.my-ally-is-the-force",
+      "reb.cc.full-of-surprises",
+      "reb.cc.return-of-the-jedi",
+      "reb.cc.covering-fire",
+      "neu.cc.standing-orders"
+    ],
+    "points": 508,
+    "source": {
+      "doc": "14-armies.md",
+      "page": "3.5",
+      "kind": "primary"
+    },
+    "units": [
+      {
+        "unit": "reb.u.luke-hotr",
+        "upgrades": [
+          "neu.up.force-reflexes"
+        ]
+      },
+      {
+        "unit": "reb.u.rebel-troopers",
+        "upgrades": [
+          "reb.up.rebel-trooper-squad",
+          "reb.up.dlt20a-trooper"
+        ]
+      },
+      {
+        "unit": "reb.u.rebel-troopers",
+        "upgrades": [
+          "reb.up.rebel-trooper-squad",
+          "reb.up.sx21-trooper"
+        ]
+      },
+      {
+        "unit": "reb.u.rebel-commandos",
+        "upgrades": [
+          "reb.up.proton-charge-saboteur"
+        ]
+      },
+      {
+        "unit": "reb.u.commando-strike-team",
+        "upgrades": [
+          "reb.up.dh447-sniper"
+        ]
+      },
+      {
+        "unit": "reb.u.wookiee-warriors-ff",
+        "upgrades": [
+          "reb.up.battle-shield-wookiee"
+        ]
+      }
+    ]
+  }
+]

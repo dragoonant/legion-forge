@@ -1,0 +1,75 @@
+[
+  {
+    "id": "neu.cc.ambush",
+    "name": "Ambush",
+    "pips": 1,
+    "faction": null,
+    "restriction": null,
+    "orders": {
+      "count": 1
+    },
+    "effects": [],
+    "text": "Orders only: it carries no effect of its own.",
+    "source": {
+      "doc": "BC",
+      "page": 4,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "neu.cc.push",
+    "name": "Push",
+    "pips": 2,
+    "faction": null,
+    "restriction": null,
+    "orders": {
+      "count": 2
+    },
+    "effects": [],
+    "text": "Orders only: it carries no effect of its own.",
+    "source": {
+      "doc": "BC",
+      "page": 4,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "neu.cc.assault",
+    "name": "Assault",
+    "pips": 3,
+    "faction": null,
+    "restriction": null,
+    "orders": {
+      "count": 3
+    },
+    "effects": [],
+    "text": "Orders only: it carries no effect of its own.",
+    "source": {
+      "doc": "BC",
+      "page": 4,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "neu.cc.standing-orders",
+    "name": "Standing Orders",
+    "pips": 4,
+    "faction": null,
+    "restriction": null,
+    "orders": {
+      "count": 1
+    },
+    "effects": [],
+    "text": "Orders one unit. It returns to your hand at the end of the Command phase instead of being discarded.",
+    "source": {
+      "doc": "BC",
+      "page": 4,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    },
+    "returnsToHand": true
+  }
+]

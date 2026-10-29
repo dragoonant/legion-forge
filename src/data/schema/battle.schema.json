@@ -60,14 +60,7 @@
             "type": "object",
             "properties": {
               "at": {
-                "oneOf": [
-                  {
-                    "enum": [
-                      "end.start",
-                      "end.scoring",
-                      "end.end"
-                    ]
-                  },
+                "anyOf": [
                   {
                     "$ref": "common.schema.json#/$defs/TimingWindowId"
                   },

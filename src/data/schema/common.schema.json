@@ -758,46 +758,49 @@
       "additionalProperties": false
     },
     "Verb": {
-      "oneOf": [
-        {
-          "$ref": "common.schema.json#/$defs/CodeRef"
+      "type": "object",
+      "if": {
+        "required": [
+          "code"
+        ]
+      },
+      "then": {
+        "$ref": "common.schema.json#/$defs/CodeRef"
+      },
+      "else": {
+        "propertyNames": {
+          "enum": [
+            "gainToken",
+            "spendToken",
+            "removeToken",
+            "grantKeyword",
+            "removeKeyword",
+            "grantFreeAction",
+            "extraAction",
+            "fewerActions",
+            "sufferWounds",
+            "dealWounds",
+            "upgradeDice",
+            "downgradeDice",
+            "convertSurge",
+            "changeResult",
+            "cancelResult",
+            "rollDice",
+            "readyCards",
+            "addPassToken",
+            "orderTokenTo",
+            "chooseUnits",
+            "placeToken",
+            "changeRange",
+            "applyModifier",
+            "choose",
+            "controlledMove",
+            "cardTokens"
+          ]
         },
-        {
-          "type": "object",
-          "propertyNames": {
-            "enum": [
-              "gainToken",
-              "spendToken",
-              "removeToken",
-              "grantKeyword",
-              "removeKeyword",
-              "grantFreeAction",
-              "extraAction",
-              "fewerActions",
-              "sufferWounds",
-              "dealWounds",
-              "upgradeDice",
-              "downgradeDice",
-              "convertSurge",
-              "changeResult",
-              "cancelResult",
-              "rollDice",
-              "readyCards",
-              "addPassToken",
-              "orderTokenTo",
-              "chooseUnits",
-              "placeToken",
-              "changeRange",
-              "applyModifier",
-              "choose",
-              "controlledMove",
-              "cardTokens"
-            ]
-          },
-          "minProperties": 1,
-          "maxProperties": 1
-        }
-      ]
+        "minProperties": 1,
+        "maxProperties": 1
+      }
     },
     "Modifier": {
       "type": "object",
@@ -839,10 +842,7 @@
           ]
         },
         "value": {
-          "oneOf": [
-            {
-              "type": "number"
-            },
+          "anyOf": [
             {
               "type": "string"
             },
@@ -1042,24 +1042,99 @@
       "additionalProperties": false
     },
     "Effect": {
-      "oneOf": [
+      "type": "object",
+      "anyOf": [
         {
-          "$ref": "#/$defs/Trigger"
+          "required": [
+            "trigger"
+          ]
         },
         {
-          "$ref": "#/$defs/Modifier"
+          "required": [
+            "modifier"
+          ]
         },
         {
-          "$ref": "#/$defs/Grant"
+          "required": [
+            "grant"
+          ]
         },
         {
-          "$ref": "#/$defs/Native"
+          "required": [
+            "native"
+          ]
         },
         {
-          "$ref": "#/$defs/CodeRef"
+          "required": [
+            "code"
+          ]
         },
         {
-          "$ref": "#/$defs/Unimplemented"
+          "required": [
+            "unimplemented"
+          ]
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "trigger"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/Trigger"
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "modifier"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/Modifier"
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "grant"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/Grant"
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "native"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/Native"
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/CodeRef"
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "unimplemented"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/Unimplemented"
+          }
         }
       ]
     },

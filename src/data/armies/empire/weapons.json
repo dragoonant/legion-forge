@@ -1,0 +1,260 @@
+[
+  {
+    "id": "emp.w.vaders-lightsaber-dlots",
+    "name": "Vader's Lightsaber",
+    "range": {
+      "min": 0,
+      "max": 0
+    },
+    "dice": {
+      "red": 6,
+      "black": 0,
+      "white": 0
+    },
+    "keywords": [
+      {
+        "id": "kw.impact",
+        "x": 3
+      },
+      {
+        "id": "kw.pierce",
+        "x": 3
+      }
+    ],
+    "flavour": "lightsaber",
+    "source": {
+      "doc": "EU",
+      "page": "9-10",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.w.bludgeon",
+    "name": "Bludgeon",
+    "range": {
+      "min": 0,
+      "max": 0
+    },
+    "dice": {
+      "red": 0,
+      "black": 0,
+      "white": 1
+    },
+    "keywords": [],
+    "flavour": "melee-blunt",
+    "source": {
+      "doc": "EU",
+      "page": 1,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.w.e11",
+    "name": "E-11 Blaster Rifle",
+    "range": {
+      "min": 1,
+      "max": 3
+    },
+    "dice": {
+      "red": 0,
+      "black": 0,
+      "white": 1
+    },
+    "keywords": [],
+    "flavour": "blaster-light",
+    "source": {
+      "doc": "EU",
+      "page": 1,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.w.ec17",
+    "name": "EC-17 Hold-Out Blaster",
+    "range": {
+      "min": 1,
+      "max": 2
+    },
+    "dice": {
+      "red": 0,
+      "black": 2,
+      "white": 0
+    },
+    "keywords": [],
+    "flavour": "blaster-light",
+    "source": {
+      "doc": "EU",
+      "page": 5,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.w.dlt19",
+    "name": "DLT-19 Blaster Rifle",
+    "range": {
+      "min": 1,
+      "max": 4
+    },
+    "dice": {
+      "red": 2,
+      "black": 0,
+      "white": 0
+    },
+    "keywords": [
+      {
+        "id": "kw.impact",
+        "x": 1
+      }
+    ],
+    "flavour": "blaster-heavy",
+    "source": {
+      "doc": "EUP",
+      "page": "1-2,4,7",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.w.hh12",
+    "name": "HH-12 Rocket Launcher",
+    "range": {
+      "min": 2,
+      "max": 4
+    },
+    "dice": {
+      "red": 0,
+      "black": 3,
+      "white": 0
+    },
+    "keywords": [
+      {
+        "id": "kw.cumbersome"
+      },
+      {
+        "id": "kw.impact",
+        "x": 3
+      }
+    ],
+    "flavour": "rocket",
+    "source": {
+      "doc": "EUP",
+      "page": "1-2,4,7",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.w.t21",
+    "name": "T-21 Repeating Blaster",
+    "range": {
+      "min": 1,
+      "max": 3
+    },
+    "dice": {
+      "red": 0,
+      "black": 0,
+      "white": 4
+    },
+    "keywords": [
+      {
+        "id": "kw.critical",
+        "x": 2
+      }
+    ],
+    "flavour": "blaster-heavy",
+    "source": {
+      "doc": "EUP",
+      "page": "1-2,4,7",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.w.rt97c",
+    "name": "RT-97C Blaster Rifle",
+    "range": {
+      "min": 1,
+      "max": 4
+    },
+    "dice": {
+      "red": 1,
+      "black": 0,
+      "white": 3
+    },
+    "keywords": [],
+    "flavour": "blaster-heavy",
+    "source": {
+      "doc": "EUP",
+      "page": "1-2,4,7",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.w.sonic-charge",
+    "name": "Sonic Charge",
+    "range": {
+      "min": 0,
+      "max": 1
+    },
+    "dice": {
+      "red": 1,
+      "black": 2,
+      "white": 1
+    },
+    "keywords": [
+      {
+        "id": "kw.blast"
+      },
+      {
+        "id": "kw.impact",
+        "x": 4
+      },
+      {
+        "id": "kw.suppressive"
+      }
+    ],
+    "flavour": "explosive",
+    "source": {
+      "doc": "EUP",
+      "page": 4,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.w.dlt19x",
+    "name": "DLT-19x Sniper Rifle",
+    "range": {
+      "min": 2,
+      "max": 5
+    },
+    "dice": {
+      "red": 0,
+      "black": 2,
+      "white": 1
+    },
+    "keywords": [
+      {
+        "id": "kw.high-velocity"
+      },
+      {
+        "id": "kw.overwhelm"
+      },
+      {
+        "id": "kw.sniper-team"
+      }
+    ],
+    "flavour": "blaster-sniper",
+    "source": {
+      "doc": "EUP",
+      "page": 4,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  }
+]

@@ -1,0 +1,335 @@
+[
+  {
+    "unique": true,
+    "subtitle": "Hero of the Rebellion",
+    "forceAffinity": "light",
+    "id": "reb.u.luke-hotr",
+    "name": "Luke Skywalker",
+    "faction": "rebels",
+    "rank": "commander",
+    "unitType": "trooper",
+    "points": 120,
+    "minis": 1,
+    "wounds": 6,
+    "defence": "red",
+    "courage": 3,
+    "speed": 2,
+    "surge": {
+      "attack": "crit",
+      "defence": null
+    },
+    "base": "core.base.small",
+    "weapons": [
+      "reb.w.anakins-lightsaber",
+      "reb.w.lukes-blaster"
+    ],
+    "keywords": [
+      {
+        "id": "kw.jump",
+        "x": 1
+      },
+      {
+        "id": "kw.block"
+      },
+      {
+        "id": "kw.charge"
+      },
+      {
+        "id": "kw.immune-pierce"
+      },
+      {
+        "id": "kw.inspire",
+        "x": 2
+      },
+      {
+        "id": "kw.sharpshooter",
+        "x": 1
+      }
+    ],
+    "upgradeBar": [
+      "force",
+      "command",
+      "training",
+      "gear"
+    ],
+    "figure": {
+      "archetype": "luke-skywalker"
+    },
+    "source": {
+      "doc": "RU",
+      "page": 9,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "unique": false,
+    "subtitle": null,
+    "forceAffinity": null,
+    "id": "reb.u.rebel-troopers",
+    "name": "Rebel Troopers",
+    "faction": "rebels",
+    "rank": "corps",
+    "unitType": "trooper",
+    "points": 40,
+    "minis": 4,
+    "wounds": 1,
+    "defence": "white",
+    "courage": 1,
+    "speed": 2,
+    "surge": {
+      "attack": null,
+      "defence": "block"
+    },
+    "base": "core.base.small",
+    "weapons": [
+      "core.w.unarmed-black",
+      "reb.w.a280"
+    ],
+    "keywords": [
+      {
+        "id": "kw.agile",
+        "x": 1
+      },
+      {
+        "id": "kw.nimble"
+      }
+    ],
+    "upgradeBar": [
+      "heavy-weapon",
+      "personnel",
+      "gear",
+      "grenades"
+    ],
+    "figure": {
+      "archetype": "rebel-trooper"
+    },
+    "source": {
+      "doc": "RU",
+      "page": 1,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "unique": false,
+    "subtitle": null,
+    "forceAffinity": null,
+    "id": "reb.u.rebel-commandos",
+    "name": "Rebel Commandos",
+    "faction": "rebels",
+    "rank": "special-forces",
+    "unitType": "trooper",
+    "points": 42,
+    "minis": 4,
+    "wounds": 1,
+    "defence": "white",
+    "courage": 2,
+    "speed": 2,
+    "surge": {
+      "attack": "hit",
+      "defence": "block"
+    },
+    "base": "core.base.small",
+    "weapons": [
+      "core.w.unarmed-black",
+      "reb.w.a280"
+    ],
+    "keywords": [
+      {
+        "id": "kw.low-profile"
+      },
+      {
+        "id": "kw.scout",
+        "x": 2
+      },
+      {
+        "id": "kw.sharpshooter",
+        "x": 1
+      }
+    ],
+    "upgradeBar": [
+      "heavy-weapon",
+      "training",
+      "comms",
+      "gear",
+      "grenades"
+    ],
+    "figure": {
+      "archetype": "rebel-commando"
+    },
+    "source": [
+      {
+        "doc": "RU",
+        "page": 4,
+        "kind": "primary",
+        "checked": "by-eye 2026-10-29",
+        "covers": [
+          "upgradeBar"
+        ]
+      },
+      {
+        "doc": "ERR",
+        "page": "2-3",
+        "kind": "primary",
+        "covers": [
+          "points"
+        ]
+      },
+      {
+        "doc": "LHQ",
+        "url": "legionhq2 bundle id ak",
+        "kind": "fan",
+        "covers": [
+          "minis",
+          "wounds",
+          "defence",
+          "courage",
+          "speed",
+          "surge",
+          "keywords",
+          "weapons"
+        ]
+      }
+    ]
+  },
+  {
+    "unique": false,
+    "subtitle": "Strike Team",
+    "forceAffinity": null,
+    "id": "reb.u.commando-strike-team",
+    "name": "Rebel Commandos",
+    "faction": "rebels",
+    "rank": "support",
+    "unitType": "trooper",
+    "points": 20,
+    "minis": 1,
+    "wounds": 1,
+    "defence": "white",
+    "courage": 2,
+    "speed": 2,
+    "surge": {
+      "attack": "crit",
+      "defence": "block"
+    },
+    "base": "core.base.small",
+    "weapons": [
+      "core.w.unarmed-black",
+      "reb.w.a280"
+    ],
+    "keywords": [
+      {
+        "id": "kw.detachment",
+        "param": "reb.u.rebel-commandos"
+      },
+      {
+        "id": "kw.heavy-weapon-team"
+      },
+      {
+        "id": "kw.incognito"
+      },
+      {
+        "id": "kw.low-profile"
+      },
+      {
+        "id": "kw.prepared-position"
+      }
+    ],
+    "upgradeBar": [
+      "heavy-weapon",
+      "training",
+      "comms",
+      "gear",
+      "grenades"
+    ],
+    "figure": {
+      "archetype": "rebel-commando"
+    },
+    "source": [
+      {
+        "doc": "RU",
+        "page": 4,
+        "kind": "primary",
+        "checked": "by-eye 2026-10-29",
+        "covers": [
+          "stats",
+          "keywords",
+          "points"
+        ]
+      },
+      {
+        "doc": "LHQ",
+        "url": "legionhq2 bundle id al",
+        "kind": "fan",
+        "covers": [
+          "upgradeBar"
+        ]
+      }
+    ]
+  },
+  {
+    "unique": false,
+    "subtitle": "Freedom Fighters",
+    "forceAffinity": null,
+    "id": "reb.u.wookiee-warriors-ff",
+    "name": "Wookiee Warriors",
+    "faction": "rebels",
+    "rank": "special-forces",
+    "unitType": "wookiee-trooper",
+    "points": 62,
+    "minis": 3,
+    "wounds": 3,
+    "defence": "white",
+    "courage": 2,
+    "speed": 2,
+    "surge": {
+      "attack": "hit",
+      "defence": null
+    },
+    "base": "core.base.small",
+    "weapons": [
+      "reb.w.ryyk-blade",
+      "reb.w.kashyyyk-pistol"
+    ],
+    "keywords": [
+      {
+        "id": "kw.charge"
+      },
+      {
+        "id": "kw.duelist"
+      },
+      {
+        "id": "kw.indomitable"
+      },
+      {
+        "id": "kw.scale"
+      }
+    ],
+    "upgradeBar": [
+      "heavy-weapon",
+      "training",
+      "training",
+      "gear",
+      "grenades"
+    ],
+    "figure": {
+      "archetype": "wookiee-warrior"
+    },
+    "source": [
+      {
+        "doc": "RU",
+        "page": 4,
+        "kind": "primary",
+        "checked": "by-eye 2026-10-29"
+      },
+      {
+        "doc": "ERR",
+        "page": "2-3",
+        "kind": "primary",
+        "covers": [
+          "points"
+        ]
+      }
+    ]
+  }
+]

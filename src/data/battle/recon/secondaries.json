@@ -1,0 +1,229 @@
+[
+  {
+    "id": "rec.sec.surface-scan",
+    "name": "Surface Scan",
+    "type": "secondary",
+    "format": "recon",
+    "faction": null,
+    "setup": [
+      {
+        "chooseUnits": {
+          "who": "each",
+          "order": "blueFirst",
+          "count": 2,
+          "from": "own",
+          "grant": {
+            "asset": "Scanner"
+          }
+        }
+      }
+    ],
+    "scoring": [
+      {
+        "at": "end.scoring",
+        "fromRound": 2,
+        "count": {
+          "units": {
+            "holding": "Scanner",
+            "min": 2,
+            "notIn": "alliedTerritory",
+            "notContestingPoiIn": "alliedTerritory"
+          }
+        },
+        "vp": 1
+      },
+      {
+        "at": "end.scoring",
+        "fromRound": 2,
+        "count": {
+          "units": {
+            "holding": "Scanner",
+            "contestingUnclaimed": {
+              "asset": "Scanner",
+              "ownedBy": "enemy"
+            }
+          }
+        },
+        "vp": 2,
+        "cap": {
+          "perGame": 2
+        }
+      }
+    ],
+    "special": [],
+    "grants": {
+      "claim": {
+        "asset": "Scanner",
+        "ownerOnly": true,
+        "maxHeld": 1
+      }
+    },
+    "text": "Scanners are carried into enemy ground: score each round for two carriers away from home, and for a carrier that reaches an enemy scanner left lying.",
+    "source": {
+      "doc": "RECON",
+      "page": "PDF p6",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "rec.sec.bring-them-to-heel",
+    "name": "Bring Them to Heel",
+    "type": "secondary",
+    "format": "recon",
+    "faction": null,
+    "setup": [],
+    "scoring": [
+      {
+        "at": "end.scoring",
+        "fromRound": 2,
+        "count": {
+          "compare": {
+            "left": {
+              "units": {
+                "side": "enemy",
+                "suppressed": true
+              }
+            },
+            "op": ">",
+            "right": {
+              "units": {
+                "side": "ally",
+                "suppressed": true
+              }
+            }
+          }
+        },
+        "vp": 1
+      },
+      {
+        "at": {
+          "event": "SuppressionChanged"
+        },
+        "fromRound": 2,
+        "count": {
+          "table": {
+            "trigger": "SuppressionChanged",
+            "perRound": 1,
+            "rows": [
+              {
+                "label": "An enemy unit is Panicked",
+                "condition": "enemyPanicked",
+                "vp": {
+                  "blue": 2,
+                  "red": 2
+                }
+              },
+              {
+                "label": "Every enemy unit that can gain suppression has some",
+                "condition": "allEnemiesSuppressed",
+                "vp": {
+                  "blue": 2,
+                  "red": 2
+                }
+              }
+            ]
+          }
+        },
+        "vp": 0
+      }
+    ],
+    "special": [
+      {
+        "code": "scoringTable",
+        "params": {
+          "markOnce": true,
+          "optional": true
+        }
+      }
+    ],
+    "text": "Break their nerve. Score when more of their units than yours are Suppressed, and mark a bonus space when a panic or a full suppression sweep lands.",
+    "source": {
+      "doc": "RECON",
+      "page": "PDF p6",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "rec.sec.recon-mission",
+    "name": "Recon Mission",
+    "type": "secondary",
+    "format": "recon",
+    "faction": null,
+    "setup": [
+      {
+        "chooseUnits": {
+          "who": "each",
+          "order": "blueFirst",
+          "count": 1,
+          "from": "own",
+          "grant": {
+            "asset": "Scanner"
+          }
+        }
+      }
+    ],
+    "scoring": [
+      {
+        "at": "activation.end",
+        "fromRound": 2,
+        "count": {
+          "units": {
+            "holding": "Scanner",
+            "leaderWithin": {
+              "range": 2,
+              "los": true,
+              "enemyUnitsMin": 2
+            }
+          }
+        },
+        "vp": 1,
+        "cap": {
+          "perRound": 1
+        }
+      }
+    ],
+    "special": [
+      {
+        "trigger": {
+          "window": "activation.end",
+          "self": true
+        },
+        "when": {
+          "holding": "Scanner"
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.observation",
+              "n": 1,
+              "to": {
+                "aura": {
+                  "range": 2,
+                  "side": "enemy",
+                  "requiresLos": true
+                }
+              }
+            }
+          }
+        ],
+        "scope": "subject"
+      }
+    ],
+    "grants": {
+      "claim": {
+        "asset": "Scanner",
+        "ownerOnly": true,
+        "maxHeld": 1
+      }
+    },
+    "text": "One scanner per side. A carrier that ends its activation close to two enemy units with eyes on them scores, and tags the enemy it sees with Observation.",
+    "source": {
+      "doc": "RECON",
+      "page": "PDF p6",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  }
+]

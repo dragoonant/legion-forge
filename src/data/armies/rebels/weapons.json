@@ -1,0 +1,387 @@
+[
+  {
+    "id": "reb.w.anakins-lightsaber",
+    "name": "Anakin's Lightsaber",
+    "range": {
+      "min": 0,
+      "max": 0
+    },
+    "dice": {
+      "red": 2,
+      "black": 3,
+      "white": 0
+    },
+    "keywords": [
+      {
+        "id": "kw.impact",
+        "x": 2
+      },
+      {
+        "id": "kw.pierce",
+        "x": 1
+      }
+    ],
+    "flavour": "lightsaber",
+    "source": {
+      "doc": "RU",
+      "page": 9,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.lukes-blaster",
+    "name": "Luke's Blaster",
+    "range": {
+      "min": 1,
+      "max": 2
+    },
+    "dice": {
+      "red": 1,
+      "black": 3,
+      "white": 0
+    },
+    "keywords": [
+      {
+        "id": "kw.long-shot"
+      },
+      {
+        "id": "kw.pierce",
+        "x": 1
+      }
+    ],
+    "flavour": "blaster-light",
+    "source": {
+      "doc": "RU",
+      "page": 9,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.a280",
+    "name": "A280 Blaster Rifle",
+    "range": {
+      "min": 1,
+      "max": 3
+    },
+    "dice": {
+      "red": 0,
+      "black": 1,
+      "white": 0
+    },
+    "keywords": [],
+    "flavour": "blaster-light",
+    "source": {
+      "doc": "RU",
+      "page": 1,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.ryyk-blade",
+    "name": "Ryyk Blade",
+    "range": {
+      "min": 0,
+      "max": 0
+    },
+    "dice": {
+      "red": 0,
+      "black": 2,
+      "white": 0
+    },
+    "keywords": [],
+    "flavour": "melee-blade",
+    "source": {
+      "doc": "RU",
+      "page": 4,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.kashyyyk-pistol",
+    "name": "Kashyyyk Pistol",
+    "range": {
+      "min": 1,
+      "max": 2
+    },
+    "dice": {
+      "red": 0,
+      "black": 1,
+      "white": 1
+    },
+    "keywords": [],
+    "flavour": "blaster-light",
+    "source": {
+      "doc": "RU",
+      "page": 4,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.z6",
+    "name": "Z-6 Rotary Blaster",
+    "range": {
+      "min": 1,
+      "max": 3
+    },
+    "dice": {
+      "red": 0,
+      "black": 0,
+      "white": 6
+    },
+    "keywords": [],
+    "flavour": "blaster-heavy",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.dlt20a",
+    "name": "DLT-20A Blaster Rifle",
+    "range": {
+      "min": 1,
+      "max": 4
+    },
+    "dice": {
+      "red": 0,
+      "black": 2,
+      "white": 1
+    },
+    "keywords": [
+      {
+        "id": "kw.critical",
+        "x": 1
+      }
+    ],
+    "flavour": "blaster-heavy",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.sx21",
+    "name": "SX-21 Scatter Blaster",
+    "range": {
+      "min": 1,
+      "max": 2
+    },
+    "dice": {
+      "red": 2,
+      "black": 2,
+      "white": 0
+    },
+    "keywords": [
+      {
+        "id": "kw.impact",
+        "x": 1
+      }
+    ],
+    "flavour": "blaster-heavy",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.mpl57",
+    "name": "MPL-57 Ion Blaster",
+    "range": {
+      "min": 1,
+      "max": 3
+    },
+    "dice": {
+      "red": 0,
+      "black": 2,
+      "white": 1
+    },
+    "keywords": [
+      {
+        "id": "kw.critical",
+        "x": 1
+      },
+      {
+        "id": "kw.impact",
+        "x": 1
+      },
+      {
+        "id": "kw.ion",
+        "x": 1
+      }
+    ],
+    "flavour": "blaster-heavy",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.proton-charge",
+    "name": "Proton Charge",
+    "range": {
+      "min": 0,
+      "max": 1
+    },
+    "dice": {
+      "red": 1,
+      "black": 1,
+      "white": 1
+    },
+    "keywords": [
+      {
+        "id": "kw.blast"
+      },
+      {
+        "id": "kw.impact",
+        "x": 6
+      }
+    ],
+    "flavour": "explosive",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.dh447",
+    "name": "DH-447 Sniper Rifle",
+    "range": {
+      "min": 2,
+      "max": 5
+    },
+    "dice": {
+      "red": 0,
+      "black": 2,
+      "white": 1
+    },
+    "keywords": [
+      {
+        "id": "kw.high-velocity"
+      },
+      {
+        "id": "kw.overwhelm"
+      },
+      {
+        "id": "kw.sniper-team"
+      }
+    ],
+    "flavour": "blaster-sniper",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.bowcaster",
+    "name": "Bowcaster",
+    "range": {
+      "min": 1,
+      "max": 3
+    },
+    "dice": {
+      "red": 1,
+      "black": 0,
+      "white": 1
+    },
+    "keywords": [
+      {
+        "id": "kw.impact",
+        "x": 1
+      },
+      {
+        "id": "kw.pierce",
+        "x": 1
+      }
+    ],
+    "flavour": "bowcaster",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.long-gun",
+    "name": "Long Gun",
+    "range": {
+      "min": 1,
+      "max": 4
+    },
+    "dice": {
+      "red": 0,
+      "black": 2,
+      "white": 0
+    },
+    "keywords": [
+      {
+        "id": "kw.suppressive"
+      }
+    ],
+    "flavour": "blaster-heavy",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.battle-shield-defensive",
+    "name": "Battle Shield",
+    "range": {
+      "min": 0,
+      "max": 0
+    },
+    "dice": {
+      "red": 0,
+      "black": 2,
+      "white": 0
+    },
+    "keywords": [],
+    "flavour": "melee-blunt",
+    "source": {
+      "doc": "RUP",
+      "page": "1-5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "reb.w.battle-shield-offensive",
+    "name": "Battle Shield (offensive)",
+    "range": {
+      "min": 0,
+      "max": 0
+    },
+    "dice": {
+      "red": 2,
+      "black": 0,
+      "white": 0
+    },
+    "keywords": [],
+    "flavour": "melee-blunt",
+    "source": {
+      "doc": "LHQ",
+      "url": "legionhq2 bundle Battle Shield Wookiee offensive side, card not seen",
+      "kind": "fan"
+    }
+  }
+]

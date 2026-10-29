@@ -1,0 +1,178 @@
+{
+  "id": "lay.recon.forest-1",
+  "name": "Forest Clearing",
+  "format": "recon",
+  "size": {
+    "x": 36,
+    "z": 36
+  },
+  "pieces": [
+    {
+      "id": "t1",
+      "kind": "area",
+      "footprint": [
+        {
+          "x": 4.5,
+          "z": -3
+        },
+        {
+          "x": 8,
+          "z": -3
+        },
+        {
+          "x": 8,
+          "z": 3
+        },
+        {
+          "x": 4.5,
+          "z": 3
+        }
+      ],
+      "heightIn": 4,
+      "cover": "light",
+      "blocksLos": true,
+      "movement": "difficult",
+      "climbable": false
+    },
+    {
+      "id": "t2",
+      "kind": "area",
+      "footprint": [
+        {
+          "x": -8,
+          "z": -3
+        },
+        {
+          "x": -4.5,
+          "z": -3
+        },
+        {
+          "x": -4.5,
+          "z": 3
+        },
+        {
+          "x": -8,
+          "z": 3
+        }
+      ],
+      "heightIn": 4,
+      "cover": "light",
+      "blocksLos": true,
+      "movement": "difficult",
+      "climbable": false
+    },
+    {
+      "id": "t3",
+      "kind": "obstacle",
+      "footprint": [
+        {
+          "x": -4,
+          "z": -7
+        },
+        {
+          "x": 4,
+          "z": -7
+        },
+        {
+          "x": 4,
+          "z": -6.5
+        },
+        {
+          "x": -4,
+          "z": -6.5
+        }
+      ],
+      "heightIn": 1.5,
+      "cover": "heavy",
+      "blocksLos": false,
+      "movement": "open",
+      "climbable": true
+    },
+    {
+      "id": "t4",
+      "kind": "obstacle",
+      "footprint": [
+        {
+          "x": -4,
+          "z": 6.5
+        },
+        {
+          "x": 4,
+          "z": 6.5
+        },
+        {
+          "x": 4,
+          "z": 7
+        },
+        {
+          "x": -4,
+          "z": 7
+        }
+      ],
+      "heightIn": 1.5,
+      "cover": "heavy",
+      "blocksLos": false,
+      "movement": "open",
+      "climbable": true
+    },
+    {
+      "id": "t5",
+      "kind": "building",
+      "footprint": [
+        {
+          "x": -10,
+          "z": 10
+        },
+        {
+          "x": -6,
+          "z": 10
+        },
+        {
+          "x": -6,
+          "z": 14
+        },
+        {
+          "x": -10,
+          "z": 14
+        }
+      ],
+      "heightIn": 7,
+      "cover": "heavy",
+      "blocksLos": true,
+      "movement": "impassable",
+      "climbable": false
+    },
+    {
+      "id": "t6",
+      "kind": "building",
+      "footprint": [
+        {
+          "x": 6,
+          "z": -14
+        },
+        {
+          "x": 10,
+          "z": -14
+        },
+        {
+          "x": 10,
+          "z": -10
+        },
+        {
+          "x": 6,
+          "z": -10
+        }
+      ],
+      "heightIn": 7,
+      "cover": "heavy",
+      "blocksLos": true,
+      "movement": "impassable",
+      "climbable": false
+    }
+  ],
+  "source": {
+    "doc": "own design",
+    "page": "-",
+    "kind": "primary"
+  }
+}

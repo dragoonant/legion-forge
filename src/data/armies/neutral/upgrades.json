@@ -1,0 +1,349 @@
+[
+  {
+    "id": "neu.up.force-choke",
+    "name": "Force Choke",
+    "slot": "force",
+    "points": 10,
+    "unique": false,
+    "forceAffinity": "dark",
+    "exhaust": "exhaust",
+    "effects": [
+      {
+        "grant": {
+          "action": {
+            "id": "neu.act.force-choke",
+            "name": "Force Choke",
+            "kind": "free",
+            "do": [
+              {
+                "chooseUnits": {
+                  "n": 1,
+                  "filter": {
+                    "side": "enemy",
+                    "within": {
+                      "range": 1,
+                      "of": "self"
+                    },
+                    "unitTypes": [
+                      "trooper-any"
+                    ],
+                    "notRanks": [
+                      "commander",
+                      "operative"
+                    ]
+                  },
+                  "then": [
+                    {
+                      "sufferWounds": {
+                        "n": 1,
+                        "who": "chosen"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "restrictions": {
+      "forceAffinity": "dark"
+    },
+    "source": {
+      "doc": "GUP",
+      "page": 19,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    },
+    "text": "Exhaust for a free card action: an enemy Trooper unit within range 1 that is neither a Commander nor an Operative suffers 1 wound."
+  },
+  {
+    "id": "neu.up.force-reflexes",
+    "name": "Force Reflexes",
+    "slot": "force",
+    "points": 5,
+    "unique": false,
+    "forceAffinity": null,
+    "exhaust": "exhaust",
+    "effects": [
+      {
+        "grant": {
+          "action": {
+            "id": "neu.act.force-reflexes",
+            "name": "Force Reflexes",
+            "kind": "free",
+            "do": [
+              {
+                "gainToken": {
+                  "token": "core.token.dodge",
+                  "n": 1
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "source": {
+      "doc": "GUP",
+      "page": 19,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    },
+    "text": "Exhaust for a free card action: the unit gains 1 Dodge token."
+  },
+  {
+    "id": "neu.up.fear",
+    "name": "Fear",
+    "slot": "force",
+    "points": 3,
+    "unique": false,
+    "forceAffinity": "dark",
+    "exhaust": "none",
+    "effects": [],
+    "restrictions": {
+      "forceAffinity": "dark"
+    },
+    "keywords": [
+      {
+        "id": "kw.demoralize",
+        "x": 1
+      }
+    ],
+    "source": {
+      "doc": "GUP",
+      "page": 19,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    },
+    "text": "The unit gains Demoralize 1."
+  },
+  {
+    "id": "neu.up.anger",
+    "name": "Anger",
+    "slot": "force",
+    "points": 3,
+    "unique": false,
+    "forceAffinity": "dark",
+    "exhaust": "none",
+    "effects": [
+      {
+        "trigger": {
+          "event": "WoundsSuffered",
+          "self": true
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.aim",
+              "n": 1
+            }
+          }
+        ],
+        "scope": "self"
+      }
+    ],
+    "restrictions": {
+      "forceAffinity": "dark"
+    },
+    "source": {
+      "doc": "GUP",
+      "page": 19,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    },
+    "text": "After the unit suffers wounds it gains 1 Aim token."
+  },
+  {
+    "id": "neu.up.force-push",
+    "name": "Force Push",
+    "slot": "force",
+    "points": 40,
+    "unique": false,
+    "forceAffinity": null,
+    "exhaust": "exhaust",
+    "effects": [
+      {
+        "grant": {
+          "action": {
+            "id": "neu.act.force-push",
+            "name": "Force Push",
+            "kind": "free",
+            "do": [
+              {
+                "chooseUnits": {
+                  "n": 1,
+                  "filter": {
+                    "side": "enemy",
+                    "within": {
+                      "range": 1,
+                      "of": "self"
+                    },
+                    "unitTypes": [
+                      "trooper-any"
+                    ]
+                  },
+                  "then": [
+                    {
+                      "controlledMove": {
+                        "speed": 1,
+                        "ignoreEngagement": true
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "source": {
+      "doc": "GUP",
+      "page": 19,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    },
+    "text": "Exhaust for a free card action: an enemy Trooper unit within range 1 makes a speed-1 Move that you control, even while engaged."
+  },
+  {
+    "id": "neu.up.force-barrier",
+    "name": "Force Barrier",
+    "slot": "force",
+    "points": 10,
+    "unique": false,
+    "forceAffinity": null,
+    "exhaust": "exhaust",
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.modified",
+          "aura": {
+            "range": 1,
+            "side": "ally",
+            "filter": {
+              "unitTypes": [
+                "trooper-any"
+              ]
+            },
+            "excludeSelf": true
+          }
+        },
+        "when": {
+          "role": "defender",
+          "attackKind": "ranged"
+        },
+        "do": [
+          {
+            "choose": {
+              "options": [
+                [
+                  {
+                    "cancelResult": {
+                      "result": "crit",
+                      "max": 1
+                    }
+                  }
+                ],
+                [
+                  {
+                    "cancelResult": {
+                      "result": "hit",
+                      "max": 2
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "scope": "aura",
+        "optional": true
+      }
+    ],
+    "source": {
+      "doc": "GUP",
+      "page": 19,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    },
+    "text": "Exhaust when another allied Trooper unit within range 1 defends against a ranged attack: cancel 1 critical result or up to 2 hit results."
+  },
+  {
+    "id": "neu.up.force-guidance",
+    "name": "Force Guidance",
+    "slot": "force",
+    "points": 5,
+    "unique": false,
+    "forceAffinity": null,
+    "exhaust": "exhaust",
+    "effects": [
+      {
+        "grant": {
+          "action": {
+            "id": "neu.act.force-guidance",
+            "name": "Force Guidance",
+            "kind": "free",
+            "do": [
+              {
+                "chooseUnits": {
+                  "n": 2,
+                  "upTo": true,
+                  "filter": {
+                    "side": "ally",
+                    "within": {
+                      "range": 2,
+                      "of": "self"
+                    }
+                  },
+                  "then": [
+                    {
+                      "gainToken": {
+                        "token": "core.token.surge",
+                        "n": 1
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "source": {
+      "doc": "GUP",
+      "page": 19,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    },
+    "text": "Exhaust for a free card action: up to 2 allied units within range 2 each gain 1 Surge token."
+  },
+  {
+    "id": "neu.up.hope",
+    "name": "Hope",
+    "slot": "force",
+    "points": 3,
+    "unique": false,
+    "forceAffinity": "light",
+    "exhaust": "none",
+    "effects": [],
+    "restrictions": {
+      "forceAffinity": "light"
+    },
+    "keywords": [
+      {
+        "id": "kw.inspire",
+        "x": 1
+      }
+    ],
+    "source": {
+      "doc": "GUP",
+      "page": 19,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    },
+    "text": "The unit gains Inspire 1."
+  }
+]

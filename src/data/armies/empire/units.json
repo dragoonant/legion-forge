@@ -1,0 +1,250 @@
+[
+  {
+    "unique": true,
+    "subtitle": "Dark Lord of the Sith",
+    "forceAffinity": "dark",
+    "id": "emp.u.darth-vader-dlots",
+    "name": "Darth Vader",
+    "faction": "empire",
+    "rank": "commander",
+    "unitType": "trooper",
+    "points": 170,
+    "minis": 1,
+    "wounds": 8,
+    "defence": "red",
+    "courage": null,
+    "speed": 1,
+    "surge": {
+      "attack": null,
+      "defence": null
+    },
+    "base": "core.base.small",
+    "weapons": [
+      "emp.w.vaders-lightsaber-dlots"
+    ],
+    "keywords": [
+      {
+        "id": "kw.compel",
+        "param": "corps"
+      },
+      {
+        "id": "kw.deflect"
+      },
+      {
+        "id": "kw.immune-pierce"
+      },
+      {
+        "id": "kw.master-of-the-force",
+        "x": 1
+      },
+      {
+        "id": "kw.relentless"
+      }
+    ],
+    "upgradeBar": [
+      "command",
+      "force",
+      "force",
+      "force"
+    ],
+    "figure": {
+      "archetype": "darth-vader"
+    },
+    "source": {
+      "doc": "EU",
+      "page": "9-10",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "unique": false,
+    "subtitle": null,
+    "forceAffinity": null,
+    "id": "emp.u.stormtroopers",
+    "name": "Stormtroopers",
+    "faction": "empire",
+    "rank": "corps",
+    "unitType": "trooper",
+    "points": 42,
+    "minis": 4,
+    "wounds": 1,
+    "defence": "red",
+    "courage": 1,
+    "speed": 2,
+    "surge": {
+      "attack": "hit",
+      "defence": null
+    },
+    "base": "core.base.small",
+    "weapons": [
+      "emp.w.bludgeon",
+      "emp.w.e11"
+    ],
+    "keywords": [
+      {
+        "id": "kw.precise",
+        "x": 1
+      }
+    ],
+    "upgradeBar": [
+      "heavy-weapon",
+      "personnel",
+      "gear",
+      "grenades"
+    ],
+    "figure": {
+      "archetype": "stormtrooper"
+    },
+    "source": [
+      {
+        "doc": "EU",
+        "page": 1,
+        "kind": "primary",
+        "checked": "by-eye 2026-10-29",
+        "covers": [
+          "stats",
+          "weapons",
+          "keywords"
+        ]
+      },
+      {
+        "doc": "LHQ",
+        "url": "legionhq2 bundle id ay",
+        "kind": "fan",
+        "covers": [
+          "upgradeBar"
+        ]
+      }
+    ]
+  },
+  {
+    "unique": false,
+    "subtitle": null,
+    "forceAffinity": null,
+    "id": "emp.u.scout-troopers",
+    "name": "Scout Troopers",
+    "faction": "empire",
+    "rank": "special-forces",
+    "unitType": "trooper",
+    "points": 48,
+    "minis": 4,
+    "wounds": 1,
+    "defence": "white",
+    "courage": 2,
+    "speed": 2,
+    "surge": {
+      "attack": null,
+      "defence": "block"
+    },
+    "base": "core.base.small",
+    "weapons": [
+      "core.w.unarmed-black",
+      "emp.w.ec17"
+    ],
+    "keywords": [
+      {
+        "id": "kw.low-profile"
+      },
+      {
+        "id": "kw.scout",
+        "x": 3
+      },
+      {
+        "id": "kw.sharpshooter",
+        "x": 1
+      }
+    ],
+    "upgradeBar": [
+      "heavy-weapon",
+      "training",
+      "comms",
+      "gear",
+      "grenades"
+    ],
+    "figure": {
+      "archetype": "scout-trooper"
+    },
+    "source": {
+      "doc": "EU",
+      "page": 5,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "unique": false,
+    "subtitle": "Strike Team",
+    "forceAffinity": null,
+    "id": "emp.u.scout-strike-team",
+    "name": "Scout Troopers",
+    "faction": "empire",
+    "rank": "support",
+    "unitType": "trooper",
+    "points": 22,
+    "minis": 1,
+    "wounds": 1,
+    "defence": "white",
+    "courage": 2,
+    "speed": 2,
+    "surge": {
+      "attack": "crit",
+      "defence": "block"
+    },
+    "base": "core.base.small",
+    "weapons": [
+      "core.w.unarmed-black",
+      "emp.w.ec17"
+    ],
+    "keywords": [
+      {
+        "id": "kw.detachment",
+        "param": "emp.u.scout-troopers"
+      },
+      {
+        "id": "kw.heavy-weapon-team"
+      },
+      {
+        "id": "kw.incognito"
+      },
+      {
+        "id": "kw.low-profile"
+      },
+      {
+        "id": "kw.prepared-position"
+      }
+    ],
+    "upgradeBar": [
+      "heavy-weapon",
+      "training",
+      "comms",
+      "gear",
+      "grenades"
+    ],
+    "figure": {
+      "archetype": "scout-trooper"
+    },
+    "source": [
+      {
+        "doc": "EU",
+        "page": 5,
+        "kind": "primary",
+        "checked": "by-eye 2026-10-29",
+        "covers": [
+          "stats",
+          "weapons",
+          "keywords",
+          "minis"
+        ]
+      },
+      {
+        "doc": "LHQ",
+        "url": "legionhq2 bundle id bb",
+        "kind": "fan",
+        "covers": [
+          "upgradeBar"
+        ]
+      }
+    ]
+  }
+]

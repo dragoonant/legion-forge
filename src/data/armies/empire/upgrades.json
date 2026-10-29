@@ -1,0 +1,398 @@
+[
+  {
+    "id": "emp.up.dlt19-stormtrooper",
+    "name": "DLT-19 Stormtrooper",
+    "slot": "heavy-weapon",
+    "points": 20,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "emp.u.stormtroopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "DLT-19 Stormtrooper",
+      "weapon": "emp.w.dlt19"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds a figure armed with the DLT-19 Blaster Rifle.",
+    "source": {
+      "doc": "EUP",
+      "page": "1-2,4,7",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.up.hh12-stormtrooper",
+    "name": "HH-12 Stormtrooper",
+    "slot": "heavy-weapon",
+    "points": 22,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "emp.u.stormtroopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "HH-12 Stormtrooper",
+      "weapon": "emp.w.hh12"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds a figure armed with the HH-12 Rocket Launcher.",
+    "source": {
+      "doc": "EUP",
+      "page": "1-2,4,7",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.up.t21-stormtrooper",
+    "name": "T-21 Stormtrooper",
+    "slot": "heavy-weapon",
+    "points": 20,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "emp.u.stormtroopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "T-21 Stormtrooper",
+      "weapon": "emp.w.t21"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds a figure armed with the T-21 Repeating Blaster.",
+    "source": {
+      "doc": "EUP",
+      "page": "1-2,4,7",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.up.rt97c-stormtrooper",
+    "name": "RT-97C Stormtrooper",
+    "slot": "heavy-weapon",
+    "points": 22,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "emp.u.stormtroopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "RT-97C Stormtrooper",
+      "weapon": "emp.w.rt97c"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds a figure armed with the RT-97C Blaster Rifle.",
+    "source": {
+      "doc": "EUP",
+      "page": "1-2,4,7",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.up.stormtrooper",
+    "name": "Stormtrooper",
+    "slot": "personnel",
+    "points": 8,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "emp.u.stormtroopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "Stormtrooper"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds one more Stormtrooper figure to the unit.",
+    "source": {
+      "doc": "LHQ",
+      "url": "legionhq2 bundle id ay upgrade list",
+      "kind": "fan",
+      "covers": [
+        "points",
+        "text"
+      ]
+    }
+  },
+  {
+    "id": "emp.up.stormtrooper-captain",
+    "name": "Stormtrooper Captain",
+    "slot": "personnel",
+    "points": 10,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "emp.u.stormtroopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "Stormtrooper Captain",
+      "leader": true
+    },
+    "grantsSlots": [
+      "training"
+    ],
+    "keywords": [
+      {
+        "id": "kw.leader"
+      }
+    ],
+    "exhaust": "exhaust",
+    "effects": [
+      {
+        "trigger": {
+          "window": "activation.start",
+          "self": true
+        },
+        "optional": true,
+        "do": [
+          {
+            "applyModifier": {
+              "modifier": "suppressionRemovable",
+              "op": "set",
+              "value": false,
+              "duration": "activation"
+            }
+          },
+          {
+            "applyModifier": {
+              "modifier": "suppressible",
+              "op": "set",
+              "value": false,
+              "duration": "activation"
+            }
+          }
+        ],
+        "scope": "self",
+        "limit": "oncePerActivation"
+      }
+    ],
+    "text": "Adds a Captain figure who leads the unit and grants a training icon. Exhaust at the start of the unit's activation: it cannot remove suppression or become Suppressed this activation.",
+    "source": {
+      "doc": "EUP",
+      "page": "1-2",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.up.stormtrooper-specialist",
+    "name": "Stormtrooper Specialist",
+    "slot": "personnel",
+    "points": 9,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "emp.u.stormtroopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "Stormtrooper Specialist"
+    },
+    "grantsSlots": [
+      "gear"
+    ],
+    "exhaust": "exhaust",
+    "effects": [
+      {
+        "grant": {
+          "action": {
+            "id": "emp.act.specialist",
+            "name": "Specialist",
+            "kind": "free",
+            "do": [
+              {
+                "choose": {
+                  "options": [
+                    [
+                      {
+                        "gainToken": {
+                          "token": "core.token.aim",
+                          "n": 1
+                        }
+                      }
+                    ],
+                    [
+                      {
+                        "gainToken": {
+                          "token": "core.token.surge",
+                          "n": 1
+                        }
+                      }
+                    ]
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "text": "Adds a Specialist figure and a gear icon. Exhaust for a free card action: gain 1 Aim token or 1 Surge token.",
+    "source": {
+      "doc": "EUP",
+      "page": "1-2",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.up.stormtrooper-squad",
+    "name": "Stormtrooper Squad",
+    "slot": "personnel",
+    "points": 40,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "emp.u.stormtroopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 5,
+      "label": "Stormtrooper Squad",
+      "persistent": {
+        "keywords": [
+          {
+            "id": "kw.indomitable"
+          }
+        ],
+        "modifiers": [
+          {
+            "modifier": "cohesionRange",
+            "op": "set",
+            "value": 6,
+            "scope": "self"
+          }
+        ]
+      }
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds five Stormtroopers. The unit has Indomitable and stays in cohesion within range 1 of its leader, even after those figures are defeated. It cannot deploy or take orders through Transport.",
+    "source": [
+      {
+        "doc": "EUP",
+        "page": "1-2",
+        "kind": "primary",
+        "checked": "by-eye 2026-10-29",
+        "covers": [
+          "text",
+          "restrictions"
+        ]
+      },
+      {
+        "doc": "ERR",
+        "page": "2-3",
+        "kind": "primary",
+        "covers": [
+          "points"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "emp.up.sonic-charge-saboteur",
+    "name": "Sonic Charge Saboteur",
+    "slot": "heavy-weapon",
+    "points": 17,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "emp.u.scout-troopers"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "Sonic Charge Saboteur",
+      "weapon": "emp.w.sonic-charge"
+    },
+    "exhaust": "none",
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.poolFormed",
+          "self": true
+        },
+        "when": {
+          "poolHasWeapon": "emp.w.sonic-charge"
+        },
+        "do": [
+          {
+            "grantKeyword": {
+              "keyword": {
+                "id": "kw.assault",
+                "x": 1
+              },
+              "duration": "attack"
+            }
+          }
+        ],
+        "scope": {
+          "pool": "otherRangedWeapons"
+        }
+      }
+    ],
+    "text": "Adds a Saboteur with the Sonic Charge. When the Sonic Charge joins an attack pool, the other ranged weapons in that pool gain Assault 1.",
+    "source": {
+      "doc": "EUP",
+      "page": 4,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "emp.up.dlt19x-sniper",
+    "name": "DLT-19x Sniper",
+    "slot": "heavy-weapon",
+    "points": 20,
+    "unique": false,
+    "restrictions": {
+      "units": [
+        "emp.u.scout-strike-team"
+      ]
+    },
+    "forceAffinity": null,
+    "addsMinis": {
+      "count": 1,
+      "label": "DLT-19x Sniper",
+      "weapon": "emp.w.dlt19x"
+    },
+    "exhaust": "none",
+    "effects": [],
+    "text": "Adds a sniper armed with the DLT-19x Sniper Rifle; only the Scout Troopers Strike Team may take it.",
+    "source": {
+      "doc": "EUP",
+      "page": 4,
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  }
+]

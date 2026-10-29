@@ -1,0 +1,213 @@
+[
+  {
+    "id": "rec.obj.intercept-signals",
+    "name": "Intercept Signals",
+    "type": "objective",
+    "format": "recon",
+    "faction": null,
+    "map": "rec.map.intercept-signals",
+    "setup": [
+      {
+        "placeFromMap": {
+          "token": "core.token.poi",
+          "label": "Comms Tower"
+        }
+      },
+      {
+        "chooseUnits": {
+          "who": "each",
+          "order": "blueFirst",
+          "count": 3,
+          "from": "own",
+          "as": "picked"
+        }
+      },
+      {
+        "chooseUnits": {
+          "who": "each",
+          "order": "blueFirst",
+          "count": 2,
+          "from": "opponentsPick",
+          "of": "picked",
+          "grant": {
+            "token": "core.token.intel"
+          }
+        }
+      }
+    ],
+    "scoring": [
+      {
+        "at": "end.scoring",
+        "fromRound": 2,
+        "count": {
+          "tokens": {
+            "label": "Comms Tower"
+          },
+          "state": "secured",
+          "territory": "notAllied",
+          "orContested": {
+            "byUnitsHolding": "core.token.intel"
+          }
+        },
+        "vp": 1
+      }
+    ],
+    "special": [
+      {
+        "trigger": {
+          "window": "end.end"
+        },
+        "optional": true,
+        "scope": "seat",
+        "do": [
+          {
+            "chooseUnits": {
+              "n": 2,
+              "upTo": true,
+              "filter": {
+                "side": "ally",
+                "contesting": {
+                  "label": "Comms Tower",
+                  "securedByOwner": true
+                }
+              },
+              "then": [
+                {
+                  "gainToken": {
+                    "token": "core.token.intel",
+                    "n": 1
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "modifier": "tokenCap",
+        "op": "max",
+        "value": 2,
+        "token": "core.token.intel",
+        "scope": "seat"
+      }
+    ],
+    "text": "Four comms towers stand between the armies. Score for the towers on the far side of the table that you hold, or that your Intel carriers contest.",
+    "source": {
+      "doc": "RECON",
+      "page": "PDF p5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "rec.obj.bunker-assault",
+    "name": "Bunker Assault",
+    "type": "objective",
+    "format": "recon",
+    "faction": null,
+    "map": "rec.map.bunker-assault",
+    "setup": [
+      {
+        "placeFromMap": {
+          "token": "core.token.poi",
+          "label": "Bunker"
+        }
+      }
+    ],
+    "scoring": [
+      {
+        "at": "end.scoring",
+        "fromRound": 2,
+        "count": {
+          "tokens": {
+            "label": "Bunker"
+          },
+          "state": "secured"
+        },
+        "vp": 1
+      },
+      {
+        "at": "end.scoring",
+        "fromRound": 2,
+        "count": {
+          "tokens": {
+            "label": "Bunker",
+            "enemyOf": "scorer"
+          },
+          "state": "destroyedThisPhase"
+        },
+        "vp": 3
+      }
+    ],
+    "special": [
+      {
+        "code": "bunkerAssault",
+        "params": {
+          "woundsToDestroy": 3,
+          "atWindow": "end.start",
+          "fromRound": 2,
+          "bonusRanks": [
+            "commander",
+            "operative",
+            "special-forces"
+          ]
+        }
+      }
+    ],
+    "text": "Four bunkers. Hold them for points, and from round 2 batter the two on the enemy side until they collapse for a big payout.",
+    "source": {
+      "doc": "RECON",
+      "page": "PDF p5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  },
+  {
+    "id": "rec.obj.close-the-pocket",
+    "name": "Close the Pocket",
+    "type": "objective",
+    "format": "recon",
+    "faction": null,
+    "map": "rec.map.close-the-pocket",
+    "setup": [
+      {
+        "placeFromMap": {
+          "token": "core.token.poi",
+          "label": "Stockpile"
+        }
+      }
+    ],
+    "scoring": [
+      {
+        "at": "end.scoring",
+        "fromRound": 2,
+        "count": {
+          "tokens": {
+            "tag": "centre"
+          },
+          "state": "secured"
+        },
+        "vp": 2
+      },
+      {
+        "at": "end.scoring",
+        "fromRound": 2,
+        "count": {
+          "tokens": {
+            "notTag": "centre"
+          },
+          "state": "secured"
+        },
+        "vp": 1
+      }
+    ],
+    "special": [],
+    "text": "Hold the three supply dumps; the middle one is worth double.",
+    "source": {
+      "doc": "RECON",
+      "page": "PDF p5",
+      "kind": "primary",
+      "checked": "by-eye 2026-10-29"
+    }
+  }
+]
