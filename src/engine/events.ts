@@ -83,6 +83,17 @@ export type GameEventBody =
   // meta
   | { type: 'ActionRejected'; code: RejectionCode; reason: string }
   | { type: 'DecisionRequested'; decisionId: string; kind: DecisionKind; window: TimingWindowId }
+  // --- M2b-combat ---
+  | { type: 'WeaponsAdded'; attackerId: string; defenderId: string; kind: 'ranged' | 'melee'; weapons: { miniId: string; weaponId: string }[] }
+  | { type: 'DiceShifted'; side: 'attack' | 'defence'; dir: 1 | -1; n: number; source: string; colours: string[] }
+  | { type: 'ResultsCancelled'; side: 'attack' | 'defence'; source: string; result: string; n: number }
+  | { type: 'ResultsChanged'; source: string; from: string; to: string; n: number }
+  | { type: 'CoverRolled'; level: 'none' | 'light' | 'heavy'; obscured: number; total: number; dice: string[]; cancelled: number }
+  | { type: 'WoundsSuffered'; unitId: string; n: number; source: string }
+  | { type: 'LeaderReplaced'; unitId: string; from: string; to: string }
+  | { type: 'AttackSkipped'; attackerId: string; reason: string }
+  | { type: 'AttackEnded'; attackerId: string; defenderIds: string[]; wounds: number }
+  | { type: 'MeleeContact'; unitId: string; targetId: string; minis: { miniId: string; pos: Vec3 }[] }
 
 export type GameEvent = GameEventBody & EventBase
 export type EventType = GameEventBody['type']
