@@ -21,6 +21,7 @@ import {
 } from '@/engine'
 import { buildGameSetup, engineBundle, type SeatBuild } from '../game/adapter'
 import { rejectionText, setLabelPerspective } from '../game/labels'
+import { AiWorkerClient } from '@/ai'
 import { createBot, type Bot } from '../bot/randomBot'
 import { clearAnims } from '../presentation/animStore'
 import { enqueueBatch, resetDirector } from '../presentation/director'
@@ -165,7 +166,13 @@ export const useGame = create<GameStore>((set, get) => {
   }
 
   /** The bot's answer: its own choice, else every legal action, the engine's suggestion, pass. First one the engine accepts. */
-  function resolveBotAnswer(state: GameState, pending: PendingDecision, seat: Seat): { action: Action; result: ReturnType<typeof step> } | null {
+  function resolveBotAnswer(state: GameState, pending: PendingDecision, seat: Seat, pre: Action | null = null): { action: Action; result: ReturnType<typeof step> } | null {
+    // the answer the AI worker already computed goes first; the in-process AI is only asked when the engine refuses it
+    if (pre && pre.decisionId === pending.id && pre.seat === seat) {
+      const r = step(state, pre)
+      if (!r.rejection) return { action: pre, result: r }
+      console.debug(`[bot] ${pending.kind} (worker answer) rejected: ${r.rejection.code} ${r.rejection.reason}`)
+    }
     const candidates: Action[] = []
     try {
       candidates.push(bots![seat].decide(state, pending, seat))
@@ -195,10 +202,10 @@ export const useGame = create<GameStore>((set, get) => {
   }
 
   /** Answer for a bot seat at once (no pause): the normal game and the watchdog. */
-  function answerForBot(expectedId: string, seat: Seat): void {
+  function answerForBot(expectedId: string, seat: Seat, pre: Action | null = null): void {
     const { state, pending } = get()
     if (!state || !pending || pending.id !== expectedId || !owedSeats(pending).includes(seat)) return
-    const found = resolveBotAnswer(state, pending, seat)
+    const found = resolveBotAnswer(state, pending, seat, pre)
     if (found) {
       commitBot(pending, found.result)
       return
@@ -242,7 +249,18 @@ export const useGame = create<GameStore>((set, get) => {
       }
       const now = get()
       if (now.pending?.id !== pendingId) return
-      answerForBot(pendingId, seat)
+      // the AI tiers think in a worker; the game may move on (a new game, a watchdog answer) while it does
+      let pre: Action | null = null
+      const bot = bots?.[seat]
+      if (bot?.decideAsync && now.state) {
+        try {
+          pre = await bot.decideAsync(now.state, now.pending, seat)
+        } catch (e) {
+          console.warn('[bot] decideAsync failed', e)
+        }
+        if (gen !== generation || get().pending?.id !== pendingId) return
+      }
+      answerForBot(pendingId, seat, pre)
     } finally {
       if (botBusyKey === `${gen}:${key}`) botBusyKey = null
     }
@@ -327,6 +345,7 @@ export const useGame = create<GameStore>((set, get) => {
       const setup = buildGameSetup(opts.builds, { battle: opts.battle ?? null, ...(opts.options ? { options: opts.options } : {}) })
       const r = createGame(setup, opts.seed, engineBundle())
       const tier = opts.tier ?? 'random'
+      AiWorkerClient.reset() // the worker forgets every earlier game's activation memory
       bots = { A: createBot(tier, `${opts.seed}:A`), B: createBot(tier, `${opts.seed}:B`) }
       set({ state: null, pending: null, legal: null, events: [], rejection: null, seats: { ...opts.seats }, viewer, meta: { seed: opts.seed, builds: opts.builds, battle: opts.battle ?? null, tier } })
       const v = view(r.state, viewer)

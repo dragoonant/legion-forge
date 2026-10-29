@@ -35,6 +35,10 @@ export interface Behaviour {
   suppressionGained: number
   panics: number
   standbyTriggers: number
+  /** a unit's leader moved into base contact (R-16.1), and melee pools built */
+  charges: number
+  meleeContacts: number
+  meleePools: number
   cards: Record<string, string[]>
 }
 
@@ -80,6 +84,9 @@ const blankBehaviour = (): Behaviour => ({
   suppressionGained: 0,
   panics: 0,
   standbyTriggers: 0,
+  charges: 0,
+  meleeContacts: 0,
+  meleePools: 0,
   cards: {},
 })
 
@@ -147,6 +154,16 @@ function count(state: GameState, events: GameEvent[], b: Record<Seat, Behaviour>
       case 'StandbyTriggered': {
         const seat = seatOf(e.unitId)
         if (seat) b[seat].standbyTriggers++
+        break
+      }
+      case 'MeleeContact': {
+        const seat = seatOf(e.unitId)
+        if (seat) b[seat].meleeContacts++
+        break
+      }
+      case 'WeaponsAdded': {
+        const seat = seatOf(e.attackerId)
+        if (seat && e.kind === 'melee') b[seat].meleePools++
         break
       }
       case 'CommandCardsRevealed':
@@ -219,6 +236,12 @@ export function playMatch(setup: GameSetup, bundle: EngineBundle, seed: string, 
         state = r2.state
       } else {
         count(state, r.events, behaviour, seats)
+        // a Move whose leader ended in base contact with an enemy is a charge (R-16.1)
+        if (action.type === 'move.tool' && pending.kind === 'move.tool') {
+          const mover = pending.constraints?.unitId ? state.units[pending.constraints.unitId] : undefined
+          const after = mover ? r.state.units[mover.id] : undefined
+          if (mover && after && mover.seat === seat && mover.engagedWith.length === 0 && after.engagedWith.length > 0) behaviour[seat].charges++
+        }
         state = r.state
       }
       const key = progressKey(state)

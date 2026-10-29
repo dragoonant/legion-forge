@@ -1,6 +1,7 @@
 // window.__lf (docs/spec/50-client.md section 8): test hooks installed with ?test=1 or ?debug. Read-only views of the store plus
 // `dispatch`; the store remains the only step caller. E2E specs and the screenshot script read these instead of guessing at pixels.
 import { legalActions, suggest, validate, type Action, type PendingDecision } from '@/engine'
+import { AiWorkerClient, type AiWorkerStats } from '@/ai'
 import { cameraApi } from '../board/cameraApi'
 import { RandomBot } from '../bot/randomBot'
 import { clickableUnits, currentToolPreview, deployFacing, deployUnitFor, previewDeploy } from '../interaction/controller'
@@ -44,6 +45,8 @@ export interface LfHooks {
   events(): unknown[]
   /** watch-mode pacing: paused and the bot answers applied so far */
   watch(): { paused: boolean; reason: string | null; answers: number }
+  /** the AI worker client's counters: requests sent, answered in-process (no Worker), timed out, errors */
+  ai(): AiWorkerStats
 }
 
 declare global {
@@ -125,5 +128,6 @@ export function installTestHooks(): void {
       const g = useGame.getState()
       return { paused: g.paused, reason: g.pauseReason, answers: g.botAnswers }
     },
+    ai: () => ({ ...AiWorkerClient.stats }),
   }
 }

@@ -116,6 +116,8 @@ const WHY_NOT: Record<string, string> = {
   panicked: 'A panicked unit cannot do this.',
   notAvailable: 'That is not available right now.',
   used: 'Already used.',
+  exhausted: 'This card is exhausted until the Ready phase.',
+  expended: 'This card has been expended for the battle.',
   unavailable: 'Not available right now.',
 }
 export const whyNotText = (code: string): string => WHY_NOT[code] ?? code
@@ -160,6 +162,8 @@ export function decisionTitle(p: PendingDecision, state: Snap): string {
     case 'action.choose':
       return `${unit(c.unitId)}: choose an action (${String(c.actionsLeft)} left)`
     case 'move.tool':
+      if (c.kind === 'controlled') return `${unit(c.unitId)}: you place its movement tool (speed ${String(c.maxSpeed ?? 1)})`
+      if (c.kind === 'withdraw') return `${unit(c.unitId)}: withdraw from the melee`
       return `${unit(c.unitId)}: place the movement tool`
     case 'move.troopers':
       return `${unit(c.unitId)}: set down the rest of the unit`
@@ -184,6 +188,7 @@ export function decisionTitle(p: PendingDecision, state: Snap): string {
       return `${name}: ${choiceStage(String(c.stage ?? ''))}`
     }
     case 'battle.place':
+      if (c.terrain === 'barricade') return `Place a barricade${typeof c.left === 'number' ? ` (${c.left} left to place)` : ''}`
       return 'Place a token on the table'
     case 'end.choice':
       return 'End phase choice'
@@ -194,7 +199,7 @@ export function decisionTitle(p: PendingDecision, state: Snap): string {
   }
 }
 
-const STAGE_TEXT: Record<string, string> = { use: 'use it?', option: 'choose an option', pick: 'choose a unit', distribute: 'distribute the effect', offer: 'make a choice' }
+const STAGE_TEXT: Record<string, string> = { use: 'use it?', option: 'choose an option', pick: 'choose a unit', distribute: 'distribute the effect', offer: 'make a choice', divulge: 'reveal it before the battle?' }
 const choiceStage = (stage: string): string => STAGE_TEXT[stage] ?? 'make a choice'
 
 /** What each step of the attack pipeline asks (the engine's `context.step` of an `attack.spend`). */
@@ -234,7 +239,9 @@ export function decisionHint(p: PendingDecision): string {
     case 'action.choose':
       return 'Pick an action. Greyed actions say why they are unavailable.'
     case 'move.tool':
-      return 'Click where the leader should end. Drag the hinge to bend the tool. Confirm to commit, Escape to cancel.'
+      if (p.context.kind === 'controlled') return 'The enemy unit makes this move but you place the tool. Push it where it hurts: off a marker, out of cover, into your fire.'
+      if (p.context.kind === 'withdraw') return 'Speed 1. The unit may not end touching an enemy, and most units cannot attack after withdrawing.'
+      return 'Click where the leader should end. Drag the hinge to bend the tool. A leader with a melee weapon may end touching an enemy to charge. Confirm to commit, Escape to cancel.'
     case 'move.troopers':
       return 'The engine placed the rest of the unit. Drag a model to adjust, then confirm.'
     case 'attack.defender':
@@ -247,6 +254,8 @@ export function decisionHint(p: PendingDecision): string {
       return 'Pick the model that takes the wounds.'
     case 'attack.extraDefender':
       return 'You may add pools against other enemy units, or finish.'
+    case 'battle.place':
+      return p.context.terrain === 'barricade' ? 'Click the table to set the barricade down, in your own or contested ground and clear of other barricades. Q and E turn it.' : 'Click the table to place it.'
     default:
       return 'Choose one of the options.'
   }
@@ -365,6 +374,8 @@ function choiceLabel(option: string, opt: DecisionOption, state: Snap): string {
   const data = (opt.data ?? {}) as Record<string, unknown>
   if (option === 'use') return 'Use it'
   if (option === 'skip') return 'Skip it'
+  if (option === 'divulge') return 'Divulge it (it will be this round\'s card)'
+  if (option === 'decline') return 'Keep it hidden'
   if (option === 'done') return 'Done'
   if (option.startsWith('unit:')) return unitLabel(state, option.slice(5))
   if (option.startsWith('opt:')) {

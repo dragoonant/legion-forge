@@ -3,8 +3,9 @@
 import { act, validate } from '@/engine'
 import type { Action, DecisionOption } from '@/engine'
 import { round3 } from '@/engine/geometry'
-import { dist, leaderPos, tieBreak, worthOf } from './eval'
+import { dist, leaderPos, overlay, tieBreak, worthOf } from './eval'
 import { goalsFor } from './goals'
+import { stateValue } from './moves'
 import type { AiCtx } from './tiers'
 
 const id = (o: DecisionOption) => o.id
@@ -20,6 +21,13 @@ function firstOf(opts: DecisionOption[], ids: string[]): DecisionOption | undefi
     if (o) return o
   }
   return undefined
+}
+
+
+/** A declarative `choose` between effect lists (`opt:<i>`): the first listed is the one the card prints first (Specialist: Aim before Surge). */
+function lowestOption(opts: DecisionOption[]): DecisionOption | undefined {
+  const list = opts.filter((o) => /^opt:\d+$/.test(id(o)))
+  return list.length === opts.length && list.length > 0 ? list.reduce((a, b) => (Number(id(b).slice(4)) < Number(id(a).slice(4)) ? b : a)) : undefined
 }
 
 /** Pick the unit option whose unit is hurt the most (suppression first) among `unit:<id>` options; null when none. */
@@ -41,6 +49,8 @@ export function keywordChoice(ctx: AiCtx): Action | null {
   const opts = ctx.pending.options ?? []
   if (opts.length === 0) return null
   const stage = String(ctx.pending.context.stage ?? '')
+  const first = lowestOption(opts)
+  if (first) return first.action
   const direct = firstOf(opts, ['use', 'accept', 'keep'])
   if (direct && stage !== 'distribute') return direct.action
   if (stage === 'distribute' || opts.some((o) => id(o).startsWith('unit:'))) {
@@ -62,31 +72,44 @@ export function cardChoice(ctx: AiCtx): Action | null {
   const opts = ctx.pending.options ?? []
   if (opts.length === 0) return null
   const s = ctx.view
-  const direct = firstOf(opts, ['use', 'accept'])
+  const direct = firstOf(opts, ['use', 'accept', 'divulge'])
   if (direct) return direct.action
+  const first = lowestOption(opts)
+  if (first) return first.action
+  const cardId = String(ctx.pending.context.cardId ?? ctx.pending.context.keyword ?? '')
+  const harms = /vaders-might/.test(cardId)
   const units = opts.filter((o) => id(o).startsWith('unit:'))
   if (units.length > 0) {
     let best: { o: DecisionOption; v: number } | null = null
     for (const o of units) {
       const u = s.units[id(o).slice(5)]
       if (!u) continue
-      const v = (u.seat === ctx.seat ? 1 : -1) * worthOf(s, u) + tieBreak(u.id)
+      const foe = u.seat !== ctx.seat
+      // an action that hurts (Vader's Might wounds an enemy it moves) goes at the dearest enemy; the rest help the dearest friend
+      if (harms && !foe) continue
+      const v = (harms ? 1 : u.seat === ctx.seat ? 1 : -1) * worthOf(s, u) + tieBreak(u.id)
       if (!best || v > best.v) best = { o, v }
     }
     if (best) return best.o.action
+    const none = firstOf(opts, ['cancel', 'skip', 'decline'])
+    if (none) return none.action
   }
   const spots = opts.filter((o) => id(o).startsWith('to:'))
   if (spots.length > 0) {
-    // the unit being moved is the one the card names; step toward its goal
-    const unitId = String(ctx.pending.context.subjectId ?? ctx.pending.context.unitId ?? '')
-    const u = s.units[unitId]
-    const goal = u ? goalsFor(ctx).get(unitId) : undefined
-    if (u && goal) {
+    // the unit being moved (the card's target when it names one): a friend where its own value is best, a foe where its value is worst
+    const mover = String(ctx.pending.context.targetId ?? ctx.pending.context.subjectId ?? ctx.pending.context.unitId ?? '')
+    const u = s.units[mover]
+    if (u && u.location === 'table') {
+      const mine = u.seat === ctx.seat
+      const pov = mine ? ctx : { ...ctx, seat: u.seat, cache: new Map() }
       const from = leaderPos(u)
       let best: { o: DecisionOption; v: number } | null = null
+      const stay = opts.find((o) => id(o) === 'stay')
+      const scoreAt = (at: { x: number; z: number }) => (mine ? 1 : -1) * stateValue(pov, overlay(s, u.id, { leaderAt: at }), u.id)
+      if (stay) best = { o: stay, v: scoreAt(from) + 0.01 }
       for (const o of spots) {
         const d = o.data as { dx?: number; dz?: number } | undefined
-        const v = -dist({ x: from.x + (d?.dx ?? 0), z: from.z + (d?.dz ?? 0) }, goal.pos) + tieBreak(id(o))
+        const v = scoreAt({ x: from.x + (d?.dx ?? 0), z: from.z + (d?.dz ?? 0) }) + tieBreak(id(o))
         if (!best || v > best.v) best = { o, v }
       }
       if (best) return best.o.action
@@ -99,6 +122,7 @@ export function cardChoice(ctx: AiCtx): Action | null {
 /** `battle.place`: a legal spot in the offered region, nearest the middle of the table (cover for the army, fortifications toward the fight). */
 export function battlePlace(ctx: AiCtx): Action | null {
   const p = ctx.pending
+  if (p.context.terrain === 'barricade') return barricadePlace(ctx)
   const region = p.constraints?.region
   if (!region || region.length === 0) return null
   const xs = region.map((q) => q.x)
@@ -131,4 +155,46 @@ export function confirm(ctx: AiCtx): Action | null {
   const go = opts.find((o) => (o.action.payload as { choice?: string }).choice === 'continue')
   if (go) return go.action
   return opts[0]?.action ?? act.confirm(ctx.pending, 'continue')
+}
+
+/**
+ * A barricade (Fortified Position): heavy cover and a wall that blocks sight, so it goes in front of our line, on the near side of the
+ * middle, with its long side across the way the enemy comes. The engine's `validate` is the only judge of legality (own or contested
+ * Territory, the spacing the decision names, clear of models and tokens).
+ */
+function barricadePlace(ctx: AiCtx): Action | null {
+  const p = ctx.pending
+  const s = ctx.view
+  const mine = Object.values(s.units).filter((u) => u.seat === ctx.seat && u.location === 'table')
+  // the way our army faces the table: toward its own centroid from the middle; with nothing deployed yet, the seat's own edge
+  let cx = 0
+  let cz = 0
+  for (const u of mine) {
+    const l = leaderPos(u)
+    cx += l.x
+    cz += l.z
+  }
+  if (mine.length > 0) {
+    cx /= mine.length
+    cz /= mine.length
+  } else cz = ctx.seat === 'A' ? 1 : -1
+  const alongX = Math.abs(cx) > Math.abs(cz)
+  // long side (x at yaw 0) lies across the enemy's approach
+  const yaws = alongX ? [Math.PI / 2, 0] : [0, Math.PI / 2]
+  const b = s.table.def.bounds
+  const want = { x: cx * 0.35, z: cz * 0.35 }
+  const cands: { x: number; z: number; yaw: number; v: number }[] = []
+  for (let x = Math.ceil(b.minX + 2); x <= b.maxX - 2; x += 2) {
+    for (let z = Math.ceil(b.minZ + 2); z <= b.maxZ - 2; z += 2) {
+      yaws.forEach((yaw, i) => cands.push({ x, z, yaw, v: -dist({ x, z }, want) - i * 1.5 + tieBreak(`${x},${z},${yaw}`) }))
+    }
+  }
+  cands.sort((a, c) => c.v - a.v)
+  let tried = 0
+  for (const c of cands) {
+    const a = { ...act.place(p, c.x, c.z), payload: { x: c.x, z: c.z, yaw: c.yaw } } as Action
+    if (validate(s, a) === null) return a
+    if (++tried > 400) break
+  }
+  return null
 }

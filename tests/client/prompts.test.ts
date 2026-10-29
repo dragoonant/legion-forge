@@ -144,6 +144,39 @@ describe('the action menu of a real activation', () => {
     for (const w of withheld) {
       if (!(p.options ?? []).some((o) => o.id === w.action)) expect(out).toContain(`data-testid="withheld-${w.action}"`)
     }
-    expect(out).toContain('End activation')
+    // M2c: a unit still in reserve must deploy, so the engine offers no `end` until no legal entry exists (RULING Port choice)
+    const hasEnd = (p.options ?? []).some((o) => o.id === 'end')
+    if (hasEnd) expect(out).toContain('End activation')
+    else expect(out).not.toContain('End activation')
+  })
+})
+
+describe('the M2c decisions render with their own prompts', () => {
+  it('a barricade placement, a withdraw and a Force Push move name what they decide', () => {
+    const bar = pend('battle.place', [], { terrain: 'barricade', left: 2 })
+    expect(decisionTitle(bar, state)).toMatch(/Place a barricade \(2 left to place\)/)
+    expect(decisionHint(bar)).toMatch(/Q and E/)
+    const push = pend('move.tool', [], { unitId: def.id, kind: 'controlled', maxSpeed: 1 })
+    expect(decisionTitle(push, state)).toMatch(/you place its movement tool \(speed 1\)/)
+    expect(decisionHint(push)).toMatch(/you place the tool/)
+    const wd = pend('move.tool', [], { unitId: atk.id, kind: 'withdraw', maxSpeed: 1 })
+    expect(decisionTitle(wd, state)).toMatch(/withdraw/)
+    expect(decisionHint(wd)).toMatch(/Speed 1/)
+    expect(decisionHint(pend('move.tool', [], { unitId: atk.id, kind: 'move', maxSpeed: 2 }))).toMatch(/charge/)
+  })
+
+  it('the action menu lists a withdraw, a card action and a free action, and greys an exhausted card with its reason', () => {
+    const o1 = opt('withdraw', act('action.choose', { action: 'withdraw' }), { free: false, maxSpeed: 1 })
+    const o2 = opt('card:neu.act.force-choke', act('action.choose', { action: 'cardAction', params: { actionId: 'neu.act.force-choke' } }), { free: true, name: 'Force Choke', kind: 'free' })
+    const o3 = opt('free:e1', act('action.choose', { action: 'free', params: { effectId: 'e1' } }), { free: true, action: 'aim' })
+    const p = pend('action.choose', [o1, o2, o3], { unitId: atk.id, actionsLeft: 2, withheld: [{ action: 'card:neu.act.force-push', whyNot: 'exhausted' }, { action: 'move', whyNot: 'engaged' }] })
+    const out = renderToStaticMarkup(createElement(ActionMenu, { pending: p, state }))
+    expect(out).toContain('data-testid="opt-withdraw"')
+    expect(out).toContain('data-testid="opt-card:neu.act.force-choke"')
+    expect(out).toContain('Force Choke')
+    expect(out).toContain('data-testid="opt-free:e1"')
+    expect(out).toContain('data-testid="withheld-card:neu.act.force-push"')
+    expect(out).toContain('data-whynot="exhausted"')
+    expect(out).toContain('data-testid="withheld-move"')
   })
 })

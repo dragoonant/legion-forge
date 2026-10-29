@@ -4,9 +4,10 @@
 // best second action it enables (move then attack, aim then attack, move then dodge, attack then move); after the first action
 // the planner runs again on the new state, so the pair is never a commitment the board can contradict.
 import type { Action, DecisionOption, GameState, Unit } from '@/engine'
+import { unitSpeed } from '@/engine/movement'
 import { markerValue, pocketMarkers } from './goals'
-import { dist, leaderPos, maxRange, overlay, attackFrom, tieBreak, typicalValue, worthOf, reachOf } from './eval'
-import { proposeSpots, stateValue, type Spot } from './moves'
+import { dist, leaderPos, maxRange, meleeValue, overlay, attackFrom, tieBreak, typicalValue, worthOf, reachOf } from './eval'
+import { bestPushGain, jumpExtra, proposeSpots, stateValue, type Spot } from './moves'
 import { enemiesOf, losBlocked, threatAt } from './threat'
 import { exhausted, tracing, type AiCtx } from './tiers'
 
@@ -17,6 +18,13 @@ interface Cand {
   spot?: Spot
   why: string
 }
+
+/** A Dodge token is spent only if something shoots the unit before the round ends: the threat-map gain is scaled by this. */
+const DODGE_REAL = 0.45
+/** ...and must beat this share of the unit's worth to be taken instead of nothing. */
+const DODGE_BAR = 0.012
+/** Share of the melee an engaged unit expects to suffer that a Withdraw is credited with avoiding. */
+const WITHDRAW_SHARE = 0.4
 
 /** Fraction of a standby token's value counted now (it only pays if something walks into the unit's sight later). */
 const STANDBY_SHARE = 0.8
@@ -92,6 +100,39 @@ function pickBest(ctx: AiCtx, cands: Cand[]): Cand {
   return near[ctx.int(near.length)]!
 }
 
+/**
+ * A free card action (Force Choke, Push, Reflexes, Guidance, Specialist, Vader's Might...) is taken when the query behind it says it
+ * pays: an enemy in reach for the ones that act on enemies, a threat the Dodge answers, a shot to come for an Aim or a Surge. Each is
+ * offered once per activation, so passing on it now costs nothing a later menu could not take back.
+ */
+function freeCardWorthTaking(ctx: AiCtx, u: Unit, o: DecisionOption, canAttack: boolean, dodgeGain: () => number, dodgeBar: number): boolean {
+  const s = ctx.view
+  const id = o.id
+  const band = s.data.constants.rangeBand
+  const at = leaderPos(u)
+  const enemiesWithin = (inches: number) => enemiesOf(ctx).filter((e) => dist(e.pos, at) <= inches)
+  if (/force-reflexes|dodge/.test(id)) return dodgeGain() * DODGE_REAL > dodgeBar
+  if (/specialist/.test(id)) return canAttack
+  if (/force-choke/.test(id)) return enemiesWithin(band + 1.5).length > 0
+  if (/force-push/.test(id)) {
+    const near = enemiesWithin(band + 1.5)
+    let gain = 0
+    for (const e of near.slice(0, 2)) gain = Math.max(gain, bestPushGain(ctx, e.unit))
+    return gain > 0.5
+  }
+  if (/force-guidance/.test(id)) return canAttack && onTableAllies(ctx, u, band * 2 + 1.5) > 0
+  if (/vaders-might/.test(id)) return enemiesWithin(band + 1.5).length > 0
+  // anything else that is free: take it
+  return true
+}
+
+function onTableAllies(ctx: AiCtx, u: Unit, inches: number): number {
+  const at = leaderPos(u)
+  let n = 0
+  for (const o of Object.values(ctx.view.units)) if (o.id !== u.id && o.seat === u.seat && o.location === 'table' && dist(leaderPos(o), at) <= inches) n++
+  return n
+}
+
 function opt(o: DecisionOption | undefined): Action | null {
   return o ? o.action : null
 }
@@ -142,16 +183,25 @@ export function actionChoose(ctx: AiCtx): Action | null {
     beh.claims++
     return finish(take('claim'), 'claim')
   }
+  const dodgeGain = (): number => {
+    if (exhausted(ctx)) return 0
+    const withDodge = overlay(s, unitId, { addTokens: { dodge: 1 } })
+    return threatAt(ctx, s, u) - threatAt(ctx, withDodge, withDodge.units[unitId]!)
+  }
+  const dodgeBar = DODGE_BAR * worthOf(s, u)
   for (const o of opts) {
-    if (banned(o.id)) continue
-    if (o.id.startsWith('free:')) {
-      const a = (o.data as { action?: string } | undefined)?.action
-      if (a === 'attack' || a === 'aim' || a === 'dodge') return finish(take(o.id), 'free')
-    }
+    if (banned(o.id) || !o.id.startsWith('free:')) continue
+    const a = (o.data as { action?: string } | undefined)?.action
+    // a free attack is always worth it; a free aim only when a shot follows; a free dodge only when the threat map says it pays
+    if (a === 'attack') return finish(take(o.id), 'free')
+    if (a === 'aim' && by.has('attack')) return finish(take(o.id), 'free')
+    if (a === 'dodge' && dodgeGain() * DODGE_REAL > dodgeBar) return finish(take(o.id), 'free')
   }
   for (const o of opts) {
     if (banned(o.id) || !o.id.startsWith('card:')) continue
-    if ((o.data as { kind?: string } | undefined)?.kind === 'free') return finish(take(o.id), 'card')
+    if ((o.data as { kind?: string } | undefined)?.kind !== 'free') continue
+    if (freeCardWorthTaking(ctx, u, o, by.has('attack'), dodgeGain, dodgeBar)) return finish(take(o.id), 'card')
+    it.banned.push(o.id)
   }
 
   const base = s
@@ -170,55 +220,108 @@ export function actionChoose(ctx: AiCtx): Action | null {
   const wdOpt = by.get('withdraw')
   const moveKind: 'move' | 'withdraw' | null = moveOpt ? 'move' : wdOpt ? 'withdraw' : null
   let bestDv = 0
-  const scoredSpots: { spot: Spot; dv: number; ov: GameState }[] = []
-  if (moveKind && !banned(moveKind) && !exhausted(ctx)) {
-    const maxSpeed = Number((by.get(moveKind)!.data as { maxSpeed?: number } | undefined)?.maxSpeed ?? 2)
-    const spots = proposeSpots(ctx, u, moveKind, maxSpeed, ctx.params.spots)
-    for (const spot of spots) {
+  type Scored = { spot: Spot; dv: number; ov: GameState }
+  const scoreSpots = (kind: 'move' | 'withdraw', maxSpeed: number, extra = {}): Scored[] => {
+    const out: Scored[] = []
+    for (const spot of proposeSpots(ctx, u, kind, maxSpeed, ctx.params.spots, extra)) {
       const ov = overlay(base, unitId, { leaderAt: spot.leader, yaw: spot.leader.yaw, moved: true })
-      scoredSpots.push({ spot, dv: stateValue(ctx, ov, unitId) - v0, ov })
+      out.push({ spot, dv: stateValue(ctx, ov, unitId) - v0, ov })
     }
-    scoredSpots.sort((a, b) => b.dv - a.dv || (a.spot.value > b.spot.value ? -1 : 1))
+    return out.sort((a, b) => b.dv - a.dv || (a.spot.value > b.spot.value ? -1 : 1))
+  }
+  const speedOf = (id: string) => Number((by.get(id)?.data as { maxSpeed?: number } | undefined)?.maxSpeed ?? 2)
+  let scoredSpots: Scored[] = []
+  if (moveKind && !banned(moveKind) && !exhausted(ctx)) {
+    scoredSpots = scoreSpots(moveKind, speedOf(moveKind))
     bestDv = scoredSpots.length ? Math.max(0, scoredSpots[0]!.dv) : 0
+  }
+  // an engaged unit leaves a melee it is losing: what the engaged enemies would deal it next (they must spend an action to catch it)
+  let escape = 0
+  if (moveKind === 'withdraw') {
+    const mine = worthOf(base, u)
+    for (const eid of u.engagedWith) {
+      const e = base.units[eid]
+      if (e) escape += meleeValue(ctx, base, e, u)
+    }
+    escape = Math.min(escape, mine) * WITHDRAW_SHARE
+  }
+  /** the best second action once the unit stands at `ov` */
+  const secondAction = (spot: Spot, ov: GameState, rank: number): { second: number; why: string } => {
+    let second = 0
+    let why = 'advance'
+    if (!lookahead || exhausted(ctx)) return { second, why }
+    const ou = ov.units[unitId]!
+    // a charge always prices its melee; other spots only the first few
+    if (by.has('attack') && spot.melee) {
+      // a charge: the melee against the unit it ends touching (exact engine odds), nothing else is in reach of its weapons
+      const foe = ov.units[spot.melee]
+      const r = foe ? attackFrom(ctx, ov, ou, foe, 0, `chg|${unitId}|${posKey(spot.leader)}|${foe.id}|${foe.suppression}`) : null
+      if (r && r.value > second) {
+        second = r.value + objectiveBonus(ctx, ov, foe!)
+        why = 'charge'
+      }
+    } else if (by.has('attack') && rank < 3) {
+      const a = bestAttack(ctx, ov, ou, aimNow, 2)
+      if (a && a.value > second) {
+        second = a.value
+        why = 'move+shoot'
+      }
+    }
+    if (by.has('dodge') && rank < 2 && !exhausted(ctx)) {
+      const ovD = overlay(ov, unitId, { addTokens: { dodge: 1 } })
+      const g = (threatAt(ctx, ov, ou) - threatAt(ctx, ovD, ovD.units[unitId]!)) * DODGE_REAL - dodgeBar
+      if (g > second) {
+        second = g
+        why = 'move+dodge'
+      }
+    }
+    if (by.has('standby') && rank < 3) {
+      const g = standbyGain(ctx, ov, ou)
+      if (g > second) {
+        second = g
+        why = 'move+standby'
+      }
+    }
+    return { second, why }
   }
   if (moveKind) {
     let rank = 0
     for (const { spot, dv, ov } of scoredSpots) {
-      let second = 0
-      let why = 'advance'
-      if (lookahead && !exhausted(ctx)) {
-        const ou = ov.units[unitId]!
-        if (by.has('attack') && rank < 3) {
-          const a = bestAttack(ctx, ov, ou, aimNow, 2)
-          if (a && a.value > second) {
-            second = a.value
-            why = 'move+shoot'
-          }
-        }
-        if (by.has('dodge') && rank < 2 && !exhausted(ctx)) {
-          const ovD = overlay(ov, unitId, { addTokens: { dodge: 1 } })
-          const g = threatAt(ctx, ov, ou) - threatAt(ctx, ovD, ovD.units[unitId]!)
-          if (g > second) {
-            second = g
-            why = 'move+dodge'
-          }
-        }
-        if (by.has('standby') && rank < 3) {
-          const g = standbyGain(ctx, ov, ou)
-          if (g > second) {
-            second = g
-            why = 'move+standby'
-          }
-        }
-      }
-      cands.push({ id: moveKind, score: dv + second + tieBreak(`${spot.leader.x},${spot.leader.z}`), spot, why })
+      const { second, why } = secondAction(spot, ov, rank)
+      cands.push({ id: moveKind, score: dv + second + (moveKind === 'withdraw' ? escape : 0) + tieBreak(`${spot.leader.x},${spot.leader.z}`), spot, why: moveKind === 'withdraw' ? `withdraw ${why}` : why })
       rank++
     }
   }
-  if (A0 && lookahead && bestDv > 0) {
+  // free Moves granted by an effect (a card, a keyword): no action spent, so any better spot is taken
+  for (const o of opts) {
+    if (banned(o.id) || !o.id.startsWith('free:') || (o.data as { action?: string } | undefined)?.action !== 'move' || exhausted(ctx)) continue
+    const sc = scoreSpots('move', speedOf(o.id))
+    if (sc[0] && sc[0].dv > 0.5) cands.push({ id: o.id, score: sc[0].dv + secondAction(sc[0].spot, sc[0].ov, 0).second * 0.5 + 0.25, spot: sc[0].spot, why: 'free move' })
+  }
+  // Jump X and other paid card actions that are a Move: priced like a Move over terrain the plain Move cannot cross
+  for (const o of opts) {
+    if (banned(o.id) || !o.id.startsWith('card:') || exhausted(ctx)) continue
+    const extra = jumpExtra(base, u, o.id)
+    if (extra.jumpHeight === undefined) continue
+    const sc = scoreSpots('move', unitSpeed(base, u), extra)
+    let rank = 0
+    for (const { spot, dv, ov } of sc.slice(0, 3)) {
+      const { second, why } = secondAction(spot, ov, rank)
+      cands.push({ id: o.id, score: dv + second - 0.05 + tieBreak(`j${spot.leader.x},${spot.leader.z}`), spot, why: `jump ${why}` })
+      rank++
+    }
+  }
+  if (A0 && lookahead) {
+    // the best second action after a shot: a move (not when engaged, a Withdraw forbids no shot here but ends the melee) or a Dodge
     const c = cands.find((x) => x.id === 'attack')!
-    c.score += bestDv * 0.9
-    c.why = 'shoot+move'
+    const after = by.has('dodge') && !banned('dodge') ? dodgeGain() * DODGE_REAL - dodgeBar : 0
+    if (bestDv * 0.9 >= after && bestDv > 0) {
+      c.score += bestDv * 0.9
+      c.why = 'shoot+move'
+    } else if (after > 0) {
+      c.score += after
+      c.why = 'shoot+dodge'
+    }
   }
 
   // aim: only pays when an attack follows (the token ends with the round)
@@ -236,10 +339,13 @@ export function actionChoose(ctx: AiCtx): Action | null {
     cands.push({ id: 'aim', score, why })
   }
   if (by.has('dodge') && !banned('dodge') && !exhausted(ctx)) {
-    const u1 = overlay(base, unitId, { addTokens: { dodge: 1 } }).units[unitId]!
-    const gain = threatAt(ctx, base, u) - threatAt(ctx, overlay(base, unitId, { addTokens: { dodge: 1 } }), u1)
-    const follow = lookahead ? Math.max(0, A0?.value ?? 0, bestDv) : 0
-    cands.push({ id: 'dodge', score: gain + follow, why: 'dodge' })
+    // a Dodge token is only spent if something shoots this unit before the round ends, so its threat-map gain is discounted and must
+    // clear a bar; then it competes with every other action (and with the second action of the others, below)
+    const gain = dodgeGain() * DODGE_REAL
+    if (gain > dodgeBar) {
+      const follow = lookahead ? Math.max(0, A0?.value ?? 0, bestDv) : 0
+      cands.push({ id: 'dodge', score: gain + follow, why: 'dodge' })
+    }
   }
   if (by.has('standby') && !banned('standby')) {
     const g = standbyGain(ctx, base, u)
@@ -266,6 +372,7 @@ export function actionChoose(ctx: AiCtx): Action | null {
   // the one-per-activation actions leave the menu by themselves; a move or attack that fails is banned by its sub-decision
   it.chosen = c.id
   if (['aim', 'dodge', 'standby'].includes(c.id) || c.id.startsWith('recover')) it.banned.push(c.id.replace(/:.*/, ''))
+  else if (c.id.startsWith('free:') || c.id.startsWith('card:')) it.banned.push(c.id)
   return finish(opt(by.get(c.id)), c.id)
 }
 

@@ -9,7 +9,8 @@ import { leaderOf } from '@/engine/state'
 import { miniBody } from '@/engine/measure'
 import { rangeBetween, losBetween } from '../game/engineQuery'
 import { rejectionText, unitLabel } from '../game/labels'
-import { previewHinge, previewToward, type ToolPreview } from '../game/toolApi'
+import { barricadePolygon } from '@/engine/barricades'
+import { chargeTarget, previewHinge, previewToward, type ToolPreview } from '../game/toolApi'
 import { Procedural, lookFor } from '../figures/Procedural'
 import { useUi, type Pt } from '../ui/uiStore'
 import { colors } from '../ui/theme'
@@ -99,6 +100,25 @@ export function DeployLayer({ state, pending }: { state: GameState; pending: Pen
   )
 }
 
+// ---------------------------------------------------------------- barricades
+
+/** The barricade ghost under the pointer, green where `validate` accepts it and red where it does not. */
+export function BarricadeLayer({ pending }: { pending: PendingDecision }) {
+  const hover = useUi((s) => s.hover)
+  const note = useUi((s) => s.hoverNote)
+  const facing = useUi((s) => s.facing)
+  const yaw = deployFacing(pending, facing)
+  if (!hover || !note) return null
+  const poly = barricadePolygon(hover.x, hover.z, yaw)
+  const colour = note.ok ? OK : BAD
+  return (
+    <group>
+      <Line points={[...poly, poly[0]!].map((p) => [p.x, 0.12, p.z] as [number, number, number])} color={colour} lineWidth={3} />
+      <Tag x={hover.x} z={hover.z} text={note.text} color={colour} testId="barricade-note" />
+    </group>
+  )
+}
+
 // ---------------------------------------------------------------- movement tool
 
 /** The tool preview for the pending decision: hover (unlocked), or the locked destination with an optional dragged hinge. */
@@ -123,9 +143,11 @@ export function useToolPreview(state: GameState, pending: PendingDecision): { pr
   }, [key, state])
   useEffect(() => {
     rememberToolPreview(key, target ? preview : null)
-    useUi.setState({ toolNote: preview ? { ok: preview.ok, text: preview.ok ? `Speed ${preview.speed} tool` : (preview.reason ?? 'No legal placement') } : null })
+    const unitId = typeof pending.context.unitId === 'string' ? pending.context.unitId : null
+    const foe = preview?.ok && preview.leader && unitId ? chargeTarget(state, unitId, preview.leader) : null
+    useUi.setState({ toolNote: preview ? { ok: preview.ok, text: preview.ok ? `Speed ${preview.speed} tool${foe ? `: ends touching ${unitLabel(state, foe)}, a charge` : ''}` : (preview.reason ?? 'No legal placement') } : null })
     return () => rememberToolPreview(key, null)
-  }, [key, preview, target])
+  }, [key, preview, target]) // eslint-disable-line react-hooks/exhaustive-deps
   return { preview, locked: !!target }
 }
 

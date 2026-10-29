@@ -4,10 +4,14 @@
 import { act, validate } from '@/engine'
 import type { Action } from '@/engine'
 import { moverFor, planMove, worldFor } from '@/engine/movement'
+import { canMoveIntoMelee } from '@/engine/melee'
+import { cardActions } from '@/engine/commandCards'
+import { miniBody } from '@/engine/measure'
+import { leaderOf } from '@/engine/state'
 import { poseAt, validateToolPose } from '@/engine/tool'
 import { round3 } from '@/engine/geometry'
 import type { GameState, MoveFrame, Pose2, ToolPose, Unit, Vec2 } from '@/engine'
-import { dist, leaderPos, maxRange, overlay, tieBreak, typicalValue } from './eval'
+import { dist, leaderPos, maxRange, meleeValue, overlay, tieBreak, typicalValue } from './eval'
 import { approachCost, goalsFor, objectiveScore, quietRounds, unitPos } from './goals'
 import { enemiesOf, losBlocked, threatAt } from './threat'
 import { COST, spend, exhausted, type AiCtx } from './tiers'
@@ -18,6 +22,8 @@ export interface Spot {
   speed: number
   /** cheap value of standing here (position value plus a shot proxy) */
   value: number
+  /** the enemy unit this spot puts the leader in base contact with (a charge, R-16.1) */
+  melee?: string
 }
 
 const BENDS = [0, 0.5, -0.5, 1.0, -1.0]
@@ -100,10 +106,32 @@ function proposeTargets(ctx: AiCtx, state: GameState, u: Unit, reach: number): V
   return out
 }
 
-/** Cheap-ranked, legal end spots for a Move of `unit` (up to `limit`), best first. */
-export function proposeSpots(ctx: AiCtx, unit: Unit, kind: MoveFrame['kind'], maxSpeed: number, limit: number): Spot[] {
+/** Where the leader would stand touching `enemy`'s leader, seen from `from`: straight on, and a quarter turn either way round it. */
+function contactPoints(state: GameState, u: Unit, enemy: Unit, from: Vec2): Vec2[] {
+  const e = leaderPos(enemy)
+  const gap = miniBody(state, leaderOf(u)).baseRadius + miniBody(state, leaderOf(enemy)).baseRadius + 0.0005
+  const base = Math.atan2(from.x - e.x, from.z - e.z)
+  return [0, 0.6, -0.6].map((da) => ({ x: round3(e.x + Math.sin(base + da) * gap), z: round3(e.z + Math.cos(base + da) * gap) }))
+}
+
+/** The contact spots of a unit whose leader may move into melee: the nearest enemies within a move's reach (at most three). */
+function proposeContacts(ctx: AiCtx, state: GameState, u: Unit, reach: number): { p: Vec2; enemy: string }[] {
+  if (u.location !== 'table' || !canMoveIntoMelee(state, u)) return []
+  const from = leaderPos(u)
+  const out: { p: Vec2; enemy: string }[] = []
+  const near = enemiesOf(ctx)
+    .map((e) => ({ e, d: dist(e.pos, from) }))
+    .filter((x) => x.d <= reach + 0.2)
+    .sort((a, b) => a.d - b.d || (a.e.unit.id < b.e.unit.id ? -1 : 1))
+    .slice(0, 3)
+  for (const { e } of near) for (const p of contactPoints(state, u, e.unit, from)) out.push({ p, enemy: e.unit.id })
+  return out
+}
+
+/** Cheap-ranked, legal end spots for a Move of `unit` (up to `limit`), best first (`worst` first for a push on an enemy). */
+export function proposeSpots(ctx: AiCtx, unit: Unit, kind: MoveFrame['kind'], maxSpeed: number, limit: number, extra: Partial<MoveFrame> = {}, worst = false): Spot[] {
   const state = ctx.view
-  const frame: MoveFrame = { unitId: unit.id, seat: unit.seat, kind, maxSpeed, free: false }
+  const frame: MoveFrame = { unitId: unit.id, seat: unit.seat, kind, maxSpeed, free: false, ...extra }
   const deploying = unit.location !== 'table'
   const world = worldFor(state, unit.seat, unit.id)
   const mover = moverFor(state, unit, frame)
@@ -112,15 +140,28 @@ export function proposeSpots(ctx: AiCtx, unit: Unit, kind: MoveFrame['kind'], ma
   const longest = Math.min(3, climb || kind === 'withdraw' ? 1 : maxSpeed)
   const reach = mover.baseRadius * 2 + tool[String(longest) as '1' | '2' | '3'].segments[0] + tool[String(longest) as '1' | '2' | '3'].segments[1]
   const targets = deploying ? deployTargets(ctx, state, unit) : proposeTargets(ctx, state, unit, reach)
+  const contacts = deploying || worst || kind !== 'move' ? [] : proposeContacts(ctx, state, unit, reach)
+  const contactOf = new Map<string, string>()
+  for (const c of contacts) {
+    targets.push(c.p)
+    contactOf.set(`${c.p.x},${c.p.z}`, c.enemy)
+  }
   const scored = targets.map((t) => {
     const ov = overlay(state, unit.id, { leaderAt: t, moved: true })
-    return { t, v: stateValue(ctx, ov, unit.id) + shotProxy(ctx, ov, unit, t) + tieBreak(`${unit.id}:${t.x},${t.z}`) }
+    const melee = contactOf.get(`${t.x},${t.z}`)
+    // a charge is priced by what the melee would deal (exact odds on open ground), as a shot is by shotProxy
+    const meleeProxy = melee ? meleeValue(ctx, state, unit, state.units[melee]!) * 0.7 : 0
+    return { t, melee, v: stateValue(ctx, ov, unit.id) + shotProxy(ctx, ov, unit, t) + meleeProxy + tieBreak(`${unit.id}:${t.x},${t.z}`) }
   })
-  scored.sort((a, b) => b.v - a.v)
+  scored.sort((a, b) => (worst ? a.v - b.v : b.v - a.v))
   const spots: Spot[] = []
-  for (const { t, v } of scored.slice(0, Math.max(ctx.params.samples, limit))) {
-    if (spots.length >= limit || exhausted(ctx)) break
-    if (spots.some((s) => dist(s.leader, t) < 0.9)) continue
+  const take = scored.slice(0, Math.max(ctx.params.samples, limit))
+  // a charge is always among the candidates when one is possible (the planner prices it against shooting)
+  const firstContact = scored.find((x) => x.melee && !take.includes(x))
+  if (firstContact && !worst) take.push(firstContact)
+  for (const { t, v, melee } of take) {
+    if (spots.length >= limit + (firstContact ? 1 : 0) || exhausted(ctx)) break
+    if (spots.some((s) => dist(s.leader, t) < (melee ? 0.2 : 0.9))) continue
     if (deploying) {
       if (!spend(ctx, COST.plan)) break
       const plan = planMove(state, frame, t, true)
@@ -140,7 +181,7 @@ export function proposeSpots(ctx: AiCtx, unit: Unit, kind: MoveFrame['kind'], ma
         const pose = poseAt(mover, speed, theta, bend, climb)
         const verdict = validateToolPose(world, mover, pose, leader)
         if (verdict.ok) {
-          fit = { pose, leader, speed, value: v }
+          fit = { pose, leader, speed, value: v, ...(melee ? { melee } : {}) }
           break
         }
       }
@@ -175,6 +216,45 @@ function deployTargets(ctx: AiCtx, state: GameState, unit: Unit): Vec2[] {
 // move.tool and move.troopers
 // ---------------------------------------------------------------------------
 
+/** What a Jump card action adds to its Move (difficult terrain ignored, terrain up to X high stood on or crossed), from the card chosen. */
+export function jumpExtra(state: GameState, unit: Unit, chosen: string | null | undefined): Partial<MoveFrame> {
+  if (!chosen || !chosen.startsWith('card:')) return {}
+  const a = cardActions({ state }, unit).find((x) => `card:${x.id}` === chosen)
+  return a?.jump !== undefined ? { ignoreDifficult: true, jumpHeight: a.jump } : {}
+}
+
+/**
+ * Force Push: our Move of an enemy unit (speed X, engaged or not). Place it where it hurts that unit most: off the markers it holds,
+ * away from the goal it is walking to and into our fire. Scored with the enemy's own value function (the seat flipped), lowest first.
+ */
+function bestPush(ctx: AiCtx, unit: Unit, maxSpeed: number): { sp: Spot; v: number; here: number } | null {
+  const s = ctx.view
+  const flipped: AiCtx = { ...ctx, seat: unit.seat, cache: new Map() }
+  const here = stateValue(flipped, s, unit.id)
+  let best: { sp: Spot; v: number; here: number } | null = null
+  for (const sp of proposeSpots(flipped, unit, 'controlled', maxSpeed, 4, {}, true)) {
+    const v = stateValue(flipped, overlay(s, unit.id, { leaderAt: sp.leader, yaw: sp.leader.yaw, moved: true }), unit.id) - here
+    if (!best || v < best.v) best = { sp, v, here }
+  }
+  return best
+}
+
+/** Points the best Force Push (a speed-1 Move we place) takes off `enemy`'s position, as its own value function sees it. */
+export function bestPushGain(ctx: AiCtx, enemy: Unit): number {
+  const b = bestPush(ctx, enemy, 1)
+  return b ? -b.v : 0
+}
+
+function pushEnemy(ctx: AiCtx, unit: Unit, maxSpeed: number): Action | null {
+  const p = ctx.pending
+  const b = bestPush(ctx, unit, maxSpeed)
+  if (b) {
+    const a = act.tool(p, b.sp.pose, b.sp.leader)
+    if (validate(ctx.view, a) === null) return a
+  }
+  return p.canPass ? act.pass(p, p.seat === 'all' ? ctx.seat : p.seat) : null
+}
+
 /** `move.tool`: the pose chosen at the Move action when it is still legal, else the best spot found now, else the engine's own fit. */
 export function moveTool(ctx: AiCtx): Action | null {
   const p = ctx.pending
@@ -194,7 +274,9 @@ export function moveTool(ctx: AiCtx): Action | null {
   }
   const kind = String(p.context.kind ?? 'move') as MoveFrame['kind']
   const maxSpeed = Number(p.context.maxSpeed ?? p.constraints?.maxSpeed ?? 2)
-  const spots = proposeSpots(ctx, unit, kind, maxSpeed, 4)
+  if (kind === 'controlled' && unit.seat !== ctx.seat) return pushEnemy(ctx, unit, maxSpeed)
+  const extra = it && it.unitId === unitId ? jumpExtra(s, unit, it.chosen) : {}
+  const spots = proposeSpots(ctx, unit, kind, maxSpeed, 4, extra)
   for (const sp of spots) {
     const a = fresh(sp.pose, sp.leader)
     if (a) return a

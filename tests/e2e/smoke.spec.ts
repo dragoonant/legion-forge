@@ -21,14 +21,14 @@ test('the start screen loads and a game starts from the menus', async ({ page })
   await expect(page.getByTestId('briefing')).toBeVisible()
   await expect(page.getByTestId('roster-A')).toContainText('Darth Vader')
   await page.getByTestId('begin-battle').click()
-  // the battle: canvas, HUD, and the engine's first decision (the blue player picks the table edge; when the bot is blue the
-  // human's first decision is the first deployment)
+  // the battle: canvas, HUD, and the engine's first decision (a Divulge offer when an army holds such a card, else the blue player
+  // picks the table edge; when the bot is blue the human's first decision is the first deployment)
   await expect(page.getByTestId('battle')).toBeVisible({ timeout: 30_000 })
   await expect(page.getByTestId('board-canvas')).toBeVisible()
   await expect(page.getByTestId('hud-round')).toBeVisible()
   const prompt = page.getByTestId('prompt')
   await expect(prompt).toBeVisible()
-  await expect(prompt).toHaveAttribute('data-kind', /^setup\.(battle|deploy)$/)
+  await expect(prompt).toHaveAttribute('data-kind', /^(setup\.(battle|deploy)|card\.choice)$/)
   expect(errors).toEqual([])
 })
 
@@ -44,5 +44,24 @@ test('?test=1 opens a battle and the human seat can answer decisions through the
   expect(at.kind).toBe('activation.choose')
   await expect(page.getByTestId('hud-round')).toContainText('Round 1')
   await expect(page.getByTestId('pool-draw')).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('the normal bot thinks in the AI worker (a built Worker chunk, no in-process fallback)', async ({ page }) => {
+  const errors = watchErrors(page)
+  const workers: string[] = []
+  page.on('worker', (w) => workers.push(w.url()))
+  await page.goto(`./${testUrl({ seats: 'human,bot', seed: 'smoke-ai', tier: 'normal' })}`)
+  await expect(page.getByTestId('battle')).toBeVisible({ timeout: 30_000 })
+  const edge = page.getByTestId('opt-edge:xMax')
+  if (await edge.isVisible({ timeout: 3000 }).catch(() => false)) await edge.click()
+  await autoPlay(page, (s) => s.kind === 'activation.choose')
+  // the bot's setup picks, deployments and the first orders all went to the worker: requests were sent, none answered inline
+  await expect.poll(() => page.evaluate(() => window.__lf!.ai().requests)).toBeGreaterThan(0)
+  const ai = await page.evaluate(() => window.__lf!.ai())
+  expect(ai.inline).toBe(0)
+  expect(ai.timeouts).toBe(0)
+  expect(ai.errors).toBe(0)
+  expect(workers.some((u) => /worker-.*\.js/.test(u))).toBe(true)
   expect(errors).toEqual([])
 })

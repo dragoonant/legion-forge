@@ -1,16 +1,21 @@
-// The M3 opponent: a random-legal bot with light weights. It answers through the same decision path as a human (a ready-made legal
-// action, or the engine's suggestion for the continuous kinds). Tiers come in M4 (`createBot` is the seam the store calls).
+// The bots the store plays against. `RandomBot` is the M3 opponent: a random-legal bot with light weights that answers through the same
+// decision path as a human (a ready-made legal action, or the engine's suggestion for the continuous kinds). The easy and normal tiers are
+// the utility AI of src/ai, asked through its worker (`decideAsync`); `createBot` is the seam the store calls.
 import { act, legalActions, suggest, SeededRng, type Action, type GameState, type PendingDecision, type Seat, type Vec2 } from '@/engine'
 import { markersOf } from '@/engine/battle'
 import { suggestToolToward } from '@/engine/movement'
 import { flowOf } from '@/engine/battle'
+import { createAiWorkerBot } from '@/ai'
 import type { BotTier } from '../params'
 
 const ACTION_WEIGHTS: Record<string, number> = { move: 4, climb: 1, withdraw: 2, attack: 4, aim: 1, dodge: 1, recover: 1.5, standby: 0.7, claim: 6, end: 0.15 }
 
 export interface Bot {
   readonly tier: BotTier
+  /** In-process answer (the store's watchdog and the fallback when the asynchronous one is refused). */
   decide(state: GameState, pending: PendingDecision, seat: Seat): Action
+  /** The AI tiers think in a worker so a slow decision never blocks rendering; the random bot has none. */
+  decideAsync?(state: GameState, pending: PendingDecision, seat: Seat): Promise<Action>
 }
 
 export class RandomBot implements Bot {
@@ -102,7 +107,8 @@ export class RandomBot implements Bot {
   }
 }
 
-/** The bot for a seat. Every tier is the random bot until M4 adds the utility AI. */
-export function createBot(_tier: BotTier, seed: string): Bot {
-  return new RandomBot(seed)
+/** The bot for a seat: the random bot, or the utility AI of that tier in a worker (`hard` plays as `normal` until it has its own tuning). */
+export function createBot(tier: BotTier, seed: string): Bot {
+  if (tier === 'random') return new RandomBot(seed)
+  return createAiWorkerBot(tier === 'hard' ? 'normal' : tier, seed)
 }

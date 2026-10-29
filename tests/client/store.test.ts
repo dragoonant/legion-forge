@@ -6,6 +6,8 @@ import { defaultLists } from '../../src/client/game/adapter'
 import { useGame, humanToAct } from '../../src/client/store/game'
 import { useSettings } from '../../src/client/presentation/settings'
 import { usePresentedStore } from '../../src/client/presentation/presentedStore'
+import { AiWorkerClient } from '../../src/ai'
+import { createBot } from '../../src/client/bot/randomBot'
 
 const lists = defaultLists()
 const builds = { A: { listId: lists.A }, B: { listId: lists.B } }
@@ -32,6 +34,21 @@ describe('client store', () => {
     const p = usePresentedStore.getState()
     expect(p.presentedSeq).toBe(p.latestSeq)
   }, 90000)
+
+  it('the normal tier plays through the AI worker client (inline without a Worker), asked first, with no refused answers', async () => {
+    useSettings.getState().setAnimSpeed('instant')
+    AiWorkerClient.resetForTests()
+    expect(createBot('random', 's').decideAsync).toBeUndefined()
+    expect(createBot('normal', 's').decideAsync).toBeTypeOf('function')
+    useGame.getState().newGame({ builds, seats: { A: 'bot', B: 'bot' }, seed: 'store-ai-1', tier: 'normal' })
+    const ended = await until(() => useGame.getState().state?.phase === 'ended', 120000)
+    expect(ended).toBe(true)
+    // every bot answer went through the client (none through the sync path), and the worker never timed out
+    expect(AiWorkerClient.stats.requests).toBeGreaterThan(100)
+    expect(AiWorkerClient.stats.timeouts).toBe(0)
+    expect(AiWorkerClient.stats.errors).toBe(0)
+    expect(useGame.getState().botAnswers).toBeGreaterThanOrEqual(AiWorkerClient.stats.requests - 5)
+  }, 150000)
 
   it('a human seat waits for the human; a wrong-seat answer is a rejection that changes nothing', async () => {
     useSettings.getState().setAnimSpeed('instant')

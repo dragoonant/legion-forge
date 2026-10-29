@@ -9,9 +9,9 @@ import { colors, menuPage, plate, sectionTitle } from './theme'
 import { Btn, TouchStyle } from './widgets'
 
 const TIERS: { id: BotTier; label: string; ready: boolean }[] = [
+  { id: 'normal', label: 'Normal (plans its activations)', ready: true },
+  { id: 'easy', label: 'Easy (plans less, forgives mistakes)', ready: true },
   { id: 'random', label: 'Random (plays any legal move)', ready: true },
-  { id: 'easy', label: 'Easy (coming with the utility AI)', ready: false },
-  { id: 'normal', label: 'Normal (coming with the utility AI)', ready: false },
 ]
 
 function SidePicker({ seat, title }: { seat: Seat; title: string }) {

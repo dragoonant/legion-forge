@@ -38,3 +38,26 @@ describe('click gating', () => {
     for (const k of GROUND_KINDS) expect(UNIT_CLICK_KINDS).not.toContain(k)
   })
 })
+
+describe('barricade placement (Fortified Position)', () => {
+  it('previews the engine verdict at a point and turn, and builds the action with its yaw', async () => {
+    const { play } = await import('../ai/helpers')
+    const { suggest } = await import('../../src/engine')
+    const { barricadeAction, isBarricade, previewBarricade } = await import('../../src/client/interaction/controller')
+    let found: { state: import('../../src/engine').GameState; pending: import('../../src/engine').PendingDecision } | null = null
+    for (let g = 0; g < 8 && !found; g++) {
+      play(g, { A: 'normal', B: 'normal' }, 60, (s) => {
+        if (!found && s.pending.kind === 'battle.place' && s.pending.context.terrain === 'barricade') found = { state: s.state, pending: s.pending }
+      })
+    }
+    expect(found).not.toBeNull()
+    const { state, pending } = found!
+    expect(isBarricade(pending)).toBe(true)
+    const sug = suggest(state, pending, pending.seat as 'A' | 'B')!.payload as { x: number; z: number; yaw: number }
+    expect(previewBarricade(state, pending, { x: sug.x, z: sug.z }, sug.yaw).ok).toBe(true)
+    const off = previewBarricade(state, pending, { x: 400, z: 400 }, 0)
+    expect(off.ok).toBe(false)
+    expect(off.text.length).toBeGreaterThan(0)
+    expect(barricadeAction(pending, { x: 1.23456, z: 2 }, Math.PI / 2).payload).toEqual({ x: 1.235, z: 2, yaw: 1.571 })
+  }, 60_000)
+})

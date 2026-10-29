@@ -219,6 +219,9 @@ function report(rows: Row[], wallMs: number): void {
     attackWounds: sum((r) => r.events.attackWounds),
     tokens: { aim: tok('aim'), dodge: tok('dodge'), standby: tok('standby') },
     standbyTriggers: sum((r) => r.events.standbyTriggers),
+    charges: sum((r) => r.events.charges),
+    meleeContacts: sum((r) => r.events.meleeContacts),
+    meleePools: sum((r) => r.events.meleePools),
     claims: sum((r) => r.events.claims),
     pointsByReason: points,
     pointsPerGame: rows.length ? Object.values(points).reduce((a, b) => a + b, 0) / rows.length : 0,
@@ -280,7 +283,7 @@ function report(rows: Row[], wallMs: number): void {
   for (const [t, g] of [['seat', bySeat], ['faction', byMatchup], ['objective', byObjective]] as const) for (const [k, v] of Object.entries(g).sort((a, b) => (a[0] < b[0] ? -1 : 1))) console.log(`  ${t.padEnd(9)} ${k.padEnd(34)} ${v.wins}W ${v.losses}L ${v.draws}D of ${v.games}`)
   console.log('  decision kinds seen (both seats): ' + Object.entries(kinds).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${v}`).join(' '))
   console.log('  action mix: ' + Object.entries(behaviour.actionMix).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${v}`).join(' '))
-  console.log(`  tokens (gained/spent/expired): aim ${tok('aim').gained}/${tok('aim').spent}/${tok('aim').expired} dodge ${tok('dodge').gained}/${tok('dodge').spent}/${tok('dodge').expired} standby ${tok('standby').gained}/${tok('standby').spent}/${tok('standby').expired}; standby triggers ${behaviour.standbyTriggers}; attacks/game ${behaviour.attacksPerGame.toFixed(1)}; claims ${behaviour.claims}; VP/game ${behaviour.pointsPerGame.toFixed(1)} ${JSON.stringify(points)}; orders ${behaviour.ordersUsed} pool draws ${behaviour.poolDraws}`)
+  console.log(`  tokens (gained/spent/expired): aim ${tok('aim').gained}/${tok('aim').spent}/${tok('aim').expired} dodge ${tok('dodge').gained}/${tok('dodge').spent}/${tok('dodge').expired} standby ${tok('standby').gained}/${tok('standby').spent}/${tok('standby').expired}; standby triggers ${behaviour.standbyTriggers}; charges ${behaviour.charges} withdraws ${behaviour.actionMix.withdraw ?? 0} melee contacts ${behaviour.meleeContacts} pools ${behaviour.meleePools}; attacks/game ${behaviour.attacksPerGame.toFixed(1)}; claims ${behaviour.claims}; VP/game ${behaviour.pointsPerGame.toFixed(1)} ${JSON.stringify(points)}; orders ${behaviour.ordersUsed} pool draws ${behaviour.poolDraws}`)
   for (const [k, v] of Object.entries(byKind).sort((a, b) => b[1].ms - a[1].ms).slice(0, 6)) console.log(`  ${k.padEnd(22)} n=${String(v.n).padStart(5)} mean ${(v.ms / Math.max(1, v.n)).toFixed(1).padStart(6)} ms  max ${v.max.toFixed(0).padStart(4)}  fallbacks ${v.fallbacks}`)
   const gateWin = !(tier === 'normal' && vs === 'random') || winRate >= 0.95
   const gateTier = !(tier === 'normal' && vs === 'easy') || winRate >= 0.5

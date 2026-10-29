@@ -43,7 +43,7 @@ export function seatsFor(humanSeat: Seat): Record<Seat, SeatMode> {
 
 function initial(): Pick<Session, 'humanSeat' | 'seats' | 'seed' | 'builds' | 'objectiveId' | 'battle' | 'tier'> {
   const lists = defaultLists(dataBundle())
-  return { humanSeat: 'A', seats: seatsFor('A'), seed: randomSeed(), builds: { A: { listId: lists.A }, B: { listId: lists.B } }, objectiveId: null, battle: null, tier: 'random' }
+  return { humanSeat: 'A', seats: seatsFor('A'), seed: randomSeed(), builds: { A: { listId: lists.A }, B: { listId: lists.B } }, objectiveId: null, battle: null, tier: 'normal' }
 }
 
 export const useSession = create<Session>((set, get) => ({

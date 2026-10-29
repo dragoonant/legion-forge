@@ -273,6 +273,37 @@ export function typicalValue(ctx: AiCtx, state: GameState, atk: Unit, def: Unit,
   return value
 }
 
+/**
+ * What `atk` would deal to `def` in melee with its leader in base contact, in points (a charge's payoff, and what an engaged enemy
+ * threatens): exact engine odds on open ground, cached across decisions per wound counts. 0 when it has no melee weapon.
+ */
+export function meleeValue(ctx: AiCtx, state: GameState, atk: Unit, def: Unit): number {
+  const mem = ctx.memory.typical
+  const key = `M|${atk.id}>${def.id}|${woundsLeft(atk)}|${woundsLeft(def)}|${def.suppression}|${atk.suppression}`
+  const hit = mem.get(key)
+  if (hit !== undefined) return hit
+  if (!spendTypical(ctx, COST.odds + 0.5)) return 0
+  const lead = leaderPos(atk)
+  const target = leaderPos(def)
+  const gap = miniBody(state, leaderOf(atk)).baseRadius + miniBody(state, leaderOf(def)).baseRadius + 0.0003
+  const d = Math.max(0.1, dist(lead, target))
+  const f = gap / d
+  const at = { x: target.x + (lead.x - target.x) * f, z: target.z + (lead.z - target.z) * f }
+  const ov = overlay(openGround(state), atk.id, { leaderAt: at, moved: false })
+  let value = 0
+  try {
+    const odds = query.attackOdds(ov, atk.id, def.id, { aim: 0, kind: 'melee' })
+    value = damageValue(ctx, ov, ov.units[def.id]!, odds)
+  } catch {
+    value = 0
+  }
+  if (ctx.view.units[atk.id]?.location === 'table' && ctx.view.units[def.id]?.location === 'table') {
+    if (mem.size > 4000) mem.clear()
+    mem.set(key, value)
+  }
+  return value
+}
+
 /** Rank key of a unit ('commander', 'corps'...). */
 export const rankOf = (u: Unit): string => unitRank(u)
 

@@ -7,7 +7,7 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { SRGBColorSpace } from 'three'
 import type { GameState, Seat } from '@/engine'
 import { BattleUnit, type UnitRole } from '../figures/BattleMini'
-import { DeployLayer, FX_CSS, LosLayer, MovePreviewLayer, RulerLayer, TargetBadges, TroopersLayer } from '../interaction/Overlays'
+import { BarricadeLayer, DeployLayer, FX_CSS, LosLayer, MovePreviewLayer, RulerLayer, TargetBadges, TroopersLayer } from '../interaction/Overlays'
 import { GROUND_KINDS, cancelDecision, clickPoint, clickUnit, clickableUnits, endDrag, hoverPoint, isDragging } from '../interaction/controller'
 import { setRepaint } from '../presentation/animStore'
 import { useDisplayState, useSettled, type DisplayState } from '../presentation/presentedStore'
@@ -155,6 +155,7 @@ function Scene({ state }: { state: DisplayState }) {
         })}
       </Suspense>
       {lv && pending && human && pending.kind === 'setup.deploy' && <DeployLayer state={lv} pending={pending} />}
+      {lv && pending && human && pending.kind === 'battle.place' && pending.context.terrain === 'barricade' && <BarricadeLayer pending={pending} />}
       {lv && pending && human && pending.kind === 'move.tool' && <MovePreviewLayer state={lv} pending={pending} />}
       {lv && pending && human && pending.kind === 'move.troopers' && <TroopersLayer state={lv} pending={pending} />}
       {lv && pending && human && kind.startsWith('attack.') && <TargetBadges state={lv} pending={pending} seat={human} />}

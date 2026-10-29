@@ -174,6 +174,16 @@ function ToolPrompt({ pending, state }: { pending: PendingDecision; state: Snap 
   )
 }
 
+function BarricadePrompt() {
+  return (
+    <div data-testid="barricade-prompt" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <Btn onClick={() => rotateFacing(-Math.PI / 4)} data-testid="barricade-turn-left">Turn left (Q)</Btn>
+      <Btn onClick={() => rotateFacing(Math.PI / 4)} data-testid="barricade-turn-right">Turn right (E)</Btn>
+      <Btn data-testid="barricade-auto" onClick={() => doItForMe()}>Engine suggestion</Btn>
+    </div>
+  )
+}
+
 function TroopersPrompt({ pending }: { pending: PendingDecision }) {
   const drag = useUi((s) => s.trooperDrag)
   const note = useUi((s) => s.toolNote)
@@ -214,6 +224,8 @@ function Body({ pending, state, seat, legal }: { pending: PendingDecision; state
       return <ToolPrompt pending={pending} state={state} />
     case 'move.troopers':
       return <TroopersPrompt pending={pending} />
+    case 'battle.place':
+      return pending.context.terrain === 'barricade' ? <BarricadePrompt /> : <OptionList pending={pending} state={state} />
     case 'attack.spend':
       return <SpendPrompt pending={pending} state={state} />
     default:
@@ -270,7 +282,7 @@ export function DecisionPrompt(): ReactNode {
   const fit: CSSProperties = ff.compact ? { maxHeight: '54vh', bottom: 6, padding: '6px 10px' } : {}
   const wide: CSSProperties = pending.kind === 'command.pick' ? { width: 'min(1040px, calc(100vw - 24px))' } : {}
   const hint = choiceHint(pending, state) ?? decisionHint(pending)
-  const continuous = pending.kind === 'setup.deploy' || pending.kind === 'move.tool' || pending.kind === 'move.troopers'
+  const continuous = pending.kind === 'setup.deploy' || pending.kind === 'move.tool' || pending.kind === 'move.troopers' || (pending.kind === 'battle.place' && pending.context.terrain === 'barricade')
   return (
     <div className="lf-touch" data-testid="prompt" data-kind={pending.kind} data-decision={pending.id} style={{ ...frame, ...fit, ...wide, borderTop: `4px solid ${seatColor(seat)}` }}>
       <div data-testid="prompt-title" style={{ fontWeight: 800, fontSize: 15, marginBottom: 2 }}>{decisionTitle(pending, state)}</div>

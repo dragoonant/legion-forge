@@ -62,6 +62,46 @@ describe('AI decider', () => {
   }, 120_000)
 })
 
+describe('AI and the M2c decisions', () => {
+  it('AI-006 places a barricade legally (Fortified Position) with a policy, not the fallback', () => {
+    let seen = 0
+    let bad = 0
+    for (let g = 0; g < 8 && seen === 0; g++) {
+      play(g, { A: 'normal', B: 'normal' }, 60, (s) => {
+        if (s.pending.kind !== 'battle.place' || s.pending.context.terrain !== 'barricade') return
+        seen++
+        if (s.fallback || !answerOk(s.state, s.legal, s.action)) bad++
+        expect((s.action.payload as { yaw?: number }).yaw).toBeDefined()
+      })
+    }
+    expect(seen).toBeGreaterThan(0)
+    expect(bad).toBe(0)
+  }, 60_000)
+
+  it('AI-007 withdraws from a melee, pushes an enemy with Force Push, and answers both without the fallback', () => {
+    let withdraws = 0
+    let pushes = 0
+    let engaged = 0
+    let fallbacks = 0
+    const r = play(4, { A: 'normal', B: 'normal' }, 4000, (s) => {
+      if (Object.values(s.state.units).some((u) => u.engagedWith.length > 0)) engaged++
+      if (s.pending.kind === 'move.tool' && s.pending.context.kind === 'withdraw') withdraws++
+      if (s.pending.kind === 'move.tool' && s.pending.context.kind === 'controlled') {
+        pushes++
+        // the pushed unit is the enemy's, and the push is a Move we place (or a pass if nothing fits)
+        expect(s.state.units[String(s.pending.constraints?.unitId)]!.seat).not.toBe(s.seat)
+      }
+      if (s.fallback) fallbacks++
+    }, 'mirror')
+    expect(r.rejections).toEqual([])
+    expect(r.state.phase).toBe('ended')
+    expect(engaged).toBeGreaterThan(0)
+    expect(withdraws).toBeGreaterThan(0)
+    expect(pushes).toBeGreaterThan(0)
+    expect(fallbacks).toBe(0)
+  }, 120_000)
+})
+
 describe('AI determinism', () => {
   it('AI-005 gives the same answer for the same view and seed, and does not depend on the order of the options', () => {
     const picks: string[] = []

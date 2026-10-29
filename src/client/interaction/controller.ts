@@ -88,6 +88,21 @@ export function previewDeploy(state: GameState, pending: PendingDecision, unitId
   return rej ? { ok: false, text: rejectionText(rej) } : { ok: true, text: 'Deploy here' }
 }
 
+/** Is the open `battle.place` a barricade (Fortified Position): placed on the table with a turn. */
+export const isBarricade = (pending: PendingDecision): boolean => pending.kind === 'battle.place' && pending.context.terrain === 'barricade'
+
+/** The barricade action for a click at `pt` turned by `yaw` (radians). */
+export function barricadeAction(pending: PendingDecision, pt: Vec2, yaw: number): Action {
+  const seat = pending.seat === 'all' ? 'A' : pending.seat
+  return { type: 'battle.place', seat, decisionId: pending.id, payload: { x: round3(pt.x), z: round3(pt.z), yaw: round3(yaw) } }
+}
+
+/** The engine's verdict on setting a barricade down at a point. */
+export function previewBarricade(state: GameState, pending: PendingDecision, pt: Vec2, yaw: number): Verdict {
+  const rej = validate(state, barricadeAction(pending, pt, yaw))
+  return rej ? { ok: false, text: rejectionText(rej) } : { ok: true, text: 'Place the barricade here' }
+}
+
 /** Where the rest of a deploying unit would stand (cohesion preview), from the engine's own placement. */
 export function previewDeployTroopers(state: GameState, pending: PendingDecision, unitId: string, pt: Vec2): { miniId: string; x: number; z: number }[] {
   const unit = state.units[unitId]
@@ -154,6 +169,10 @@ export function hoverPoint(pt: Pt | null): void {
     return
   }
   const { state, pending } = l
+  if (isBarricade(pending)) {
+    useUi.setState({ hover: pt, hoverNote: previewBarricade(state, pending, pt, deployFacing(pending, ui.facing)) })
+    return
+  }
   if (pending.kind === 'setup.deploy') {
     const unitId = deployUnitFor(pending, ui.deployUnit)
     if (!unitId) return
@@ -201,7 +220,7 @@ export function clickPoint(pt: Pt): void {
       if (ui.hoverOption) useUi.setState({ trooperDrag: { ...ui.trooperDrag, [ui.hoverOption]: pt } })
       return
     case 'battle.place': {
-      useGame.getState().dispatch(act.place(pending, round3(pt.x), round3(pt.z)))
+      useGame.getState().dispatch(isBarricade(pending) ? barricadeAction(pending, pt, deployFacing(pending, ui.facing)) : act.place(pending, round3(pt.x), round3(pt.z)))
       return
     }
     default:
@@ -289,10 +308,10 @@ export function cancelDecision(): boolean {
   return false
 }
 
-/** Q / E: turn the facing a unit is deployed with. */
+/** Q / E: turn the facing a unit is deployed with, or the barricade being placed. */
 export function rotateFacing(delta: number): void {
   const l = live()
-  if (!l || l.pending.kind !== 'setup.deploy') return
+  if (!l || (l.pending.kind !== 'setup.deploy' && !isBarricade(l.pending))) return
   const ui = useUi.getState()
   useUi.setState({ facing: turnedBy(deployFacing(l.pending, ui.facing), delta) })
 }

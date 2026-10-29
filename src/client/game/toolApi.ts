@@ -6,6 +6,7 @@ import { moverFor, planMove, planTroopers, worldFor, defaultTarget } from '@/eng
 import { flowOf } from '@/engine/battle'
 import { fitTool, nearestLegalSpot, poseFromHinge, toolShape, type ToolShape } from '@/engine/tool'
 import { leaderOf } from '@/engine/state'
+import { inBaseContact, miniBody } from '@/engine/measure'
 
 export interface ToolPreview {
   ok: boolean
@@ -121,4 +122,18 @@ export function startingTarget(state: GameState, pending: PendingDecision): Vec2
   const unitId = moveUnitId(state, pending)
   const unit = unitId ? state.units[unitId] : null
   return unit ? defaultTarget(state, unit) : null
+}
+
+/** The enemy unit a Move ending with the leader at `leader` would touch (a charge, R-16.1), by the engine's own base-contact test. */
+export function chargeTarget(state: GameState, unitId: string, leader: Pose2): string | null {
+  const unit = state.units[unitId]
+  if (!unit || unit.location !== 'table') return null
+  const body = { ...miniBody(state, leaderOf(unit)), pos: { x: leader.x, z: leader.z } }
+  for (const o of Object.values(state.units)) {
+    if (o.seat === unit.seat || o.location !== 'table') continue
+    for (const m of o.minis) {
+      if (m.alive && inBaseContact(body, miniBody(state, m), state.data.constants)) return o.id
+    }
+  }
+  return null
 }
