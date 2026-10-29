@@ -396,6 +396,7 @@ export interface WindowInfo {
   moveKind?: string
   fromAction?: boolean
   startedMelee?: boolean
+  suppressionDue?: boolean
   /** a phase-level window: self triggers run once for every unit that carries the effect */
   eachOwner?: boolean
   action?: string
@@ -544,6 +545,10 @@ export function condOk(env: Env, when: J | undefined): boolean {
         break
       case 'startedMelee':
         if (!!env.info.startedMelee !== v) return false
+        break
+      case 'suppressionDue':
+        // the attack gives its defender the base Suppression token (a ranged attack with a hit or crit in the pool)
+        if (!!env.info.suppressionDue !== v) return false
         break
       case 'poolHasWeapon':
         if (!a?.pf || !a.pf.weapons.some((w) => w.weaponId === v)) return false

@@ -566,6 +566,9 @@
         "startedMelee": {
           "type": "boolean"
         },
+        "suppressionDue": {
+          "type": "boolean"
+        },
         "poolHasWeapon": {
           "$ref": "common.schema.json#/$defs/Id"
         },
