@@ -441,7 +441,7 @@ export interface ActionPayloadMap {
   'activation.standby': { unitId?: string; response?: string }
   'keyword.choice': { option: string }
   'card.choice': { option: string }
-  'battle.place': { x: number; z: number }
+  'battle.place': { x: number; z: number; /** a barricade's turn, radians (CRB p12) */ yaw?: number }
   'end.choice': { option: string }
   confirm: { choice: 'continue' | 'concede' }
   pass: Record<string, never>
@@ -645,6 +645,10 @@ export interface BattleData {
   marks: Record<string, number>
   /** chooseUnits results by name */
   picks: Record<string, string[]>
+  /** barricades placed in Setup (Fortified Position); the compiled table carries the pieces */
+  barricades: { id: string; seat: Seat; x: number; z: number; yaw: number }[]
+  /** barricade placements still to make: the card's owner, how many, and the spacing (range 1 = 6) */
+  barricadeSteps: { seat: Seat; cardId: string; left: number; minApart: number }[]
   flow: FlowState
 }
 

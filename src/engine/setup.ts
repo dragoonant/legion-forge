@@ -22,6 +22,7 @@ import {
 } from './battle'
 import { beginRound } from './command'
 import { offerDivulges } from './keywords'
+import { barricadeSteps, nextBarricade } from './barricades'
 import { afterStartWindow } from './activation'
 import { registerFrameResume } from './hooks'
 import { makeAction } from './actions'
@@ -307,11 +308,19 @@ function afterEdge(ctx: Ctx, edge: EdgeName): void {
   const territories = (polys: Polygon[]): Polygon[] => polys.map((p) => rotatePolygon(p, edge))
   d.territories = { [blue]: territories(map.territories.blue), [otherSeat(blue)]: territories(map.territories.red) } as Record<Seat, Polygon[]>
   resolveCardSetup(ctx)
-  // Resolve Setup Effects also lets each player Divulge cards from the hand, blue first (CRB p20, p61)
+  // Fortified Position places its barricades in this step (CRB p12, Recon p6)
+  d.barricadeSteps = barricadeSteps(s, blueFirst(s))
+  if (nextBarricade(ctx)) return
+  afterBarricades(ctx)
+}
+
+/** Resolve Setup Effects also lets each player Divulge cards from the hand, blue first (CRB p20, p61). */
+function afterBarricades(ctx: Ctx): void {
   if (offerDivulges(ctx)) return
   startDeployment(ctx)
 }
 
+registerFrameResume('setup.barricades', (ctx) => afterBarricades(ctx))
 registerFrameResume('setup.divulge', (ctx) => startDeployment(ctx))
 
 // ---------------------------------------------------------------------------

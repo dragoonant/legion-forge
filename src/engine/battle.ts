@@ -30,6 +30,7 @@ import type {
   Vec2,
 } from './types'
 import { isPanicked, isSuppressed } from './morale'
+import { handleBarricadePlace, suggestBarricadeAction } from './barricades'
 import { foldBool, modValues } from './keywords'
 
 // ---------------------------------------------------------------------------
@@ -67,6 +68,8 @@ export function bd(state: GameState): BattleData {
       caps: {},
       marks: {},
       picks: {},
+      barricades: [],
+      barricadeSteps: [],
       flow: freshFlow(),
     })
   }
@@ -384,8 +387,8 @@ function resolveSetup(ctx: Ctx, card: BattleCardData): void {
         }
       }
     } else if (e.placeTerrain) {
-      // Fortified Position: barricades need a terrain record that does not exist yet (RULING Unsourced); none are placed.
-      ctx.emit({ type: 'ObjectiveChanged', objectiveId: card.id, detail: { skipped: 'placeTerrain', why: 'no barricade record in v1 data' } }, null)
+      // Fortified Position: the barricades are placed by their own steps right after this one (barricades.ts)
+      ctx.emit({ type: 'ObjectiveChanged', objectiveId: card.id, detail: { deferred: 'placeTerrain' } }, null)
     } else {
       ctx.emit({ type: 'ObjectiveChanged', objectiveId: card.id, detail: { skipped: Object.keys(e)[0] ?? 'unknown' } }, null)
     }
@@ -784,7 +787,11 @@ export function finishAtRoundLimit(ctx: Ctx): void {
 export const battleModule: ModuleDef = {
   id: 'battle',
   namespaces: ['battle', 'confirm'],
+  suggest(state, pending, seat) {
+    return pending.kind === 'battle.place' && pending.context.terrain === 'barricade' ? suggestBarricadeAction(state, pending, seat) : null
+  },
   handle(state: GameState, action: Action, pending: PendingDecision) {
+    if (pending.kind === 'battle.place' && pending.context.terrain === 'barricade') return handleBarricadePlace(state, action, pending)
     if (action.type === 'battle.place') {
       const kind = String(pending.context.markerKind ?? 'asset')
       const check = checkObjectivePlacement(state, { x: action.payload.x, z: action.payload.z }, kind, pending.context.markerId as string | undefined)
