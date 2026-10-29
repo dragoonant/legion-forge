@@ -6,6 +6,7 @@ import { dataBundle, defaultLists, resolveList, type SeatBuild } from '../game/a
 import type { BotTier, SeatMode, UrlParams } from '../params'
 import { useUi } from '../ui/uiStore'
 import { useGame } from './game'
+import { clearSave, readSave, type SaveEnvelope } from './saveGame'
 
 export type Screen = 'start' | 'briefing' | 'battle'
 
@@ -20,7 +21,15 @@ export interface Session {
   objectiveId: string | null
   battle: string[] | null
   tier: BotTier
+  /** the autosave found in this browser (the Continue card), or null */
+  save: SaveEnvelope | null
+  /** a message for the start screen (a discarded save), shown until dismissed */
+  notice: string | null
   setScreen(screen: Screen): void
+  refreshSave(): void
+  dismissNotice(): void
+  /** Continue the saved battle. A save that no longer replays to the same position is discarded with a notice. */
+  continueGame(): void
   setSeed(seed: string): void
   setList(seat: Seat, listId: string): void
   setObjective(id: string | null): void
@@ -49,7 +58,36 @@ function initial(): Pick<Session, 'humanSeat' | 'seats' | 'seed' | 'builds' | 'o
 export const useSession = create<Session>((set, get) => ({
   screen: 'start',
   ...initial(),
+  save: readSave(),
+  notice: null,
   setScreen: (screen) => set({ screen }),
+  refreshSave: () => set({ save: readSave() }),
+  dismissNotice: () => set({ notice: null }),
+  continueGame() {
+    const env = readSave()
+    if (!env) {
+      set({ save: null })
+      return
+    }
+    const r = useGame.getState().resumeFrom(env)
+    if (!r.ok) {
+      clearSave()
+      set({ save: null, notice: `Your saved battle was discarded. ${r.reason}` })
+      return
+    }
+    useUi.setState({ selected: null, hoverUnit: null, hoverOption: null, uiHidden: false, pick: null })
+    set({
+      humanSeat: env.seats.A === 'human' ? 'A' : env.seats.B === 'human' ? 'B' : 'A',
+      seats: env.seats,
+      seed: env.file.seed,
+      builds: env.builds,
+      battle: env.battle,
+      objectiveId: env.battle?.[0] ?? null,
+      tier: env.tier,
+      screen: 'battle',
+      notice: null,
+    })
+  },
   setSeed: (seed) => set({ seed }),
   setList: (seat, listId) => set((s) => ({ builds: { ...s.builds, [seat]: { listId } } })),
   setObjective: (objectiveId) => set({ objectiveId, battle: objectiveId ? [objectiveId] : null }),
@@ -70,7 +108,7 @@ export const useSession = create<Session>((set, get) => ({
   },
   backToMenu() {
     useGame.getState().reset()
-    set((s) => ({ screen: 'start', seats: seatsFor(s.humanSeat) }))
+    set((s) => ({ screen: 'start', seats: seatsFor(s.humanSeat), save: readSave() }))
   },
 }))
 

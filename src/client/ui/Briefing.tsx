@@ -6,6 +6,7 @@ import type { Seat } from '@/engine'
 import { dataBundle, engineBundle, objectiveCards } from '../game/adapter'
 import { armyListName, factionName } from '../game/labels'
 import { useSession } from '../store/session'
+import { Rich } from './Keyword'
 import { UnitCardView } from './UnitCard'
 import { colors, menuPage, plate, sectionTitle } from './theme'
 import { Btn, TouchStyle } from './widgets'
@@ -62,11 +63,11 @@ export function Briefing() {
         <section style={{ ...plate, padding: 14 }}>
           <h2 style={sectionTitle}>The battle</h2>
           <p style={{ margin: '6px 0' }}>
-            {objective ? <><b>{objective.name}.</b> {objective.text}</> : 'The objective is drawn from the seed once the table edge is chosen; it is shown under Objectives in the battle.'}
+            {objective ? <><b>{objective.name}.</b> <Rich text={objective.text} /></> : 'The objective is drawn from the seed once the table edge is chosen; it is shown under Objectives in the battle.'}
           </p>
           <ol style={{ margin: '6px 0 0', paddingLeft: 20, lineHeight: 1.5 }}>
             {STEPS.map((t) => (
-              <li key={t}>{t}</li>
+              <li key={t}><Rich text={t} /></li>
             ))}
           </ol>
         </section>
@@ -78,7 +79,7 @@ export function Briefing() {
           <h2 style={sectionTitle}>Controls</h2>
           <ul style={{ margin: '6px 0 0', paddingLeft: 20, lineHeight: 1.5 }}>
             {KEYS.map((t) => (
-              <li key={t}>{t}</li>
+              <li key={t}><Rich text={t} /></li>
             ))}
           </ul>
         </section>

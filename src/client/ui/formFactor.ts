@@ -37,17 +37,37 @@ function mq(query: string): boolean {
   }
 }
 
+export interface FormFactorInput {
+  width: number
+  height: number
+  /** (pointer: coarse) matches */
+  coarse: boolean
+  /** (pointer: fine) matches */
+  fine: boolean
+  touchPoints: number
+  override: 'compact' | 'desktop' | null
+}
+
+/** Pure classification (unit-tested): the same rules `measure` applies to the live window. */
+export function classify(i: FormFactorInput): FormFactor {
+  const portrait = i.height > i.width
+  if (i.override === 'compact') return { touch: true, compact: true, portrait, phone: true }
+  if (i.override === 'desktop') return { touch: false, compact: false, portrait, phone: false }
+  const touch = i.coarse || (i.touchPoints > 0 && !i.fine)
+  const phone = touch && Math.min(i.width, i.height) < 500
+  return { touch, compact: phone, portrait, phone }
+}
+
 function measure(): FormFactor {
   if (typeof window === 'undefined') return SERVER
-  const w = window.innerWidth
-  const h = window.innerHeight
-  const portrait = h > w
-  const ff = override()
-  if (ff === 'compact') return { touch: true, compact: true, portrait, phone: true }
-  if (ff === 'desktop') return { touch: false, compact: false, portrait, phone: false }
-  const touch = mq('(pointer: coarse)') || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0 && !mq('(pointer: fine)'))
-  const phone = touch && Math.min(w, h) < 500
-  return { touch, compact: phone, portrait, phone }
+  return classify({
+    width: window.innerWidth,
+    height: window.innerHeight,
+    coarse: mq('(pointer: coarse)'),
+    fine: mq('(pointer: fine)'),
+    touchPoints: typeof navigator !== 'undefined' ? navigator.maxTouchPoints : 0,
+    override: override(),
+  })
 }
 
 let current: FormFactor | null = null

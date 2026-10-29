@@ -10,7 +10,8 @@ export interface Fact {
 
 const pct = (p: number): string => `${Math.round(p * 100)}%`
 
-export function optionFacts(opt: DecisionOption, p: PendingDecision, state: Snap): Fact[] {
+/** `showOdds` false drops the engine's expected-wounds / defeat / suppression chances (a setting); range, band and cover always show. */
+export function optionFacts(opt: DecisionOption, p: PendingDecision, state: Snap, showOdds = true): Fact[] {
   const d = (opt.data ?? {}) as Record<string, unknown>
   const out: Fact[] = []
   const push = (id: string, text: string) => out.push({ id, text })
@@ -21,6 +22,7 @@ export function optionFacts(opt: DecisionOption, p: PendingDecision, state: Snap
       if (typeof d.distance === 'number') push('dist', `${d.distance.toFixed(1)}"`)
       if (typeof d.cover === 'string') push('cover', d.cover === 'none' ? 'no cover' : `${d.cover} cover`)
       const odds = d.odds as { expectedWounds?: number; pDefeat?: number; pAnyHit?: number } | null | undefined
+      if (!showOdds) return out
       if (odds?.expectedWounds !== undefined) push('wounds', `${odds.expectedWounds.toFixed(1)} wounds expected`)
       if (odds?.pDefeat !== undefined && odds.pDefeat > 0.005) push('defeat', `${pct(odds.pDefeat)} to defeat`)
       if (odds?.pAnyHit !== undefined) push('supp', `${pct(odds.pAnyHit)} to suppress`)

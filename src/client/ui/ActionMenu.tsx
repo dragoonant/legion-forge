@@ -5,7 +5,7 @@ import type { Action, DecisionOption, PendingDecision } from '@/engine'
 import { actionName, optionLabel, whyNotText, unitLabel, type Snap } from '../game/labels'
 import { optionFacts } from '../game/optionFacts'
 import { useGame } from '../store/game'
-import { Keyword } from './Keyword'
+import { Keyword, Rich } from './Keyword'
 import { Tooltip } from './Tooltip'
 import { colors } from './theme'
 import { Btn } from './widgets'
@@ -36,9 +36,7 @@ export function ActionMenu({ pending, state }: { pending: PendingDecision; state
   return (
     <div data-testid="action-menu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ fontSize: 12, color: colors.muted }}>
-        {unitId ? unitLabel(state, unitId) : ''} has {left} action{left === 1 ? '' : 's'} left
-        {pending.context.suppressed === true ? ', is suppressed' : ''}
-        {pending.context.panicked === true ? ', is panicked' : ''}.
+        <Rich text={`${unitId ? unitLabel(state, unitId) : ''} has ${left} action${left === 1 ? '' : 's'} left${pending.context.suppressed === true ? ', is Suppressed' : ''}${pending.context.panicked === true ? ', is Panicked' : ''}.`} d={state.data} />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
         {GROUPS.map((g) => {

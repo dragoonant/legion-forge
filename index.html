@@ -8,6 +8,9 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Legion Forge" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
     <title>Legion Forge</title>
     <!-- Match the scene's clear colour (Scene.tsx). Without it the page is white, and any frame the WebGL
          canvas fails to present (first figure/shader upload, GPU context reset) flashes white. -->
@@ -25,6 +28,8 @@
       [data-ff="compact"] .lf-touch label { min-height: 44px; }
       [data-ff="compact"] .lf-touch input[type="range"] { height: 44px; }
       [data-ff="compact"] .lf-touch input[type="checkbox"], [data-ff="compact"] .lf-touch input[type="radio"] { width: 24px; height: 24px; flex: 0 0 auto; }
+      /* Settings > Reduce motion (App sets data-motion), and the system preference when nothing is stored */
+      html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-motion="reduced"] *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
       canvas { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
     </style>
   </head>

@@ -2,6 +2,7 @@
 // white); faces (crit, hit, surge, blank, block) are our own drawings and every face comes off the engine's event. Docked in the
 // right rail; on a phone it floats under the HUD.
 import { useEffect, type CSSProperties } from 'react'
+import { Rich } from '../ui/Keyword'
 import { colors, fontStack, panel } from '../ui/theme'
 import { CollapseButton, CollapsedTab, useCollapsed } from '../ui/collapse'
 import { useFormFactor } from '../ui/formFactor'
@@ -105,7 +106,7 @@ function Row({ row }: { row: TrayRow }) {
     <div data-testid="tray-row" data-kind={row.kind} style={{ animation: 'lf-row-in 200ms ease-out', padding: '5px 0', borderTop: `1px solid ${colors.border}` }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, fontSize: 12, minWidth: 0 }}>
         {row.seat && <span style={{ width: 8, height: 8, borderRadius: 4, background: seatColor(row.seat), flex: '0 0 auto', alignSelf: 'center' }} />}
-        <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{row.label}</span>
+        <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}><Rich text={row.label} /></span>
         <span style={{ color: colors.muted }}>{n} {n === 1 ? 'die' : 'dice'}</span>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
@@ -115,7 +116,7 @@ function Row({ row }: { row: TrayRow }) {
       </div>
       {row.verdict && (
         <div data-testid="tray-verdict" style={{ fontSize: 12, fontWeight: 800, color: colors.accent, marginTop: 4 }}>
-          {row.verdict}
+          <Rich text={row.verdict} />
         </div>
       )}
     </div>
@@ -127,7 +128,7 @@ export function DiceTrayView({ tray, compact }: { tray: TrayState; compact: bool
   const [collapsed] = useCollapsed('dicetray')
   if (tray.rows.length === 0) return null
   if (collapsed) {
-    return <CollapsedTab id="dicetray" title="Dice tray" style={compact ? { position: 'absolute', top: 60, left: 8, zIndex: 35 } : { alignSelf: 'flex-end', flex: '0 0 auto' }} />
+    return <CollapsedTab id="dicetray" title="Dice tray" style={compact ? { position: 'absolute', top: 60, left: 62, zIndex: 35 } : { alignSelf: 'flex-end', flex: '0 0 auto' }} />
   }
   const style: CSSProperties = {
     ...panel,
@@ -136,7 +137,7 @@ export function DiceTrayView({ tray, compact }: { tray: TrayState; compact: bool
     pointerEvents: 'none',
     fontFamily: fontStack,
     animation: 'lf-tray-in 180ms ease-out',
-    ...(compact ? { position: 'absolute', top: 60, left: 8, width: 'min(300px, 52vw)', zIndex: 35 } : { width: 288, maxWidth: '100%', flex: '0 0 auto' }),
+    ...(compact ? { position: 'absolute', top: 60, left: 62, width: 'min(240px, 34vw)', zIndex: 35 } : { width: 288, maxWidth: '100%', flex: '0 0 auto' }),
   }
   return (
     <div data-testid="dice-tray" style={style}>
@@ -144,7 +145,7 @@ export function DiceTrayView({ tray, compact }: { tray: TrayState; compact: bool
         <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, paddingLeft: 2 }}>{tray.title}</div>
         <CollapseButton id="dicetray" title="dice tray" style={{ pointerEvents: 'auto', flex: '0 0 auto' }} />
       </div>
-      {tray.rows.map((r) => (
+      {(compact ? tray.rows.slice(-1) : tray.rows).map((r) => (
         <Row key={r.id} row={r} />
       ))}
     </div>

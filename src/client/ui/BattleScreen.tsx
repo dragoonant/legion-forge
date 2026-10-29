@@ -16,6 +16,9 @@ import { DecisionPrompt } from './DecisionPrompt'
 import { EndScreen } from './EndScreen'
 import { EventFeed } from './EventFeed'
 import { UnitStrip } from './UnitStrip'
+import { CompactColumn, Drawers } from './CompactHud'
+import { ConfirmBar } from './ConfirmBar'
+import { HintStrip } from './HintStrip'
 import { RotatePrompt } from './RotatePrompt'
 import { ObjectiveTracker } from './ObjectiveTracker'
 import { useFormFactor } from './formFactor'
@@ -158,10 +161,20 @@ export function BattleScreen() {
               <EventFeed />
             </div>
           )}
-          <div style={rail}>
-            {showCard && <UnitStrip />}
-            <DiceTray />
-          </div>
+          {ff.compact ? (
+            <>
+              <CompactColumn />
+              <DiceTray />
+              <Drawers />
+            </>
+          ) : (
+            <div style={rail}>
+              {showCard && <UnitStrip />}
+              <DiceTray />
+            </div>
+          )}
+          <ConfirmBar />
+          {!ff.compact && <HintStrip />}
           {/* nobody to prompt in a watched game: the decision card says what the AI is doing */}
           {!watching && <DecisionPrompt />}
           {watching && (

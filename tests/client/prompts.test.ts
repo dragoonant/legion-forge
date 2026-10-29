@@ -84,15 +84,18 @@ describe('attack prompts render from decisions shaped like the combat module', (
       opt('reroll:done', act('attack.spend', { choice: 'rerollDone' })),
       opt('weird', act('attack.spend', { choice: 'someFutureChoice' }), { extraFact: 7 }),
     ]
-    const out = renderToStaticMarkup(createElement(SpendPrompt, { pending: pend('attack.spend', spends, { step: 'reroll', aim: 1, perAim: 2, dice: ['hit', 'blank', 'surge'] }), state }))
+    const markup = renderToStaticMarkup(createElement(SpendPrompt, { pending: pend('attack.spend', spends, { step: 'reroll', aim: 1, perAim: 2, dice: ['hit', 'blank', 'surge'] }), state }))
+    // game terms in labels are doorways (wrapped in a span): read the text with the tags removed
+    const out = markup
+    const text = markup.replace(/<[^>]+>/g, '')
     expect(out).toContain('data-step="reroll"')
     expect(out).toContain('data-testid="opt-reroll:hit+blank"')
-    expect(out).toMatch(/Reroll blank, hit/)
-    expect(out).toMatch(/Spend 2 Dodge tokens/)
-    expect(out).toMatch(/Spend none/)
-    expect(out).toMatch(/Keep the dice as they are/)
-    expect(out).toMatch(/some Future Choice/i)
-    expect(out).toMatch(/extraFact 7/)
+    expect(text).toMatch(/Reroll blank, hit/)
+    expect(text).toMatch(/Spend 2 Dodge tokens/)
+    expect(text).toMatch(/Spend none/)
+    expect(text).toMatch(/Keep the dice as they are/)
+    expect(text).toMatch(/some Future Choice/i)
+    expect(text).toMatch(/extraFact 7/)
     expect(out).toContain('data-context="aim"')
     expect(out).toContain('data-testid="tray-die"')
   })

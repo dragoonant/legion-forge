@@ -97,13 +97,15 @@ interface ChildProps {
   'aria-describedby'?: string
 }
 
-export function Tooltip({ title, body, placement = 'top', disabled, wrap, children }: {
+export function Tooltip({ title, body, placement = 'top', disabled, wrap, tapPassesThrough, children }: {
   title?: ReactNode
   body?: ReactNode
   placement?: TooltipPlacement
   disabled?: boolean
   /** Wrap the child in a span that hosts the hover handlers (the child gets pointer-events:none). Use for disabled buttons, which swallow pointer events. */
   wrap?: boolean
+  /** Touch: when this returns true for a tap, the tap does not open the tooltip (a keyword inside a button leaves the tap to the button). */
+  tapPassesThrough?: (e: SyntheticEvent) => boolean
   children: ReactElement<ChildProps>
 }) {
   const id = useId()
@@ -166,6 +168,7 @@ export function Tooltip({ title, body, placement = 'top', disabled, wrap, childr
     onClick: (e) => {
       cp.onClick?.(e)
       if (!lastWasTouch.current) return
+      if (tapPassesThrough?.(e)) return
       if (touchOpen.current) hide()
       else { touchOpen.current = true; measure(e.currentTarget as HTMLElement) }
     },

@@ -4,7 +4,11 @@ import { lazy, Suspense, useEffect } from 'react'
 import { currentParams } from './params'
 import { installTestHooks } from './store/testHooks'
 import { startFromParams, useSession } from './store/session'
+import { useGame } from './store/game'
 import { Briefing } from './ui/Briefing'
+import { HowToPlay } from './ui/HowToPlay'
+import { SettingsPanel } from './ui/SettingsPanel'
+import { useSettings } from './presentation/settings'
 import { StartScreen } from './ui/StartScreen'
 import { TouchStyle } from './ui/widgets'
 
@@ -33,6 +37,23 @@ let autoStarted = false
 export function App() {
   const screen = useSession((s) => s.screen)
   const params = currentParams()
+  const reduceMotion = useSettings((s) => s.reduceMotion)
+  useEffect(() => {
+    document.documentElement.dataset.motion = reduceMotion ? 'reduced' : 'full'
+  }, [reduceMotion])
+  // the autosave is current whenever the page goes away
+  useEffect(() => {
+    const flush = () => useGame.getState().flushSave()
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    window.addEventListener('pagehide', flush)
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      document.removeEventListener('visibilitychange', onHide)
+    }
+  }, [])
   useEffect(() => {
     if (!params.test) preloadBattleWhenIdle()
     else if (!autoStarted) {
@@ -53,6 +74,8 @@ export function App() {
       ) : (
         <StartScreen />
       )}
+      <SettingsPanel />
+      <HowToPlay />
     </>
   )
 }

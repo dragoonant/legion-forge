@@ -4,15 +4,17 @@
 // nothing shows before the director has played it.
 import { Suspense, useEffect, useMemo } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { SRGBColorSpace } from 'three'
+import { SRGBColorSpace, type PerspectiveCamera } from 'three'
 import type { GameState, Seat } from '@/engine'
 import { BattleUnit, type UnitRole } from '../figures/BattleMini'
 import { BarricadeLayer, DeployLayer, FX_CSS, LosLayer, MovePreviewLayer, RulerLayer, TargetBadges, TroopersLayer } from '../interaction/Overlays'
-import { GROUND_KINDS, cancelDecision, clickPoint, clickUnit, clickableUnits, endDrag, hoverPoint, isDragging } from '../interaction/controller'
+import { GROUND_KINDS, cancelDecision, clickPoint, clickUnit, clickableUnits, dragPoint, endDrag, hoverPoint, isDragging } from '../interaction/controller'
 import { setRepaint } from '../presentation/animStore'
+import { useSettings } from '../presentation/settings'
 import { useDisplayState, useSettled, type DisplayState } from '../presentation/presentedStore'
 import { humanToAct, useGame } from '../store/game'
 import { colors } from '../ui/theme'
+import { useFormFactor } from '../ui/formFactor'
 import { useUi } from '../ui/uiStore'
 import { CameraRig, homePose, type CameraPreset } from './CameraRig'
 import { FxLayer } from './FxLayer'
@@ -22,6 +24,28 @@ import { Objectives, Territories } from './Zones'
 
 /** The battle frames the table a little wider than its edge: the HUD above and the prompt below cover its margins. */
 const FRAME = 1.12
+
+/** Phone layout: the top bar and the bottom sheet cover the table's margins, so the picture is shifted up to centre the table in the free band
+ *  between them. A projection offset (not a camera move): picking, `project` and the camera presets all stay consistent with it. */
+function ViewShift() {
+  const { compact } = useFormFactor()
+  const camera = useThree((s) => s.camera)
+  const size = useThree((s) => s.size)
+  const invalidate = useThree((s) => s.invalidate)
+  useEffect(() => {
+    const cam = camera as PerspectiveCamera
+    if (!cam.isPerspectiveCamera) return
+    if (compact && size.height > 0) cam.setViewOffset(size.width, size.height, 0, Math.round(size.height * 0.14), size.width, size.height)
+    else cam.clearViewOffset()
+    cam.updateProjectionMatrix()
+    invalidate()
+    return () => {
+      cam.clearViewOffset()
+      cam.updateProjectionMatrix()
+    }
+  }, [compact, camera, size.width, size.height, invalidate])
+  return null
+}
 
 function Repaint() {
   const invalidate = useThree((s) => s.invalidate)
@@ -51,10 +75,15 @@ function Ground({ minX, maxX, minZ, maxZ }: { minX: number; maxX: number; minZ: 
       visible={false}
       name="ground"
       onPointerMove={(e) => {
-        hoverPoint({ x: e.point.x, z: e.point.z })
+        const touch = (e.nativeEvent as PointerEvent).pointerType === 'touch'
+        // a finger has no hover (moving it pans the board); it only reaches here to drag a hinge or a trooper, held above the finger
+        if (touch && !isDragging()) return
+        const ne = e.nativeEvent as PointerEvent
+        hoverPoint(dragPoint(ne.clientX, ne.clientY, touch, { x: e.point.x, z: e.point.z }))
       }}
-      onPointerOut={() => {
-        if (!isDragging()) hoverPoint(null)
+      onPointerOut={(e) => {
+        // a lifted finger leaves the board: whatever it staged stays
+        if (!isDragging() && (e.nativeEvent as PointerEvent).pointerType !== 'touch') hoverPoint(null)
       }}
       onClick={(e) => {
         if (e.delta > 6) return
@@ -92,6 +121,7 @@ function Scene({ state }: { state: DisplayState }) {
   const halfZ = (sz.d / 2) * FRAME
   const camPreset: CameraPreset | null = preset ? { id: preset.id, n: preset.nonce } : null
   const seatColor = useMemo(() => seatColorFor(viewer), [viewer])
+  const low = useSettings((s) => s.lowGraphics)
   // the live state is only drawn on when it is the state the player is looking at
   const lv: GameState | null = live && live.seq === state.seq ? live : null
   const kind = pending?.kind ?? ''
@@ -121,7 +151,7 @@ function Scene({ state }: { state: DisplayState }) {
         position={[-18, 40, 22]}
         intensity={2.6}
         color="#fff2dc"
-        castShadow
+        castShadow={!low}
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-26}
         shadow-camera-right={26}
@@ -163,6 +193,7 @@ function Scene({ state }: { state: DisplayState }) {
       {lv && tool === 'los' && <LosLayer state={lv} />}
       <FxLayer />
       <CameraRig halfX={halfX} halfZ={halfZ} preset={camPreset} />
+      <ViewShift />
       <Repaint />
     </>
   )
@@ -170,6 +201,7 @@ function Scene({ state }: { state: DisplayState }) {
 
 export function BoardCanvas() {
   const state = useDisplayState()
+  const low = useSettings((s) => s.lowGraphics)
   const home = useMemo(() => {
     if (!state) return [0, 36, 24] as [number, number, number]
     const s = tableSize(state.table.def)
@@ -183,8 +215,8 @@ export function BoardCanvas() {
         data-testid="board-canvas"
         camera={{ position: home, fov: 42, near: 0.2, far: 260 }}
         frameloop="demand"
-        shadows="percentage"
-        dpr={[1, 2]}
+        shadows={low ? false : 'percentage'}
+        dpr={low ? [1, 1.25] : [1, 2]}
         gl={{ antialias: true, preserveDrawingBuffer: true }}
         onCreated={({ gl }) => {
           gl.outputColorSpace = SRGBColorSpace

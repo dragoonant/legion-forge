@@ -6,8 +6,10 @@ import type { CSSProperties } from 'react'
 import type { DecisionOption, PendingDecision } from '@/engine'
 import { optionLabel, type Snap } from '../game/labels'
 import { optionFacts } from '../game/optionFacts'
+import { useSettings } from '../presentation/settings'
 import { useGame } from '../store/game'
 import { DIE_FILL, TrayDieView } from '../dice/DiceTray'
+import { Rich } from './Keyword'
 import { colors } from './theme'
 import { useUi } from './uiStore'
 import { Btn } from './widgets'
@@ -47,7 +49,8 @@ const COVERED = new Set(['miniId', 'count', 'wounds', 'maxWounds', 'n', 'faces',
 
 export function OptionRow({ opt, pending, state }: { opt: DecisionOption; pending: PendingDecision; state: Snap }) {
   const dispatch = useGame((s) => s.dispatch)
-  const facts = optionFacts(opt, pending, state)
+  const showOdds = useSettings((s) => s.showOdds)
+  const facts = optionFacts(opt, pending, state, showOdds)
   const unitId = (opt.action as { payload?: { unitId?: string } }).payload?.unitId
   const miniId = (opt.action as { payload?: { miniId?: string } }).payload?.miniId
   const miniUnit = miniId ? miniId.split('.')[0] : undefined
@@ -68,7 +71,7 @@ export function OptionRow({ opt, pending, state }: { opt: DecisionOption; pendin
       }}
       style={optionRow}
     >
-      <span>{optionLabel(opt, pending, state)}</span>
+      <span><Rich text={optionLabel(opt, pending, state)} d={state.data} /></span>
       <span style={{ ...factStyle, ...(recommended ? { color: colors.accentText } : {}), display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
         {opt.action.type === 'attack.pool' && dice ? <DiceChips dice={dice} /> : null}
         {facts.filter((f) => !(opt.action.type === 'attack.pool' && f.id === 'dice')).map((f) => (

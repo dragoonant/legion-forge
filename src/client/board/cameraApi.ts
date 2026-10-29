@@ -18,6 +18,10 @@ export interface CameraApi {
    * input, a preset or another flyTo), so the director never fights the player.
    */
   flyTo(view: CameraView, ms: number): Promise<boolean>
+  /** the point on the ground plane under a page pixel, or null when the pixel looks at the sky */
+  groundAt?(clientX: number, clientY: number): { x: number; z: number } | null
+  /** while locked, one-finger drags and mouse drags no longer move the camera (a hinge or trooper is being dragged) */
+  lockPan?(on: boolean): void
   /** a view looking at (x, z) from the current azimuth and tilt at `distance` (clamped to the camera limits) */
   focusView(x: number, z: number, distance: number): CameraView
   /**

@@ -33,6 +33,8 @@ import { useSettings } from '../presentation/settings'
 import { setTrayHold } from '../dice/trayStore'
 import type { BotTier, SeatMode } from '../params'
 import { botDelayMs, isWatching, startsAttackSequence } from './pacing'
+import { emptyLedger, recordLedger, type Ledger } from './ledger'
+import { buildEnvelope, clearSave, restoreSave, writeSave, type SaveEnvelope } from './saveGame'
 
 export interface GameMeta {
   seed: string
@@ -64,6 +66,8 @@ interface GameStore {
   viewer: Seat
   /** every event of the battle in order, redacted for the viewer (end screen, tests); bounded */
   events: GameEvent[]
+  /** scores, losses and every seat's hidden decisions, from the unredacted events (the end screen's recap and AI audit) */
+  ledger: Ledger
   rejection: { code: string; reason: string; nonce: number } | null
   // ---- watch mode (no human seat): pacing of the bot loop. Ignored whenever a human plays.
   paused: boolean
@@ -76,6 +80,10 @@ interface GameStore {
   stepOnce(): void
   setPauseOnAttacks(on: boolean): void
   newGame(opts: NewGameOptions): void
+  /** Continue a saved battle: replay its log, check the hash, open on the board. A failure changes nothing and says why. */
+  resumeFrom(env: SaveEnvelope): { ok: true } | { ok: false; reason: string }
+  /** write the autosave now (the page is going away) */
+  flushSave(): void
   /** Answer the pending decision. A rejection of a bot seat's action is only logged; a human's shows one toast. */
   dispatch(action: Action): Rejection | null
   /** answer the pending decision for the viewer's seat with the option whose id matches */
@@ -140,10 +148,42 @@ export const useGame = create<GameStore>((set, get) => {
     const prevEvents = get().events
     const all = prevEvents.length + shown.length > EVENT_LIMIT ? [...prevEvents.slice(-(EVENT_LIMIT / 2)), ...shown] : [...prevEvents, ...shown]
     const v = view(state, viewer)
-    set({ state, pending, legal: legalFor(state, pending), events: all })
+    set({ state, pending, legal: legalFor(state, pending), events: all, ledger: recordLedger(get().ledger, events, state) })
     pushSnapshot(state.seq, v)
     enqueueBatch({ seq: state.seq, events: shown, state: v })
+    autosave(state.phase === 'ended')
     scheduleBot()
+  }
+
+  // ---- Save and Continue: the envelope is rewritten after every accepted action while a human plays. When a human owes the next
+  // answer it is written at once (that is when the player may close the page); between bot answers writes are coalesced.
+  let saveTimer: ReturnType<typeof setTimeout> | null = null
+  function writeNow(): void {
+    if (saveTimer) {
+      clearTimeout(saveTimer)
+      saveTimer = null
+    }
+    const { state, seats, meta, ledger, viewer } = get()
+    if (!state || !meta || isWatching(seats)) return
+    if (state.phase === 'ended') {
+      clearSave()
+      return
+    }
+    writeSave(buildEnvelope({ state, file: engineSave(state), seats, tier: meta.tier, builds: meta.builds, battle: meta.battle, ledger, viewer }))
+  }
+  function autosave(ended: boolean): void {
+    if (ended) {
+      writeNow()
+      return
+    }
+    const { pending, seats } = get()
+    const humanOwes = !!pending && owedSeats(pending).some((s) => seats[s] === 'human')
+    if (humanOwes) writeNow()
+    else if (!saveTimer) saveTimer = setTimeout(writeNow, 300)
+  }
+  function cancelSave(): void {
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = null
   }
 
   function botSeatOwing(pending: PendingDecision | null): Seat | null {
@@ -310,6 +350,7 @@ export const useGame = create<GameStore>((set, get) => {
     seats: { A: 'human', B: 'bot' },
     viewer: 'A',
     events: [],
+    ledger: emptyLedger(),
     rejection: null,
     paused: false,
     pauseReason: null,
@@ -340,6 +381,7 @@ export const useGame = create<GameStore>((set, get) => {
       resetDirector()
       clearAnims()
       clearFeed()
+      cancelSave()
       const viewer = viewerOf(opts.seats)
       setLabelPerspective(isWatching(opts.seats) ? null : viewer)
       const setup = buildGameSetup(opts.builds, { battle: opts.battle ?? null, ...(opts.options ? { options: opts.options } : {}) })
@@ -347,14 +389,42 @@ export const useGame = create<GameStore>((set, get) => {
       const tier = opts.tier ?? 'random'
       AiWorkerClient.reset() // the worker forgets every earlier game's activation memory
       bots = { A: createBot(tier, `${opts.seed}:A`), B: createBot(tier, `${opts.seed}:B`) }
-      set({ state: null, pending: null, legal: null, events: [], rejection: null, seats: { ...opts.seats }, viewer, meta: { seed: opts.seed, builds: opts.builds, battle: opts.battle ?? null, tier } })
+      set({ state: null, pending: null, legal: null, events: [], ledger: emptyLedger(), rejection: null, seats: { ...opts.seats }, viewer, meta: { seed: opts.seed, builds: opts.builds, battle: opts.battle ?? null, tier } })
       const v = view(r.state, viewer)
       resetPresentation(r.state.seq, v)
       const shown = redactEvents(r.events, viewer)
-      set({ state: r.state, pending: r.pending, legal: legalFor(r.state, r.pending), events: [...shown] })
+      set({ state: r.state, pending: r.pending, legal: legalFor(r.state, r.pending), events: [...shown], ledger: recordLedger(emptyLedger(), r.events, r.state) })
       enqueueBatch({ seq: r.state.seq, events: shown, state: v })
       startWatchdog()
       scheduleBot()
+    },
+
+    resumeFrom(env) {
+      const restored = restoreSave(env)
+      if (!restored.ok) return restored
+      const { state, pending } = restored.result
+      generation++
+      if (botTimer) clearTimeout(botTimer)
+      cancelSave()
+      resetWatch()
+      resetDirector()
+      clearAnims()
+      clearFeed()
+      const viewer = viewerOf(env.seats)
+      setLabelPerspective(isWatching(env.seats) ? null : viewer)
+      AiWorkerClient.reset()
+      const seed = env.file.seed
+      bots = { A: createBot(env.tier, `${seed}:A`), B: createBot(env.tier, `${seed}:B`) }
+      set({ seats: { ...env.seats }, viewer, meta: { seed, builds: env.builds, battle: env.battle, tier: env.tier } })
+      set({ state, pending, legal: legalFor(state, pending), events: [], ledger: env.ledger, rejection: null })
+      resetPresentation(state.seq, view(state, viewer))
+      startWatchdog()
+      scheduleBot()
+      return { ok: true }
+    },
+
+    flushSave() {
+      writeNow()
     },
 
     dispatch(action) {
@@ -404,8 +474,9 @@ export const useGame = create<GameStore>((set, get) => {
       resetDirector()
       clearAnims()
       clearFeed()
+      writeNow() // leaving mid-battle keeps the latest autosave; an ended battle clears it
       resetPresentation(-1, null)
-      set({ state: null, pending: null, legal: null, meta: null, events: [], rejection: null })
+      set({ state: null, pending: null, legal: null, meta: null, events: [], ledger: emptyLedger(), rejection: null })
     },
   }
 })

@@ -10,9 +10,10 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { MathUtils, MOUSE, TOUCH, Vector3 } from 'three'
+import { MathUtils, MOUSE, Plane, Raycaster, TOUCH, Vector2, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { cameraApi, type CameraView } from './cameraApi'
+import { cameraTweenFactor } from '../presentation/settings'
 import { createTapGuard, TILT_DEADZONE, tiltFromDrag, twoFingerOffset } from './touchCamera'
 
 export { TAP_SLOP, createTapGuard } from './touchCamera'
@@ -295,6 +296,18 @@ export function CameraRig({ halfX, halfZ, preset, leftDrag = false }: { halfX: n
         c.update()
         invalidate()
       },
+      groundAt(clientX, clientY) {
+        const r = gl.domElement.getBoundingClientRect()
+        const ndc = new Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1)
+        const ray = new Raycaster()
+        camera.updateMatrixWorld()
+        ray.setFromCamera(ndc, camera)
+        const hit = ray.ray.intersectPlane(new Plane(new Vector3(0, 1, 0), 0), new Vector3())
+        return hit ? { x: hit.x, z: hit.z } : null
+      },
+      lockPan(on) {
+        if (controls.current) controls.current.enabled = !on
+      },
       get() {
         const c = controls.current
         return { x: c?.target.x ?? 0, z: c?.target.z ?? 0, distance: c ? c.getDistance() : camera.position.length() }
@@ -360,7 +373,7 @@ export function CameraRig({ halfX, halfZ, preset, leftDrag = false }: { halfX: n
     if (!c) return
     const tw = tween.current
     if (tw) {
-      const f = Math.min(1, (performance.now() - tw.t0) / (tw.ms ?? PRESET_MS))
+      const f = Math.min(1, (performance.now() - tw.t0) / Math.max(1, (tw.ms ?? PRESET_MS) * cameraTweenFactor()))
       const e = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2
       if (tw.turn !== undefined) camera.position.copy(tw.fromP).sub(tw.fromT).applyAxisAngle(UP, tw.turn * e).add(tw.fromT)
       else camera.position.lerpVectors(tw.fromP, tw.toP, e)

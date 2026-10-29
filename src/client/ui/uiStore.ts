@@ -9,6 +9,8 @@ export interface Pt {
 
 export type CameraRequest = 'home' | 'top' | 'left' | 'right'
 export type ToolMode = 'none' | 'ruler' | 'los'
+/** Right-edge drawers of the phone layout (one open at a time). */
+export type Drawer = 'tools' | 'log' | 'goals' | 'card' | 'more'
 
 interface UiState {
   /** the unit whose card is shown */
@@ -42,6 +44,13 @@ interface UiState {
   losPair: string[]
   /** ruler: a clicked point */
   rulerPoint: Pt | null
+  /** touch: a unit tapped on the board to answer the open decision, waiting for the confirm bar */
+  pick: { unitId: string; optionId: string } | null
+  /** the how-to-play guide and the settings panel (start screen and battle) */
+  helpOpen: boolean
+  settingsOpen: boolean
+  /** phone layout: the open right-edge drawer */
+  drawer: Drawer | null
   /** every overlay panel is hidden, leaving the board and the show/hide button (H). One flag: no panel keeps its own. */
   uiHidden: boolean
   setUiHidden(hidden: boolean): void
@@ -70,10 +79,14 @@ export const useUi = create<UiState>((set) => ({
   tool: 'none',
   losPair: [],
   rulerPoint: null,
+  pick: null,
+  helpOpen: false,
+  settingsOpen: false,
+  drawer: null,
   uiHidden: false,
   setUiHidden: (uiHidden) => set({ uiHidden }),
   toggleUi: () => set((s) => ({ uiHidden: !s.uiHidden })),
   set: (p) => set(p),
-  resetDecision: () => set({ facing: null, hover: null, hoverNote: null, hoverOption: null, toolTarget: null, toolHinge: null, trooperDrag: {}, toolNote: null }),
+  resetDecision: () => set({ pick: null, facing: null, hover: null, hoverNote: null, hoverOption: null, toolTarget: null, toolHinge: null, trooperDrag: {}, toolNote: null }),
   requestCamera: (id) => set((s) => ({ cameraPreset: { id, nonce: (s.cameraPreset?.nonce ?? 0) + 1 } })),
 }))

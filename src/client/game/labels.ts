@@ -220,6 +220,32 @@ function attackStepTitle(step: string): string {
   }
 }
 
+/** The same hint worded for a finger (tap, confirm bar), or null when the click wording already fits. */
+export function touchHint(p: PendingDecision): string | null {
+  switch (p.kind) {
+    case 'setup.deploy':
+      return 'Pick a unit below, then tap your territory to stage it. Tap the ghost again, or Place here, to set it down.'
+    case 'command.issuer':
+    case 'command.order':
+      return 'Tap a highlighted unit on the table, or a row below, then confirm.'
+    case 'activation.choose':
+      return 'Tap a unit with a face-up order token and confirm, or draw from the pool.'
+    case 'activation.pick':
+      return 'Tap one of the highlighted units and confirm.'
+    case 'move.tool':
+      if (p.context.kind === 'controlled' || p.context.kind === 'withdraw') return null
+      return 'Tap where the leader should end. Drag the gold hinge to bend the tool; the point rides above your finger. Confirm to commit.'
+    case 'move.troopers':
+      return 'The engine placed the rest of the unit. Drag a model to adjust (it rides above your finger), then confirm.'
+    case 'attack.defender':
+      return 'Tap the unit to shoot or fight, then confirm. Each row shows its range band, cover and expected wounds.'
+    case 'battle.place':
+      return p.context.terrain === 'barricade' ? 'Tap the table to stage the barricade; tap it again, or Turn, to adjust and place it.' : null
+    default:
+      return null
+  }
+}
+
 /** One line on how to answer (what to click), by decision kind. */
 export function decisionHint(p: PendingDecision): string {
   switch (p.kind) {
@@ -389,7 +415,7 @@ function choiceLabel(option: string, opt: DecisionOption, state: Snap): string {
 export const humanize = (s: string): string => s.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[._:-]+/g, ' ').trim().replace(/^./, (c) => c.toUpperCase())
 
 // ---- events
-function reasonText(d: GameData, reason: string): string {
+export function reasonText(d: GameData, reason: string): string {
   // reasons carry card ids and rule keys; ids that name a battle card or command card are shown by their data name
   return reason
     .split(/[|:]/)

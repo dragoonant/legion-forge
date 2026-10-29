@@ -28,8 +28,7 @@ export const STAGED_ROW_PX = 52
 // Every button inside a sheet gets a 44px touch target, whichever component rendered it (WeaponPanel,
 // RerollTray, ...). Inline styles never set min-height, so this wins without touching those files.
 const SHEET_CSS = `
-.ms-sheet { max-height: 45vh; max-height: 45dvh; bottom: 6px; }
-@media (max-height: 420px) { .ms-sheet { max-height: 68vh; max-height: 68dvh; } }
+.ms-sheet { max-height: 46vh; max-height: 46dvh; bottom: 6px; }
 .ms-sheet[data-staged="true"] { right: ${CAMERA_COL_PX + STAGED_BAR_PX + 6}px; min-height: ${STAGED_ROW_PX}px; justify-content: center; }
 .ms-sheet[data-staged="true"][data-collapsed="false"] { z-index: 46; justify-content: flex-start; }
 .ms-sheet button { min-height: ${TOUCH_MIN}px; min-width: ${TOUCH_MIN}px; touch-action: manipulation; }
@@ -96,6 +95,9 @@ export function BottomSheet({
   summary,
   footer,
   children,
+  attrs,
+  left = 8,
+  right = CAMERA_COL_PX,
 }: {
   testId: string
   title: ReactNode
@@ -109,6 +111,11 @@ export function BottomSheet({
   /** Pinned under the scrolling body while expanded. */
   footer?: ReactNode
   children?: ReactNode
+  /** extra data-* attributes for the sheet element (the e2e specs read the decision kind from them) */
+  attrs?: Record<string, string>
+  /** clearance from the left and right edges of the overlay layer, in px */
+  left?: number
+  right?: number
 }) {
   const [collapsed, setCollapsed] = useState(auto)
   useEffect(() => { setCollapsed(auto) }, [auto, autoKey])
@@ -135,7 +142,7 @@ export function BottomSheet({
   }
 
   return (
-    <div className="ms-sheet" style={sheet} data-testid={testId} data-collapsed={collapsed ? 'true' : 'false'} data-staged={staged ? 'true' : 'false'}>
+    <div className="ms-sheet lf-touch" style={{ ...sheet, left, right }} {...attrs} data-testid={testId} data-collapsed={collapsed ? 'true' : 'false'} data-staged={staged ? 'true' : 'false'}>
       <style>{SHEET_CSS}</style>
       <div style={headerRow}>
         <div

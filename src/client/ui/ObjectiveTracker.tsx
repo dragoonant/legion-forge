@@ -4,6 +4,8 @@ import type { Seat } from '@/engine'
 import { battleCardName, battleCardText, seatName, type Snap } from '../game/labels'
 import { useDisplayState, type DisplayState } from '../presentation/presentedStore'
 import { useGame } from '../store/game'
+import { useFormFactor } from './formFactor'
+import { Rich } from './Keyword'
 import { Pill } from './promptParts'
 import { colors, fontStack, panel } from './theme'
 import { useUi } from './uiStore'
@@ -29,24 +31,20 @@ function CardBlock({ state, id, label }: { state: DisplayState; id: string; labe
     <div style={{ marginBottom: 8 }}>
       <div style={{ fontSize: 10, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6 }}>{label}</div>
       <div style={{ fontWeight: 800 }}>{battleCardName(state.data, id)}</div>
-      <div style={{ fontSize: 12, lineHeight: 1.4 }}>{battleCardText(state.data, id)}</div>
+      <div style={{ fontSize: 12, lineHeight: 1.4 }}><Rich text={battleCardText(state.data, id)} d={state.data} /></div>
     </div>
   )
 }
 
-export function ObjectiveTracker() {
+/** The objectives and scores (shared by the desktop panel and the phone drawer). */
+export function ObjectiveBody() {
   const state = useDisplayState()
-  const open = useUi((s) => s.briefingOpen)
   const viewer = useGame((s) => s.viewer)
-  if (!state || !open) return null
+  if (!state) return null
   const cards = cardsOf(state, viewer)
   const fmt = state.data.formats?.[state.origin.setup.format ?? 'recon'] as { instantWinVp?: number; rounds?: number } | undefined
   return (
-    <div className="lf-touch" data-testid="objective-tracker" style={{ ...panel, position: 'absolute', top: 76, right: 8, width: 'min(380px, calc(100vw - 16px))', maxHeight: 'calc(100vh - 150px)', overflowY: 'auto', scrollbarWidth: 'none', padding: 12, fontFamily: fontStack, pointerEvents: 'auto', zIndex: 35, boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <b style={{ fontSize: 15 }}>Objectives</b>
-        <Btn onClick={() => useUi.setState({ briefingOpen: false })} style={{ padding: '2px 8px' }}>Close</Btn>
-      </div>
+    <div data-testid="objective-body">
       <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         {(['A', 'B'] as const).map((s) => (
           <div key={s} style={{ flex: 1, borderTop: `3px solid ${seatColor(s)}`, background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: 6 }}>
@@ -66,6 +64,21 @@ export function ObjectiveTracker() {
       ) : (
         <Pill kind="muted" label="Battle cards are drawn once the table edge is chosen" />
       )}
+    </div>
+  )
+}
+
+export function ObjectiveTracker() {
+  const open = useUi((s) => s.briefingOpen)
+  const { compact } = useFormFactor()
+  if (!open || compact) return null
+  return (
+    <div className="lf-touch" data-testid="objective-tracker" style={{ ...panel, position: 'absolute', top: 76, right: 8, width: 'min(380px, calc(100vw - 16px))', maxHeight: 'calc(100vh - 150px)', overflowY: 'auto', scrollbarWidth: 'none', padding: 12, fontFamily: fontStack, pointerEvents: 'auto', zIndex: 35, boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <b style={{ fontSize: 15 }}>Objectives</b>
+        <Btn onClick={() => useUi.setState({ briefingOpen: false })} style={{ padding: '2px 8px' }}>Close</Btn>
+      </div>
+      <ObjectiveBody />
     </div>
   )
 }

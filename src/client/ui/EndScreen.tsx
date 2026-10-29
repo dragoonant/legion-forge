@@ -7,6 +7,8 @@ import { useGame } from '../store/game'
 import { isWatching } from '../store/pacing'
 import { useSession } from '../store/session'
 import { colors, panel } from './theme'
+import { Recap } from './EndRecap'
+import { useFormFactor } from './formFactor'
 import { Btn, seatColor } from './widgets'
 
 const REASON: Record<string, string> = { battle: 'The battle ran its course.', resign: 'A seat resigned.', concede: 'A seat conceded.', roundLimit: 'The last round ended.' }
@@ -15,15 +17,19 @@ export function EndScreen() {
   const state = useDisplayState()
   const result = useGame((s) => s.state?.result ?? null)
   const watching = useGame((s) => isWatching(s.seats))
+  const ledger = useGame((s) => s.ledger)
+  const seats = useGame((s) => s.seats)
   const session = useSession()
+  const { compact } = useFormFactor()
   if (!state || !result) return null
+  const aiSeats = (['A', 'B'] as const).filter((s) => seats[s] === 'bot')
   const snap = state as Snap
   const headline = result.winner === 'draw' ? 'The battle is a draw' : `${seatName(snap, result.winner)} ${seatName(snap, result.winner) === 'You' ? 'win' : 'wins'}`
   const lost = (seat: Seat) => Object.values(state.units).filter((u) => u.seat === seat && u.location === 'defeated')
   const left = (seat: Seat) => Object.values(state.units).filter((u) => u.seat === seat && u.location !== 'defeated')
   return (
-    <div className="lf-touch" data-testid="end-screen" style={{ position: 'absolute', inset: 0, background: 'rgba(8,10,16,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: 10, boxSizing: 'border-box', pointerEvents: 'auto' }}>
-      <div style={{ ...panel, padding: 22, width: 'min(560px, 100%)', maxHeight: '92vh', overflowY: 'auto', scrollbarWidth: 'none' }}>
+    <div className="lf-touch" data-testid="end-screen" style={{ position: 'absolute', inset: 0, background: 'rgba(8,10,16,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90, padding: 'max(10px, var(--safe-top)) max(10px, var(--safe-right)) max(10px, var(--safe-bottom)) max(10px, var(--safe-left))', boxSizing: 'border-box', pointerEvents: 'auto' }}>
+      <div style={{ ...panel, padding: compact ? 12 : 22, width: 'min(680px, 100%)', maxHeight: '100%', overflowY: 'auto', scrollbarWidth: 'none', boxSizing: 'border-box' }}>
         <h1 data-testid="result" data-winner={result.winner} style={{ margin: 0, fontSize: 28, color: colors.accent }}>{headline}</h1>
         <p style={{ color: colors.muted, margin: '4px 0 12px' }}>{REASON[result.reason] ?? ''} Round {state.round}.</p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -37,7 +43,8 @@ export function EndScreen() {
             </div>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        <Recap state={state} ledger={ledger} aiSeats={aiSeats} />
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'flex-end', flexWrap: 'wrap', position: 'sticky', bottom: compact ? -12 : -22, background: colors.bgSolid, padding: '10px 0 2px', borderTop: `1px solid ${colors.border}` }}>
           <Btn data-testid="back-to-menu" onClick={() => session.backToMenu()}>Main menu</Btn>
           <Btn data-testid="play-again" variant="primary" onClick={() => session.playAgain()}>{watching ? 'Watch another' : 'Play again'}</Btn>
         </div>

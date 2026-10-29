@@ -49,10 +49,28 @@ function unitDimsOf(state: GameState, unitId: string): { radius: number; height:
   return { radius: base?.radius ?? 0.53, height: sil?.height ?? 1.7, ...(ud?.figure?.archetype ? { archetype: ud.figure.archetype } : {}), ...(ud?.faction ? { faction: ud.faction } : {}) }
 }
 
+/** The model's real base (the radius the engine uses for range, cohesion and overlap), drawn flat on the table in the verdict colour:
+ *  a filled disc and a bold ring that show through the figure, so an illegal spot reads red at the true size of the base. */
+export function BaseFootprint({ radius, color }: { radius: number; color: string }) {
+  return (
+    <group rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.15, 0]} renderOrder={5} name="base-footprint" userData={{ radius }}>
+      <mesh>
+        <circleGeometry args={[radius, 40]} />
+        <meshBasicMaterial color={color} transparent opacity={0.28} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, 0, 0.01]}>
+        <ringGeometry args={[radius * 0.9, radius, 40]} />
+        <meshBasicMaterial color={color} transparent opacity={0.95} depthWrite={false} />
+      </mesh>
+    </group>
+  )
+}
+
 export function MiniGhost({ state, unitId, x, z, yaw, color, opacity = 0.55, leader = false, y = 0 }: { state: GameState; unitId: string; x: number; z: number; yaw: number; color: string; opacity?: number; leader?: boolean; y?: number }) {
   const d = unitDimsOf(state, unitId)
   return (
     <group position={[x, y, z]} rotation={[0, yaw, 0]}>
+      <BaseFootprint radius={d.radius} color={color} />
       <Procedural height={d.height} baseRadius={d.radius} look={lookFor(d.archetype, d.faction)} seatColor={color} isLeader={leader} ghost={{ color, opacity }} />
     </group>
   )
@@ -201,17 +219,23 @@ function MoveStartMarker({ state, unitId }: { state: GameState; unitId: string |
 /** The hinge of the aimed tool: drag it to bend the tool. */
 function HingeHandle({ at }: { at: Vec2 }) {
   return (
-    <mesh
+    <group
       position={[at.x, 0.7, at.z]}
-      renderOrder={20}
       onPointerDown={(e) => {
         e.stopPropagation()
         beginDrag({ kind: 'hinge' })
       }}
     >
-      <sphereGeometry args={[0.6, 18, 14]} />
-      <meshBasicMaterial color={colors.actable} depthTest={false} transparent opacity={0.95} />
-    </mesh>
+      <mesh renderOrder={20}>
+        <sphereGeometry args={[0.6, 18, 14]} />
+        <meshBasicMaterial color={colors.actable} depthTest={false} transparent opacity={0.95} />
+      </mesh>
+      {/* a finger needs a wider grip than the mark: an invisible sphere about an inch and a half across */}
+      <mesh>
+        <sphereGeometry args={[1.6, 10, 8]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </group>
   )
 }
 
@@ -254,7 +278,7 @@ export function TroopersLayer({ state, pending }: { state: GameState; pending: P
             <MiniGhost state={state} unitId={unitId} x={p.x} z={p.z} yaw={t.yaw} color={colour} opacity={sel === t.miniId ? 0.85 : 0.6} />
             {/* a bigger invisible disc makes the ghost easy to grab */}
             <mesh position={[p.x, 0.2, p.z]} visible={false}>
-              <cylinderGeometry args={[0.9, 0.9, 0.4, 12]} />
+              <cylinderGeometry args={[1.5, 1.5, 0.4, 12]} />
               <meshBasicMaterial />
             </mesh>
           </group>

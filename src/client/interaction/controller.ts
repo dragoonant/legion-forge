@@ -9,7 +9,26 @@ import { humanToAct, useGame } from '../store/game'
 import { rejectionText } from '../game/labels'
 import { previewToward, type ToolPreview } from '../game/toolApi'
 import { pushToast } from '../presentation/feedStore'
+import { cameraApi } from '../board/cameraApi'
 import { useUi, type Pt } from '../ui/uiStore'
+
+// ---------------------------------------------------------------- touch input
+
+let lastPointerType: string = 'mouse'
+if (typeof window !== 'undefined') window.addEventListener('pointerdown', (e) => { lastPointerType = e.pointerType }, true)
+/** Was the latest pointer a finger? Decides the two-step placement and the lifted hinge. */
+export const isTouchInput = (): boolean => lastPointerType === 'touch'
+
+/** CSS px a dragged hinge or trooper is held above the finger, so the base stays visible. */
+export const TOUCH_LIFT_PX = 72
+/** Inches within which a second tap counts as "the same spot" and places what the first tap staged. */
+export const SAME_SPOT = 1.4
+
+/** The world point under a pointer, lifted above the finger when the pointer is a finger. */
+export function dragPoint(clientX: number, clientY: number, touch: boolean, fallback: Pt): Pt {
+  if (!touch) return fallback
+  return cameraApi.current?.groundAt?.(clientX, clientY - TOUCH_LIFT_PX) ?? fallback
+}
 
 const round3 = (n: number): number => Math.round(n * 1000) / 1000
 
@@ -145,8 +164,10 @@ export type Drag = { kind: 'hinge' } | { kind: 'trooper'; id: string }
 let drag: Drag | null = null
 export function beginDrag(d: Drag): void {
   drag = d
+  cameraApi.current?.lockPan?.(true) // a finger dragging a hinge must not also pan the board
 }
 export function endDrag(): void {
+  if (drag) cameraApi.current?.lockPan?.(false)
   drag = null
 }
 export const isDragging = (): boolean => drag !== null
@@ -186,6 +207,11 @@ export function hoverPoint(pt: Pt | null): void {
 /** A click on the table: places a deployment, aims the movement tool, or sets the ruler point. */
 export function clickPoint(pt: Pt): void {
   const ui = useUi.getState()
+  if (ui.pick) {
+    // tapping the bare table drops a unit picked by touch
+    useUi.setState({ pick: null, selected: null })
+    return
+  }
   if (ui.tool === 'ruler') {
     useUi.setState({ rulerPoint: pt })
     return
@@ -197,6 +223,11 @@ export function clickPoint(pt: Pt): void {
     case 'setup.deploy': {
       const unitId = deployUnitFor(pending, ui.deployUnit)
       if (!unitId) return
+      // a finger has no hover: the first tap stages the ghost (green or red with the reason), a second tap on it places the unit
+      if (isTouchInput() && !stagedAt(pt)) {
+        hoverPoint(pt)
+        return
+      }
       const leader: Pose2 = { x: round3(pt.x), z: round3(pt.z), yaw: deployFacing(pending, ui.facing) }
       const action = act.deploy(pending, unitId, leader)
       void seat
@@ -220,12 +251,44 @@ export function clickPoint(pt: Pt): void {
       if (ui.hoverOption) useUi.setState({ trooperDrag: { ...ui.trooperDrag, [ui.hoverOption]: pt } })
       return
     case 'battle.place': {
+      if (isBarricade(pending) && isTouchInput() && !stagedAt(pt)) {
+        hoverPoint(pt)
+        return
+      }
       useGame.getState().dispatch(isBarricade(pending) ? barricadeAction(pending, pt, deployFacing(pending, ui.facing)) : act.place(pending, round3(pt.x), round3(pt.z)))
       return
     }
     default:
       void state
   }
+}
+
+/** Is `pt` the spot a previous tap staged (a second tap on it commits)? */
+function stagedAt(pt: Pt): boolean {
+  const { hover, hoverNote } = useUi.getState()
+  return !!hover && !!hoverNote?.ok && Math.hypot(hover.x - pt.x, hover.z - pt.z) < SAME_SPOT
+}
+
+/** Place what a touch tap staged (the prompt's Place button): a deployment or a barricade at the staged spot. */
+export function placeStaged(): boolean {
+  const ui = useUi.getState()
+  const l = live()
+  if (!l || !ui.hover || !ui.hoverNote?.ok) return false
+  const { pending } = l
+  if (pending.kind === 'setup.deploy') {
+    const unitId = deployUnitFor(pending, ui.deployUnit)
+    if (!unitId) return false
+    const leader: Pose2 = { x: round3(ui.hover.x), z: round3(ui.hover.z), yaw: deployFacing(pending, ui.facing) }
+    const rej = useGame.getState().dispatch(act.deploy(pending, unitId, leader))
+    if (!rej) useUi.setState({ deployUnit: null, hover: null, hoverNote: null })
+    return !rej
+  }
+  if (isBarricade(pending)) {
+    const rej = useGame.getState().dispatch(barricadeAction(pending, ui.hover, deployFacing(pending, ui.facing)))
+    if (!rej) useUi.setState({ hover: null, hoverNote: null })
+    return !rej
+  }
+  return false
 }
 
 /** Confirm the aimed movement tool (the button, Enter, or a second click). */
@@ -267,6 +330,11 @@ export function clickUnit(unitId: string): void {
   if (l) {
     const opts = optionsForUnit(l.pending, unitId).filter((o) => o.action.seat === l.seat)
     if (UNIT_CLICK_KINDS.includes(l.pending.kind) && opts.length === 1) {
+      // a finger covers what it taps: the unit is picked first and a slim bar asks to confirm
+      if (isTouchInput()) {
+        useUi.setState({ pick: { unitId, optionId: opts[0]!.id }, selected: unitId })
+        return
+      }
       useGame.getState().dispatch(opts[0]!.action)
       return
     }
@@ -279,9 +347,34 @@ export function clickUnit(unitId: string): void {
   useUi.setState({ selected: unitId })
 }
 
+/** The unit picked on the board by touch, with the option it would answer. */
+export function pickedOption(): { unitId: string; option: DecisionOption } | null {
+  const pick = useUi.getState().pick
+  const l = live()
+  if (!pick || !l) return null
+  const option = (l.pending.options ?? []).find((o) => o.id === pick.optionId && o.action.seat === l.seat)
+  return option ? { unitId: pick.unitId, option } : null
+}
+
+/** The confirm bar's Confirm: answer the open decision with the picked unit's option. */
+export function confirmPick(): boolean {
+  const p = pickedOption()
+  useUi.setState({ pick: null, selected: null })
+  if (!p) return false
+  return !useGame.getState().dispatch(p.option.action)
+}
+
+export function cancelPick(): void {
+  useUi.setState({ pick: null, selected: null })
+}
+
 /** Escape / right click: cancels a pending move before anything resolved, else clears the tool and selection. */
 export function cancelDecision(): boolean {
   const ui = useUi.getState()
+  if (ui.pick) {
+    cancelPick()
+    return true
+  }
   if (ui.tool !== 'none') {
     useUi.setState({ tool: 'none', losPair: [], rulerPoint: null })
     return true

@@ -7,7 +7,7 @@ import type { UnitData, WeaponData, UpgradeData } from '@/data/types'
 import { factionName, rankName, tokenName, unitTypeName, upgradeName, weaponName, type Snap } from '../game/labels'
 import { unitChips, woundPips } from '../figures/UnitPips'
 import { DiceChips } from './AttackPrompts'
-import { Keyword, KeywordList } from './Keyword'
+import { Keyword, KeywordList, Rich } from './Keyword'
 import { RankGlyph } from './OrderPool'
 import { colors, panel } from './theme'
 
@@ -110,7 +110,7 @@ export function UnitCardView({ d, typeId, upgrades = [], live, state, compact = 
         <span style={{ marginLeft: 'auto', color: colors.muted }}>{m.points} pts</span>
       </div>
       <div style={{ color: colors.muted, marginBottom: 6 }}>
-        {m.subtitle ? `${m.subtitle} · ` : ''}{m.rankName} · {m.faction}
+        {m.subtitle ? `${m.subtitle} · ` : ''}<Rich text={m.rankName} d={d} /> · {m.faction}
       </div>
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 6 }}>
         <Stat label="Speed" value={m.speed} />
@@ -122,7 +122,7 @@ export function UnitCardView({ d, typeId, upgrades = [], live, state, compact = 
       {live && (
         <div style={{ marginBottom: 6, fontSize: 11 }}>
           <Keyword term="Suppression">Suppression</Keyword> {live.suppression}{m.courage !== null ? ` / courage ${m.courage}` : ''}
-          {chips.length > 0 && <span style={{ color: colors.muted }}> · {chips.map((c) => c.help).join(', ')}</span>}
+          {chips.length > 0 && <span style={{ color: colors.muted }}> · <Rich text={chips.map((c) => c.help).join(', ')} d={d} /></span>}
         </div>
       )}
       {!compact && m.weapons.length > 0 && (
@@ -148,9 +148,9 @@ export function UnitCardView({ d, typeId, upgrades = [], live, state, compact = 
           <KeywordList d={d} list={m.keywords} />
         </div>
       )}
-      {m.upgrades.length > 0 && <div style={{ color: colors.muted }}>Upgrades: {m.upgrades.map((u) => u.name).join(', ')}</div>}
+      {m.upgrades.length > 0 && <div style={{ color: colors.muted }}>Upgrades: <Rich text={m.upgrades.map((u) => u.name).join(', ')} d={d} /></div>}
       {live && Object.entries(live.tokens).some(([, n]) => n > 0) && (
-        <div style={{ color: colors.muted, marginTop: 3 }}>{Object.entries(live.tokens).filter(([, n]) => n > 0).map(([k, n]) => `${tokenName(d, k)} x${n}`).join(', ')}</div>
+        <div style={{ color: colors.muted, marginTop: 3 }}><Rich text={Object.entries(live.tokens).filter(([, n]) => n > 0).map(([k, n]) => `${tokenName(d, k)} x${n}`).join(', ')} d={d} /></div>
       )}
     </div>
   )

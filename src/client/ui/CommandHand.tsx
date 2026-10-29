@@ -7,7 +7,7 @@ import type { Action, PendingDecision } from '@/engine'
 import { cardName, cardText } from '../game/labels'
 import { owedSeats, useGame } from '../store/game'
 import type { DisplayState } from '../presentation/presentedStore'
-import { Keyword } from './Keyword'
+import { Keyword, Rich } from './Keyword'
 import { colors, fontStack } from './theme'
 
 export function Pips({ n, color = colors.accent }: { n: number; color?: string }) {
@@ -51,7 +51,7 @@ function CardFace({ state, id, picked, enabled, onPick }: { state: DisplayState;
         <Keyword term="Pips"><Pips n={rec?.pips ?? 0} /></Keyword>
       </div>
       <div style={{ fontSize: 11, color: colors.muted, margin: '2px 0 4px' }}>{ordersLine(rec)}</div>
-      <div style={{ fontSize: 11, lineHeight: 1.35 }}>{cardText(state.data, id)}</div>
+      <div style={{ fontSize: 11, lineHeight: 1.35 }}><Rich text={cardText(state.data, id)} d={state.data} /></div>
     </button>
   )
 }

@@ -1,12 +1,52 @@
 // Start screen (Starbound skin): pick your side and one of the Recon army lists for each seat, the objective, the bot tier and the seed,
 // then go to the briefing. Carries the "unofficial, non-commercial fan project" notice. Every faction, list and card name is data.
 import { useMemo } from 'react'
-import { dataBundle, factionsWithLists, objectiveCards, reconLists } from '../game/adapter'
+import { dataBundle, engineBundle, factionsWithLists, objectiveCards, reconLists } from '../game/adapter'
+import { factionName } from '../game/labels'
+import { ago, clearSave } from '../store/saveGame'
 import { useSession, randomSeed } from '../store/session'
 import type { BotTier } from '../params'
 import type { Seat } from '@/engine'
 import { colors, menuPage, plate, sectionTitle } from './theme'
+import { useUi } from './uiStore'
 import { Btn, TouchStyle } from './widgets'
+
+const PHASE: Record<string, string> = { setup: 'set-up', command: 'command phase', activation: 'activation phase', end: 'end phase', ended: 'finished' }
+const TIER_NAME: Record<BotTier, string> = { normal: 'Normal AI', easy: 'Easy AI', random: 'Random AI', hard: 'Hard AI' }
+
+/** The saved battle, if any: factions, round, phase, opponent and when it was last played. */
+function ContinueCard() {
+  const save = useSession((s) => s.save)
+  const notice = useSession((s) => s.notice)
+  const d = engineBundle().data
+  return (
+    <>
+      {notice && (
+        <div role="status" data-testid="save-notice" style={{ ...plate, padding: '10px 14px', borderLeft: `4px solid ${colors.danger}`, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>{notice}</span>
+          <Btn onClick={() => useSession.getState().dismissNotice()}>Dismiss</Btn>
+        </div>
+      )}
+      {save && (
+        <section data-testid="continue-card" style={{ ...plate, padding: 14, borderLeft: `4px solid ${colors.accent}`, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <div>
+            <h2 style={sectionTitle}>Continue your battle</h2>
+            <div style={{ margin: '4px 0 2px', fontWeight: 800 }}>
+              <span data-testid="continue-factions">{factionName(d, save.summary.yourFaction)} against {factionName(d, save.summary.theirFaction)}</span>
+            </div>
+            <div style={{ color: colors.muted, fontSize: 13 }} data-testid="continue-detail">
+              Round {Math.max(1, save.summary.round)}, {PHASE[save.summary.phase] ?? save.summary.phase} · {TIER_NAME[save.summary.tier]} · saved {ago(save.savedAt, Date.now())}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn data-testid="discard-save" onClick={() => { clearSave(); useSession.getState().refreshSave() }}>Discard</Btn>
+            <Btn variant="primary" data-testid="continue-game" onClick={() => useSession.getState().continueGame()} style={{ padding: '10px 22px' }}>Continue</Btn>
+          </div>
+        </section>
+      )}
+    </>
+  )
+}
 
 const TIERS: { id: BotTier; label: string; ready: boolean }[] = [
   { id: 'normal', label: 'Normal (plans its activations)', ready: true },
@@ -66,6 +106,7 @@ export function StartScreen() {
           <h1 style={{ margin: 0, fontSize: 40, letterSpacing: '0.06em', color: colors.accent }}>Legion Forge</h1>
           <p style={{ margin: '6px 0 0', color: colors.muted }}>Command your squads in a 3D skirmish on the Recon table. You play against a bot.</p>
         </header>
+        <ContinueCard />
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           <SidePicker seat="A" title="Your side" />
           <SidePicker seat="B" title="Opponent" />
@@ -99,6 +140,8 @@ export function StartScreen() {
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Btn variant="primary" data-testid="start-battle" onClick={() => s.setScreen('briefing')} style={{ fontSize: 17, padding: '12px 28px' }}>Review and start</Btn>
           <Btn data-testid="watch-bots" onClick={() => s.launchWatch()} style={{ padding: '12px 18px' }}>Watch two bots play</Btn>
+          <Btn data-testid="open-howto" onClick={() => useUi.setState({ helpOpen: true })} style={{ padding: '12px 18px' }}>How to play</Btn>
+          <Btn data-testid="open-settings" onClick={() => useUi.setState({ settingsOpen: true })} style={{ padding: '12px 18px' }}>Settings</Btn>
         </div>
         <footer data-testid="fan-notice" style={{ textAlign: 'center', color: colors.muted, fontSize: 12, lineHeight: 1.5, marginTop: 8 }}>
           Unofficial, non-commercial fan project. Not affiliated with or endorsed by Atomic Mass Games, Lucasfilm or Disney. Star Wars and Star Wars: Legion are trademarks of their owners, used only to name the game this port follows. Rules text and prose here are our own; all art is original. Made by evilgouki.
