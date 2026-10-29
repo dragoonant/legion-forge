@@ -1,15 +1,20 @@
-# HANDOFF (2026-10-29, end of M0)
+# HANDOFF (2026-10-29, end of M4)
 
-## State
-M0 is done: scaffold, sources, rules primer and leak list, all specs, RULING log, shared KB repo. Nothing playable yet; the page shows a placeholder.
+## Play it
+On the PC: `git pull`, `npm install`, `npm run dev`, open the printed URL. Pick a side and a Recon list, Normal AI is the default. `?seats=bot,bot` watches two AIs; `&speed=instant|fast`, `&seed=<any>`.
+
+## What to look at while playtesting
+1. **Rules feel:** command-card priority, orders and the pool draw, movement tool (click a spot, drag the hinge), rolled cover, suppression and panic, melee charges.
+2. **The AI:** it charges with Vader and the Wookiees, withdraws when outmatched, contests objectives. Known: no lookahead past the current activation.
+3. **Rulings:** `docs/needs-rules-check.md` (Unsourced lines are readings we chose; Vader's Might and Implacable are Port-choice readings of the card).
 
 ## Next
-**M1 data:** encode the Empire and Rebel starter armies (`docs/spec/14-armies.md`), keywords, dice faces, ranks, tokens, bases and silhouettes, movement tool, the Recon battle deck (`11-battle.md`) as JSON per `20-data-schema.md`; port the validator (`05-migration.md` M1 rows); dry-run the schema over every slice record, then freeze it. Then M2 engine.
+- **M5 art** on the Windows PC: paste the kickoff prompt from `docs/spec/30-figures.md` section 8 into a Claude session there (not started yet).
+- **Cloud side, recommended next:** sim speed (structural: skip replay on most sim games, cache attack odds), then M7 polish (phone layout, save/continue, keyword hover everywhere), M8 hot-seat, then the Standard format.
 
 ## Owner checks (not blocking; defaults in use)
-1. Two weapon dice disagree between the AMG card PDFs and Legion HQ 2 (DLT-19x / DH-447 sniper, SX-21): the AMG card reading is used (`14-armies.md` end).
-2. Battle card icons were read by eye from image-only PDFs; a spot-check against physical cards would settle `11-battle.md`.
-3. Settled 2026-10-29: Recon first (D11); community values for dice, tools and silhouettes (D17).
+1. Weapon dice where AMG's card and Legion HQ disagree (DLT-19x / DH-447, SX-21): AMG card used.
+2. Battle-card icons read by eye from image-only PDFs.
 
 ## Where things are
-`STATUS.md` (what exists), `PLAN.md` (decisions D1-D16, milestones), `KICKOFF.md`, `docs/spec/`, `docs/needs-rules-check.md`, `docs/knowledge-base/` (submodule: `git submodule update --init`).
+`STATUS.md`, `PLAN.md` (D1-D19), `KICKOFF.md`, `docs/spec/`, `docs/needs-rules-check.md`, `docs/knowledge-base/` (shared `tabletop-kb` submodule). Agent hand-backs (gitignored) in `tools/out/`.

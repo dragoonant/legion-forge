@@ -1,13 +1,16 @@
-# STATUS (rewritten each milestone; last: M0, 2026-10-29)
+# STATUS (rewritten each milestone; last: M4, 2026-10-29)
+
+## Playable
+Recon (600 pts, 36"x36") Galactic Empire vs Rebel Alliance starter armies, human vs the utility AI (Normal default, Easy, Random) or AI vs AI watch mode (`?seats=bot,bot`). Run on the PC: `npm install`, `npm run dev`. No Pages while the repo is private (D6). Figures are procedural stand-ins until the PC art session (M5) pushes models.
 
 ## What exists
-- **Scaffold:** Mancermundo (`origin/main` `ff3e3ea`) copied; its code is quarantined in `legacy/` (outside tsconfig and vitest; `tests/boundaries.test.ts` forbids imports). Root config renamed for `/legion-forge/`. `src/main.tsx` is an M0 placeholder page.
-- **Gates:** `npm run typecheck`, `npm test` (1 test: boundaries), `npm run validate:data` (stub until M1), `npm run build` — all green. CI (`.github/workflows/ci.yml`) runs them on push; no Pages deploy while the repo is private.
-- **Privacy:** `tools/hooks/pre-commit` (install with `sh tools/hooks/install.sh`, then write the untracked `.git/privacy-patterns.txt`); reads patterns through `git rev-parse --git-common-dir`, so it also guards worktrees. Verified to block.
-- **Sources:** official AMG documents and the Legion HQ 2 card bundle in gitignored `docs/sources/` (lost with the container; re-fetch from the URLs in `docs/spec/sources.md`).
-- **Specs:** `docs/spec/` 00 architecture, 05 migration (KEEP/ADAPT/DELETE per legacy file, by stage), 10 rules core (R-1..R-20), 11 battle (Recon deck + Standard cards), 12 checklist, 13 golden examples, 14 armies (starter armies + keyword survey), 20 data schema, 40 AI, 50 client, 60 testing; `sources.md`.
-- **Rulings:** `docs/needs-rules-check.md`, 56 RULING lines (plus a few inside 11 and 14).
-- **Knowledge base:** `docs/knowledge-base/` is the shared `dragoonant/tabletop-kb` submodule; Legion primer and edition leak list in `star-wars-legion-rules-primer.md`.
+- **Data (M1):** 196 records — 9 units, 26 weapons, 31 upgrades, 20 command cards, 4 Recon lists, 41 keywords, Recon battle deck, maps, one layout; schema frozen; `validate:data` requires every code hook to be registered.
+- **Engine (M2a-M2c):** pure reducer with one pending decision, hidden simultaneous command picks, hidden order-pool draws, `view` redaction, replay/save/load/undo. Recon setup with barricades, Infiltrate and Divulge; command phase; activations with rally, two actions, free and card actions, standby; movement tool (click + hinge), cohesion, climb, withdraw; melee charges and engagement; the full attack pipeline with rolled cover, aim, dodge, Backup, wound order and leader replacement; suppression/panic/courage; all slice keywords and command cards; Recon scoring and victory. An independent rules review found 29 errors; all fixed with tests that fail on the old code.
+- **Client (M3):** board from rules geometry, stand-ins on data base sizes, start/briefing/end screens (Starbound skin), prompts for every decision kind with engine odds and whyNot, movement tool with hinge drag and cohesion preview, barricade placement, dice tray, log, keyword help, VP tracker, ruler/LOS tool, speed settings, watch mode.
+- **AI (M4):** utility decider in a Web Worker with an exhaustive policy table (21+ decision kinds), reads only `view`; charges, withdraw, card actions, objective play.
+
+## Gates (last run 2026-10-29 on `main`)
+typecheck clean; 494 tests; `validate:data` ok (196 records); build ok; sim 8 games 0 violations, 0 rejections, melee present (~1.2 games/s with 4 workers; budget 5); bench normal vs random 40-0 (and 279-1 over 280 earlier), normal vs easy 33-7, 0 fallbacks, 0 rejections, 0% zero-action activations, mean decision 6.5 ms; e2e chromium 5/5.
 
 ## Not yet
-No data, engine, client or AI code in `src/` (M1-M4). No figures or audio (M5/M6, owner's PC).
+Art (M5, PC session not started as of this writing), audio (M6), polish incl. phone layout (M7), hot-seat (M8), Standard format, vehicles (M2b-vehicles), Observation tokens. Sim below its speed budget.
