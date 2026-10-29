@@ -25,12 +25,16 @@ export function canPlayCard(state: GameState, seat: Seat): boolean {
 /** Cards of the hand the seat may pick now: unit-restricted cards need the named unit(s) undefeated (R-4.2, R-3.3). */
 export function playableCards(state: GameState, seat: Seat): string[] {
   const alive = new Set(seatUnits(state, seat).map((u) => u.unitTypeId))
-  return state.players[seat].hand.filter((id) => {
+  const list = state.players[seat].hand.filter((id) => {
     const r = cardData(state.data, id).restriction
     if (!r) return true
     const hits = r.units.filter((u) => alive.has(u)).length
     return r.op === 'or' ? hits >= 1 : hits === r.units.length
   })
+  // a card Divulged for its setup effect must be the card selected in Round 1 (Darkness Descends, EC p3)
+  const divulged = (state.battle.data['divulged'] as Record<string, boolean> | undefined) ?? {}
+  const forced = state.round === 1 ? list.find((id) => divulged[id] && cardData(state.data, id).keywords?.includes('divulge')) : undefined
+  return forced ? [forced] : list
 }
 
 /**

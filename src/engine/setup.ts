@@ -21,6 +21,9 @@ import {
   type EdgeName,
 } from './battle'
 import { beginRound } from './command'
+import { offerDivulges } from './keywords'
+import { afterStartWindow } from './activation'
+import { registerFrameResume } from './hooks'
 import { makeAction } from './actions'
 import { footprintInsidePolygon, type Footprint } from './footprint'
 import { round3 } from './geometry'
@@ -304,8 +307,12 @@ function afterEdge(ctx: Ctx, edge: EdgeName): void {
   const territories = (polys: Polygon[]): Polygon[] => polys.map((p) => rotatePolygon(p, edge))
   d.territories = { [blue]: territories(map.territories.blue), [otherSeat(blue)]: territories(map.territories.red) } as Record<Seat, Polygon[]>
   resolveCardSetup(ctx)
+  // Resolve Setup Effects also lets each player Divulge cards from the hand, blue first (CRB p20, p61)
+  if (offerDivulges(ctx)) return
   startDeployment(ctx)
 }
+
+registerFrameResume('setup.divulge', (ctx) => startDeployment(ctx))
 
 // ---------------------------------------------------------------------------
 // Prepared Position deployment (R-3.9)
@@ -439,7 +446,16 @@ export const setupModule: ModuleDef = {
 
   init: startSetup,
 
-  handle(state: GameState, action: Action, _pending: PendingDecision) {
+  handle(state: GameState, action: Action, pending: PendingDecision) {
+    // Infiltrate (CRB p51): at the start of its activation an undeployed unit may deploy anywhere inside allied Territory
+    const infiltrating = pending.context['infiltrate'] === true
+    if (action.type === 'pass' && infiltrating) {
+      return {
+        run(ctx) {
+          afterStartWindow(ctx)
+        },
+      }
+    }
     if (action.type === 'setup.battle') {
       const { cardId, auto } = action.payload
       return {
@@ -454,12 +470,14 @@ export const setupModule: ModuleDef = {
       const { unitId, leader, troopers } = action.payload
       const seat = action.seat
       const unit = state.units[unitId]
-      if (!unit || unit.seat !== seat || !preparedUnits(state, seat).some((u) => u.id === unitId)) return reject('E_INVALID_TARGET', 'that unit cannot be placed now')
+      const allowed = infiltrating ? (pending.context['unitIds'] as string[]).includes(unitId) && unit?.location === 'reserve' : preparedUnits(state, seat).some((u) => u.id === unitId)
+      if (!unit || unit.seat !== seat || !allowed) return reject('E_INVALID_TARGET', 'that unit cannot be placed now')
       const c = checkDeploy(state, seat, unit, leader, troopers)
       if (!c.ok) return reject(c.code, c.reason)
       return {
         run(ctx) {
           placeDeployed(ctx, ctx.state.units[unitId]!, c.plan.leader, c.plan.troopers)
+          if (infiltrating) return afterStartWindow(ctx)
           flowOf(ctx.state).deployTurn = alternate(ctx.state, seat)
           deployNext(ctx)
         },

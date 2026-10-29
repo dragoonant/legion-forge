@@ -10,6 +10,7 @@ import {
   bd,
   checkWipeout,
   contests,
+  deploySpans,
   flowOf,
   heldAssets,
   markersOf,
@@ -29,7 +30,7 @@ import { beginMove, moveEndedWindow, planMove, unitSpeed } from './movement'
 import { reject, type Ctx, type ModuleDef } from './registry'
 import { constants, EngineInvariantError, leaderOf, otherSeat, poolCounts, seatUnits } from './state'
 import { hasLos, miniLosBody } from './los'
-import { keywordX } from './keywords'
+import { hasKeyword, keywordX } from './keywords'
 import type { Action, FreeActionGrant, GameState, MoveFrame, PendingDecision, Seat, Unit } from './types'
 
 // ---------------------------------------------------------------------------
@@ -432,9 +433,30 @@ function startActivation(ctx: Ctx, unit: Unit, via: 'order' | 'pool'): void {
   afterStartWindow(ctx)
 }
 
+/** Infiltrate: an undeployed unit with the keyword may deploy inside allied Territory when its activation starts (CRB p51). */
+function offerInfiltrate(ctx: Ctx, unit: Unit): boolean {
+  const s = ctx.state
+  if (unit.location !== 'reserve' || !hasKeyword(s, unit, 'kw.infiltrate')) return false
+  const flow = flowOf(s)
+  const key = `infiltrate|a${flow.activations}`
+  if (flow.opened.includes(key)) return false
+  flow.opened.push(key)
+  const regions = bd(s).territories[unit.seat]
+  ctx.raise({
+    kind: 'setup.deploy',
+    seat: unit.seat,
+    window: 'activation.start',
+    context: { unitIds: [unit.id], regions, spans: deploySpans(s, unit.seat), infiltrate: true },
+    constraints: { kind: 'deploy', unitId: unit.id, region: regions[0]! },
+    canPass: true,
+  })
+  return true
+}
+
 export function afterStartWindow(ctx: Ctx): void {
   const s = ctx.state
   const unit = activeUnit(s)
+  if (offerInfiltrate(ctx, unit)) return
   // rally happens for units on the table; undeployed units have no suppression
   rallyRoll(ctx, unit)
   refreshPanic(ctx)

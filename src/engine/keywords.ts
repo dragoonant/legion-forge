@@ -1378,7 +1378,61 @@ interface ContJson {
   offer?: CodeOffer
 }
 
+// ---------------------------------------------------------------------------
+// Divulge (CRB p61): at Resolve Setup Effects a player may reveal a card with the Divulge keyword, blue first; declining ends
+// the chance for that card. commandCards.ts registers the function that applies the text below the card's line.
+// ---------------------------------------------------------------------------
+
+interface DivulgeEntry {
+  seat: Seat
+  cardId: string
+}
+
+/** Raise the next Divulge offer (blue first); false when no card is left to offer. */
+export function offerDivulges(ctx: Ctx): boolean {
+  const s = ctx.state
+  if (s.origin.setup.options?.autoDivulge) return false
+  let queue = s.battle.data['divulgeQueue'] as DivulgeEntry[] | undefined
+  if (!queue) {
+    const blue = s.battle.blue ?? 'A'
+    queue = []
+    for (const seat of [blue, otherSeat(blue)]) {
+      for (const cardId of s.players[seat].hand) if (cardDef(s, cardId)?.divulge) queue.push({ seat, cardId })
+    }
+    s.battle.data['divulgeQueue'] = queue
+  }
+  const next = queue.shift()
+  if (!next) return false
+  ctx.raise({
+    kind: 'card.choice',
+    seat: next.seat,
+    window: 'setup.*',
+    context: { stage: 'divulge', cardId: next.cardId, unitId: null, subjectId: null },
+    options: [
+      { id: 'divulge', labelKey: 'card.divulge', type: 'card.choice', payload: { option: 'divulge' } },
+      { id: 'decline', labelKey: 'card.divulge.decline', type: 'card.choice', payload: { option: 'decline' } },
+    ],
+    canPass: false,
+  })
+  return true
+}
+
+function resolveDivulge(ctx: Ctx, pending: PendingDecision, option: string): void {
+  const cardId = String(pending.context['cardId'])
+  const seat = pending.seat as Seat
+  if (option === 'divulge') {
+    const d = (ctx.state.battle.data['divulged'] as Record<string, boolean> | undefined) ?? {}
+    ctx.state.battle.data['divulged'] = { ...d, [cardId]: true }
+    getFrameResume('divulge.apply')?.(ctx, 'finished', { seat, cardId })
+  }
+  if (offerDivulges(ctx)) return
+  const fn = getFrameResume('setup.divulge')
+  if (!fn) throw new EngineInvariantError('no frame resume registered for setup.divulge')
+  fn(ctx, 'finished', {})
+}
+
 export function resolveChoice(ctx: Ctx, pending: PendingDecision, option: string): void {
+  if (pending.context['stage'] === 'divulge') return resolveDivulge(ctx, pending, option)
   const raw = pending.context['cont']
   if (!raw) throw new EngineInvariantError(`${pending.kind} ${pending.id} carries no continuation`)
   const cont = JSON.parse(JSON.stringify(raw)) as ContJson

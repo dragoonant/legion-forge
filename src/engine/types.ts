@@ -285,7 +285,7 @@ export interface GameSetup {
   armies: Record<Seat, { factionId: string; listId?: string; units: RosterUnit[]; commandHand: string[] }>
   /** which compiled layout of `GameData.layouts` to play on (additive, M2a); default: the first one */
   layout?: string
-  options?: { autoDeploy?: boolean; autoBattle?: boolean; maxRounds?: number; firstPriority?: Seat }
+  options?: { autoDeploy?: boolean; autoBattle?: boolean; maxRounds?: number; firstPriority?: Seat; /** decline every Divulge offer without asking (tests and demos that do not care) */ autoDivulge?: boolean }
 }
 
 export interface GameState {
