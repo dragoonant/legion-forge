@@ -4,7 +4,7 @@
 // Moving into melee (base contact with an enemy) belongs to melee.ts: the leader here may not end in contact (`canEngage` false).
 import { unitData } from './bundle'
 import { deploySpans, flowOf, markersOf, markerFootprint, openWindow } from './battle'
-import { afterMoveFinished } from './activation'
+import { afterMoveFinished, raiseStandby } from './activation'
 import { footprintInsidePolygon, type Footprint } from './footprint'
 import { round3 } from './geometry'
 import { runHook } from './hooks'
@@ -442,8 +442,23 @@ function finishMove(ctx: Ctx, unit: Unit, info: { toolSpeed: number; toolPath: V
   // Cumbersome / Sniper Team read this; the activation clears it. Allied Commander range may have changed: re-derive Panicked.
   if (ctx.state.activation.current?.unitId === unit.id) unit.flags.movedThisActivation = true
   refreshPanic(ctx)
-  // the `move.ended` window (keywords and cards); the frame stays until the window is done
-  if (openWindow(ctx, 'move.ended', { unitId: unit.id }, `m${ctx.state.seq}`, 'move.ended')) return
+  // Standby tokens are spent before any effect that triggers after a Move is resolved (CRB p37)
+  const frame = flowOf(ctx.state).move
+  const activationMove = !!frame && frame.kind !== 'standby' && frame.kind !== 'controlled' && ctx.state.activation.current?.unitId === unit.id
+  if (activationMove && raiseStandby(ctx, 'move.ended')) return
+  moveEndedWindow(ctx)
+}
+
+/**
+ * The `move.ended` window (keywords and cards); the frame stays until the window is done. The window carries what the
+ * declarative triggers read: the kind of Move ('standard' for a Move or Withdraw, 'climb', 'forced' for a Move another
+ * player controls) and whether it was made as an action or free action.
+ */
+export function moveEndedWindow(ctx: Ctx): void {
+  const frame = flowOf(ctx.state).move
+  if (!frame) throw new EngineInvariantError('move.ended with no Move in progress')
+  const info = { unitId: frame.unitId, moveKind: frame.kind === 'climb' ? 'climb' : frame.kind === 'controlled' ? 'forced' : 'standard', fromAction: frame.kind !== 'controlled' }
+  if (openWindow(ctx, 'move.ended', info, `m${ctx.state.seq}`, 'move.ended')) return
   resumeAfterMove(ctx)
 }
 

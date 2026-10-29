@@ -12,7 +12,7 @@ import { getFrameResume, runHook } from './hooks'
 import { distance, miniBody, withinBand } from './measure'
 import { applySuppression, courageOf, isPanicked, isSuppressed, removeSuppression } from './morale'
 import { reject, type Ctx, type ModuleDef } from './registry'
-import { aliveMinis, constants, EngineInvariantError, getUnit, leaderOf, otherSeat, unitsOnTable } from './state'
+import { aliveMinis, constants, EngineInvariantError, getUnit, leaderOf, otherSeat, seatUnits, unitsOnTable } from './state'
 import type {
   AttackFrame,
   CodeOffer,
@@ -375,6 +375,8 @@ export interface WindowInfo {
   moveKind?: string
   fromAction?: boolean
   startedMelee?: boolean
+  /** a phase-level window: self triggers run once for every unit that carries the effect */
+  eachOwner?: boolean
   action?: string
   byCard?: string
   byCommandCard?: boolean
@@ -805,6 +807,8 @@ export function collectSteps(state: GameState, run: WindowRun): Step[] {
         if (!owner) return
         if (info.unitId) {
           if (owner.id !== info.unitId) return
+        } else if (info.eachOwner) {
+          // a phase-level window (the Activation Phase starts): every unit that carries the effect is its subject
         } else if (attack) {
           if (!roleOf(attack, owner)) return
         } else if (!subject || owner.id !== subject.id) return
@@ -841,7 +845,8 @@ export function collectSteps(state: GameState, run: WindowRun): Step[] {
     }
   }
 
-  const units: Unit[] = unitsOnTable(state)
+  // a phase-level window reaches units still in reserve too (Reliable on an undeployed unit)
+  const units: Unit[] = info.eachOwner ? [...seatUnits(state, 'A'), ...seatUnits(state, 'B')] : unitsOnTable(state)
   if (attack) {
     for (const u of [attack.attacker, attack.defender]) if (u && !units.includes(u)) units.push(u)
   }

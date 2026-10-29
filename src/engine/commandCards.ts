@@ -68,7 +68,8 @@ export function divulgeCard(ctx: Ctx, seat: Seat, cardId: string): void {
 function namedFor(state: GameState, cardId: string, seat: Seat): Unit[] {
   const names: string[] | undefined = cardDef(state, cardId)?.restriction?.units
   if (!names) return []
-  return seatUnits(state, seat).filter((u) => u.location === 'table' && names.includes(u.unitTypeId))
+  // a named unit still in reserve counts: Darkness Descends played in Round 1 with Vader undeployed must still reach him
+  return seatUnits(state, seat).filter((u) => names.includes(u.unitTypeId))
 }
 
 // ---------------------------------------------------------------------------

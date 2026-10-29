@@ -49,3 +49,12 @@ export function duelOf(first: StepResult, atkType: string, defType: string, dist
   })
   return { state, atk, def }
 }
+
+/** One unit alone in the open, ready to activate: every other unit is parked in the far corner. */
+export function soloOf(first: StepResult, seat: Seat, dataId: string, at: [number, number] = [-10, -10], nth = 0): { state: GameState; id: string } {
+  const id = unitBy(first.state, seat, dataId, nth).id
+  const state = ready(first.state, id, at, (x) => {
+    Object.values(x.units).filter((u) => u.location === 'table' && u.id !== id).forEach((u, i) => place(u, 30 - 4 * Math.floor(i / 8), 16 - 3.5 * (i % 8)))
+  })
+  return { state, id }
+}

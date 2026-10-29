@@ -109,7 +109,7 @@ export function priorityFirst(state: GameState): Seat[] {
 export function openWindow(
   ctx: Ctx,
   window: TimingWindowId,
-  info: { unitId?: string; targetId?: string },
+  info: { unitId?: string; targetId?: string; [key: string]: unknown },
   scope: string,
   resume: string,
 ): boolean {
@@ -119,7 +119,8 @@ export function openWindow(
   flow.opened.push(key)
   const opener = getWindowOpener()
   if (!opener) return false
-  const raised = opener(ctx, window, { kind: 'other', unitId: info.unitId ?? '', ...(info.targetId ? { targetId: info.targetId } : {}) })
+  // everything the flow knows about the window travels with it: the declarative triggers read action, moveKind and so on
+  const raised = opener(ctx, window, { ...info, kind: 'other', unitId: info.unitId ?? '' })
   if (raised) flow.resume = resume
   return raised
 }

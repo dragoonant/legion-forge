@@ -64,7 +64,10 @@ registerFrameResume('flow', (ctx) => resumeFlow(ctx))
 // Every lifecycle window the flow passes (`openWindow`) runs the keyword / upgrade / command-card effects that trigger there.
 // A decision they raise (a keyword.choice or card.choice) suspends the flow; the interpreter calls the 'flow' frame-resume
 // after the last answer and `resumeFlow` continues at the step that offered the window.
-registerWindowOpener((ctx, window, info) => fireWindow(ctx, window, info.unitId ? { unitId: info.unitId, ...(info.targetId ? { targetId: info.targetId } : {}) } : {}, { name: 'flow' }))
+registerWindowOpener((ctx, window, info) => {
+  const { kind: _kind, unitId, ...rest } = info
+  return fireWindow(ctx, window, { ...rest, ...(unitId ? { unitId } : {}) }, { name: 'flow' })
+})
 
 let modules: ModuleDef[] = DEFAULT_MODULES.slice()
 let table: Map<string, ModuleDef> | null = null

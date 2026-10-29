@@ -218,6 +218,8 @@ export interface Activation {
   actionsLeft: number
   performed: { action: string; free: boolean }[]
   declared: { action: string; params?: Record<string, unknown> } | null
+  /** the unit began its Make Actions step Panicked (CRB p23): it is tested once, then fixed for the activation */
+  panickedAtStart?: boolean
 }
 
 export interface OrderPool {
@@ -611,7 +613,7 @@ export interface FlowState {
   activations: number
   move: MoveFrame | null
   /** a Standby window in progress: the triggering enemy unit, the standby units that already answered, and whether one is mid-response */
-  standby: { triggerUnitId: string; done: string[]; responding: boolean } | null
+  standby: { triggerUnitId: string; done: string[]; responding: boolean; then: 'move.ended' | 'action.resolved'; frame: MoveFrame | null } | null
   /** setup deployment cursor: the seat that places next */
   deployTurn: Seat | null
 }
