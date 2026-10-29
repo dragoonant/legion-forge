@@ -19,6 +19,7 @@ import {
   foldBool,
   foldNumber,
   hasKeyword,
+  isTrooperType,
   keywordX,
   matchesUnitType,
   miniWeapons,
@@ -720,15 +721,13 @@ export function backupHits(state: GameState, atk: Unit, def: Unit, kind: AttackK
   const c = constants(state)
   const d = distanceLeaderToUnit(state, atk, def)
   if (withinBand(d, c['backupAttackerMinRange'] ?? 2, c)) return 0
-  if (!foldBool(true, modValues(state, def, 'canBackup', { role: 'defender' }))) return 0
   for (const o of unitsOnTable(state)) {
     if (o.seat !== def.seat || o.id === def.id || unitRank(o) !== 'corps' || isSuppressed(state, o)) continue
-    if (!foldBool(true, modValues(state, o, 'canBackup', { role: null }))) continue
+    if (!foldBool(true, modValues(state, o, 'canBackup', { role: null })) || !isTrooperType(state, o)) continue
     const lead = miniLosBody(state, leaderOf(o))
-    const ok = aliveMinis(def).some(
-      (m) => distance(miniBody(state, m), miniBody(state, leaderOf(o))) <= (c['backupRange'] ?? 3) + 1e-9 && hasLos(state.table.def, miniLosBody(state, m), lead),
-    )
-    if (ok) return 2
+    // the defending UNIT is within 3 of the provider's leader and has LOS to it (any of its models for each: CRB p12, p31)
+    const within = aliveMinis(def).some((m) => distance(miniBody(state, m), miniBody(state, leaderOf(o))) <= (c['backupRange'] ?? 3) + 1e-9)
+    if (within && aliveMinis(def).some((m) => hasLos(state.table.def, miniLosBody(state, m), lead))) return 2
   }
   return 0
 }

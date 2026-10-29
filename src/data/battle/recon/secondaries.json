@@ -100,7 +100,6 @@
         "at": {
           "event": "SuppressionChanged"
         },
-        "fromRound": 2,
         "count": {
           "table": {
             "trigger": "SuppressionChanged",

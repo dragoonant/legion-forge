@@ -136,7 +136,8 @@ registerCodeHook({
       resolve(ctx: Ctx, offer: CodeOffer, option: string) {
         if (option !== 'accept') return
         const subjectId = String(offer.payload['subjectId'])
-        applySuppression(ctx, subjectId, 1, 'compel')
+        // the free Move is paid for with the Suppression token: no token gained, no Move
+        if (applySuppression(ctx, subjectId, 1, 'compel') <= 0) return
         const u = getUnit(ctx.state, subjectId)
         addEffect(ctx, { source: 'kw.compel', seat: u.seat, kind: 'freeAction', unitId: u.id, expires: 'activation', data: { action: 'core.action.move', startOfActions: true, source: 'kw.compel' } })
         markFired('compel')

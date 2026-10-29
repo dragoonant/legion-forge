@@ -198,6 +198,11 @@ export function leaderInTerritory(state: GameState, unit: Unit, polys: readonly 
   return polys.some((poly) => footprintOverlapsPolygon(f, poly))
 }
 
+/** A unit is within a Territory when any one of its models is (CRB p12). */
+export function unitInTerritory(state: GameState, unit: Unit, polys: readonly Polygon[]): boolean {
+  return unit.minis.some((m) => m.alive && polys.some((poly) => footprintOverlapsPolygon(miniFootprint(state, m), poly)))
+}
+
 function miniFootprint(state: GameState, m: Parameters<typeof miniBody>[1]): Footprint {
   return miniBody(state, m)
 }
@@ -491,7 +496,8 @@ function countTokens(state: GameState, count: Rule, seat: Seat): number {
     if (filt.tag && !hasTag(m, String(filt.tag))) continue
     if (filt.notTag && hasTag(m, String(filt.notTag))) continue
     if (filt.enemyOf === 'scorer' && !hasTag(m, `enemyOf:${colour}`)) continue
-    if (territory === 'notAllied' && inAnyPolygon(m.pos, bd(state).territories[seat])) continue
+    // a token is within a Territory when any part of it is
+    if (territory === 'notAllied' && bd(state).territories[seat].some((poly) => footprintOverlapsPolygon(markerFootprint(state, m), poly))) continue
     const secured = securedBy(state, m) === seat
     let ok = count.state === 'secured' ? secured : false
     if (!ok && count.orContested?.byUnitsHolding) {
@@ -523,7 +529,7 @@ function countUnits(state: GameState, r: Rule, seat: Seat, only?: Unit): number 
   }
   if (r.min !== undefined) {
     const qualifying = holders.filter((u) => {
-      if (r.notIn === 'alliedTerritory' && leaderInTerritory(state, u, territories)) return false
+      if (r.notIn === 'alliedTerritory' && unitInTerritory(state, u, territories)) return false
       if (r.notContestingPoiIn === 'alliedTerritory') {
         for (const m of markersOf(state, 'poi')) if (inAnyPolygon(m.pos, territories) && contests(state, u, m)) return false
       }

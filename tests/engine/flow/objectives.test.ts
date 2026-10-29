@@ -273,3 +273,44 @@ describe('Recon battle cards', () => {
     expect(markersOf(mission.state, 'asset')).toHaveLength(2)
   })
 })
+
+describe('M2c scoring readings (review 34, 35)', () => {
+  it('RVW-34 Bring Them to Heel: the once-a-round marking works in Round 1, only the 1 VP count waits for the second Round', () => {
+    const s = scene(CLOSE, (x) => {
+      x.round = 1
+      place(B(x), 12, -10)
+      place(B(x, 1), 14, -10)
+      B(x).suppression = 1
+      B(x, 1).suppression = 4
+    })
+    const end = ctxFor(s)
+    scoreEndPhase(end)
+    expect(end.state.players.A.points).toBe(0)
+    const c = ctxFor(s)
+    c.emit({ type: 'SuppressionChanged', unitId: B(s).id, from: 0, to: 1, reason: 'attack' })
+    onStepEvents(c)
+    expect(c.state.players.A.points).toBe(2)
+  })
+
+  it('RVW-35 Surface Scan: a Scanner unit is within a Territory when any one of its models is, not only its leader', () => {
+    const s = scene(SCAN, (x) => {
+      for (const id of Object.keys(x.table.objectives)) if (x.table.objectives[id]!.kind === 'asset') delete x.table.objectives[id]
+      for (const [i, u] of [A(x, 0), A(x, 1)].entries()) {
+        place(u, -6 + i * 4, -8)
+        x.table.objectives[`asset:Scanner:${u.id}`] = { id: `asset:Scanner:${u.id}`, pos: { x: 0, z: 0 }, tags: ['asset:Scanner', 'owner:A'], heldBy: u.id, kind: 'asset' }
+      }
+    })
+    const ctx = ctxFor(s)
+    scoreEndPhase(ctx)
+    expect(ctx.state.players.A.points).toBe(1)
+    // one trooper of the second Scanner unit stands in blue's Territory (the +z corners): the unit is within it
+    const straddling = edit(s, (x) => {
+      const u = A(x, 1)
+      const trooper = u.minis.find((m) => m.id !== u.leaderId && m.alive)!
+      trooper.pos = { x: 13, y: 0, z: 14 }
+    })
+    const c2 = ctxFor(straddling)
+    scoreEndPhase(c2)
+    expect(c2.state.players.A.points).toBe(0)
+  })
+})

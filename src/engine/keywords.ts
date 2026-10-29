@@ -1086,7 +1086,8 @@ function resolveTargets(ctx: Ctx, step: Step, to: J, env: Env): Unit[] {
   if (to === 'attacker') return env.attack ? [env.attack.attacker] : []
   if (to?.aura) return center ? unitsAround(state, center, to.aura, step.seat, center) : []
   if (to?.all) {
-    return unitsOnTable(state).filter((u) => matchFilter(state, u, to.all.filter, center, step.seat) && (!to.all.side || (to.all.side === 'ally') === (u.seat === step.seat)))
+    // every unit still in the game, units in reserve included (Turning the Tide reaches Support and Heavy units not yet deployed)
+    return [...seatUnits(state, 'A'), ...seatUnits(state, 'B')].filter((u) => matchFilter(state, u, to.all.filter, center, step.seat) && (!to.all.side || (to.all.side === 'ally') === (u.seat === step.seat)))
   }
   throw new EngineInvariantError(`unsupported verb target ${JSON.stringify(to)}`)
 }
