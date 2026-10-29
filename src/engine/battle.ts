@@ -30,6 +30,7 @@ import type {
   Vec2,
 } from './types'
 import { isPanicked, isSuppressed } from './morale'
+import { foldBool, modValues } from './keywords'
 
 // ---------------------------------------------------------------------------
 // Shared flow state
@@ -222,7 +223,8 @@ export function heldAssets(state: GameState, unitId: string, asset?: string): Ob
 export function canContest(state: GameState, unit: Unit): boolean {
   if (unit.location !== 'table') return false
   if (!unit.minis.some((m) => m.alive && m.id === unit.leaderId)) return false
-  if (unit.keywords.some((k) => k.id === 'kw.incognito')) return false
+  // Incognito stops contesting for as long as the unit has the keyword; one that lost it (CRB p51) contests again
+  if (!foldBool(true, modValues(state, unit, 'canContest'))) return false
   return !isPanicked(state, unit)
 }
 

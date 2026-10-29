@@ -2,7 +2,9 @@
 // Duelist / Overwhelm, Dodge for Duelist), and Suppressive staying behind the base token.
 import { afterEach, describe, expect, it } from 'vitest'
 import { resetFireCounts } from '../../../src/engine/code-hooks'
-import { atk, beginAttack, choose, def, eventsOf, game, ok, optionIds, script, u, unit, uninstallModules } from './harness'
+import { canContest } from '../../../src/engine/battle'
+import { checkTarget } from '../../../src/engine/query'
+import { atk, beginAttack, choose, def, eventsOf, game, menu, ok, optionIds, script, u, unit, uninstallModules } from './harness'
 
 afterEach(() => {
   uninstallModules()
@@ -118,5 +120,85 @@ describe('M2c Overwhelm, Suppressive and the spends keywords read (review 20, 21
     }
     expect(hit(['hit', 'hit'])).toBe(2)
     expect(hit(['blank', 'blank'])).toBe(0)
+  })
+})
+
+describe('M2c windows and limits (review 22 to 27)', () => {
+  it('RVW-22 Sniper Team upgrades its pool and offers the cancel only during the unit\'s own Activation, not in a Standby shot', () => {
+    const run = (standby: boolean) => {
+      let r = ok(menu(game([sniper(), RT()]), { action: 'attack', unitId: 'SN', standby }))
+      r = ok(choose(r.state, 'unit:RT'))
+      return ok(choose(r.state, POOL, script(atk('red', 'hit', 'blank'), atk('black', 'blank'), def('white', 'blank'))))
+    }
+    expect(run(false).pending!.context['step']).toBe('sniper')
+    expect(run(true).pending!.context['step']).not.toBe('sniper')
+  })
+
+  it('RVW-23 Incognito: a unit is within range 1 when any one of its models is, not only the attacking leader', () => {
+    const sst = unit({ id: 'CS', seat: 'B', data: 'reb.u.commando-strike-team', at: [[0, 3]] })
+    // the leader stands in band 2, another model of the unit within band 1 of the Incognito unit
+    const far = unit({ id: 'ST', seat: 'A', data: 'emp.u.stormtroopers', at: [[0, -5.5], [0, -1.5]] })
+    const s = game([far, sst])
+    expect(checkTarget(s, 'ST', 'CS')).toMatchObject({ band: 2, ok: true })
+    // every model beyond band 1: still protected
+    const away = unit({ id: 'ST2', seat: 'A', data: 'emp.u.stormtroopers', at: [[0, -5.5], [0, -6.5]] })
+    expect(checkTarget(game([away, sst]), 'ST2', 'CS')).toMatchObject({ ok: false, reason: 'incognito' })
+  })
+
+  it('RVW-24 a Strike Team that lost Incognito contests objectives again', () => {
+    const sst = unit({ id: 'CS', seat: 'B', data: 'reb.u.commando-strike-team', at: [[0, 3]] })
+    const s = game([sst])
+    expect(canContest(s, u(s, 'CS'))).toBe(false)
+    u(s, 'CS').flags['removedKeywords'] = ['kw.incognito']
+    expect(canContest(s, u(s, 'CS'))).toBe(true)
+  })
+
+  it('RVW-25 attack.resolved runs for every defender of the attack: both Rebel Troopers units get Nimble\'s Dodge', () => {
+    const st = ST({ upgrades: ['emp.up.dlt19-stormtrooper'], extra: [{ at: [0, -7.5], weapon: 'emp.w.dlt19', upgradeId: 'emp.up.dlt19-stormtrooper' }] })
+    const rt = RT({ tokens: { dodge: 2 } })
+    const rt2 = unit({ id: 'RT2', seat: 'B', data: 'reb.u.rebel-troopers', at: [[6, 3], [7.5, 3.5]], tokens: { dodge: 2 } })
+    let r = beginAttack(game([st, rt, rt2]), 'ST', 'RT')
+    r = ok(choose(r.state, 'pool:ranged:only:emp.w.dlt19'))
+    r = ok(choose(r.state, 'unit:RT2'))
+    r = ok(choose(r.state, 'pool:ranged:all', script(atk('red', 'hit', 'blank'))))
+    expect(r.pending!.context['step']).toBe('dodge')
+    r = ok(choose(r.state, 'dodge:1', script(atk('white', 'hit', 'blank', 'blank', 'blank'))))
+    expect(r.pending!.context['step']).toBe('dodge')
+    r = ok(choose(r.state, 'dodge:1'))
+    expect(u(r.state, 'RT').tokens['dodge']).toBe(2)
+    expect(u(r.state, 'RT2').tokens['dodge']).toBe(2)
+  })
+
+  it('RVW-26 Son of Skywalker is offered after Luke\'s first attack only; declining it spends the card for the round', () => {
+    const luke = unit({ id: 'L', seat: 'B', data: 'reb.u.luke-hotr', at: [[0, 0]] })
+    const target = unit({ id: 'T', seat: 'A', data: 'emp.u.stormtroopers', at: [[0, 4], [1.5, 4.5]] })
+    let s = ok(menu(game([luke, target]), { action: 'activateCard', seat: 'B', cardId: 'reb.cc.son-of-skywalker' })).state
+    let r = ok(menu(s, { action: 'attack', unitId: 'L' }))
+    r = ok(choose(r.state, 'unit:T'))
+    r = ok(choose(r.state, 'pool:ranged:all', script(atk('red', 'blank'), atk('black', 'blank', 'blank', 'blank'))))
+    expect(r.pending!.kind).toBe('card.choice')
+    expect(optionIds(r.state)).toEqual(['use', 'skip'])
+    r = ok(choose(r.state, 'skip'))
+    expect(r.pending!.kind).toBe('action.choose')
+    s = r.state
+    r = ok(menu(s, { action: 'attack', unitId: 'L' }))
+    r = ok(choose(r.state, 'unit:T'))
+    r = ok(choose(r.state, 'pool:ranged:all', script(atk('red', 'blank'), atk('black', 'blank', 'blank', 'blank'))))
+    expect(r.pending!.kind).toBe('action.choose')
+  })
+
+  it('RVW-27 Coordinated Fire is offered once, after the attack is resolved, to an Corps unit that spent an Aim', () => {
+    const al = unit({ id: 'AL', seat: 'A', data: 'emp.u.stormtroopers', at: [[4, -5], [5.5, -5.5]] })
+    const s0 = ok(menu(game([ST({ tokens: { aim: 1 } }), al, RT()]), { action: 'activateCard', seat: 'A', cardId: 'emp.cc.coordinated-fire' })).state
+    let r = beginAttack(s0, 'ST', 'RT')
+    r = ok(choose(r.state, POOL, script(atk('white', 'blank', 'blank', 'blank', 'blank'))))
+    expect(r.pending!.context['step']).toBe('reroll')
+    r = ok(choose(r.state, r.pending!.options![0]!.id, script(atk('white', 'blank', 'blank', 'blank'), def('white', 'blank'))))
+    // the card does not interrupt the reroll step any more: it comes once the attack is resolved
+    expect(r.pending!.kind).toBe('card.choice')
+    expect(eventsOf(r, 'Compared')).toHaveLength(1)
+    r = ok(choose(r.state, 'use'))
+    expect(u(r.state, 'AL').tokens['aim']).toBe(1)
+    expect(r.pending!.kind).toBe('action.choose')
   })
 })

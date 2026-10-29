@@ -375,15 +375,15 @@
     "effects": [
       {
         "trigger": {
-          "window": "attack.rerolled"
+          "window": "attack.resolved"
         },
         "when": {
           "side": "ally",
           "rank": "corps",
-          "attackKind": "ranged",
-          "spent": {
+          "spentAny": {
             "token": "core.token.aim",
-            "min": 1
+            "min": 1,
+            "kind": "ranged"
           }
         },
         "do": [
@@ -411,10 +411,11 @@
         ],
         "scope": "subject",
         "duration": "round",
-        "optional": true
+        "optional": true,
+        "limit": "oncePerAttack"
       }
     ],
-    "text": "This round, after an allied Corps unit spends an Aim on a ranged attack, another allied unit within range 2 may gain 1 Aim.",
+    "text": "This round, after an allied Corps unit that spent an Aim on a ranged attack has resolved that attack, another allied unit within range 2 may gain 1 Aim (once per attack).",
     "source": {
       "doc": "EC",
       "page": "1-3",

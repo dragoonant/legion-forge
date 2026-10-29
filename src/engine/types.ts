@@ -785,6 +785,8 @@ export interface AttackFrame {
   current: number
   /** wounds the defending units suffered, by unit id (Fear and Dead Men) */
   woundsTaken: Record<string, number>
+  /** defenders whose `attack.resolved` effects have run (each distinct defender gets its own pass, CRB p53, p51) */
+  resolvedFor?: string[]
 }
 
 /** What the flow module passes to `startAttack`. */

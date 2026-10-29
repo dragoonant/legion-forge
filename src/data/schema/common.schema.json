@@ -569,6 +569,28 @@
         "suppressionDue": {
           "type": "boolean"
         },
+        "spentAny": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "$ref": "common.schema.json#/$defs/Id"
+            },
+            "min": {
+              "type": "integer"
+            },
+            "kind": {
+              "enum": [
+                "ranged",
+                "melee"
+              ]
+            }
+          },
+          "required": [
+            "token",
+            "min"
+          ],
+          "additionalProperties": false
+        },
         "poolHasWeapon": {
           "$ref": "common.schema.json#/$defs/Id"
         },

@@ -397,6 +397,8 @@ export interface WindowInfo {
   fromAction?: boolean
   startedMelee?: boolean
   suppressionDue?: boolean
+  /** an extra attack.resolved pass for a further defender: defender-side effects only */
+  defenderOnly?: boolean
   /** a phase-level window: self triggers run once for every unit that carries the effect */
   eachOwner?: boolean
   action?: string
@@ -483,6 +485,12 @@ export function condOk(env: Env, when: J | undefined): boolean {
         const side = env.role === 'defender' ? 'defender' : 'attacker'
         const got = a?.pf?.spent[side][tokenKey(v.token)] ?? 0
         if (got < v.min) return false
+        break
+      }
+      case 'spentAny': {
+        // the attacker spent the token in any pool of the attack (Coordinated Fire, once per attack)
+        const hit = a?.af.pools.some((p) => (!v.kind || p.kind === v.kind) && (p.spent.attacker[tokenKey(v.token)] ?? 0) >= v.min)
+        if (!hit) return false
         break
       }
       case 'poolOnly':
@@ -795,6 +803,8 @@ export interface Step {
   vi: number
   /** per-verb partial answers */
   bound: Record<string, { picks?: string[]; option?: number }>
+  /** the effect's limit was marked when it was offered, so declining spends it (Son of Skywalker, CRB RC p4) */
+  marked?: boolean
 }
 
 const ATTACK_FIRST = (w: string): boolean => !w.startsWith('defence.')
@@ -869,6 +879,8 @@ export function collectSteps(state: GameState, run: WindowRun): Step[] {
       }
       // a code effect reads the owner's own role; a declarative effect the role of the unit it is about
       const role = e.code ? roleOf(attack, owner) : roleOf(attack, sub ?? owner)
+      // the extra pass for another defender of the same attack (attack.resolved) runs defender effects only
+      if (info.defenderOnly && role !== 'defender') continue
       const key = `${inst.ref.src}:${inst.ref.id}:${inst.ref.ei}:${inst.ref.weaponId ?? ''}:${owner?.id ?? inst.seat}:${sub?.id ?? ''}`
       if (run.fired.includes(key) || considered.has(key)) continue
       considered.add(key)
@@ -994,6 +1006,11 @@ function execStep(ctx: Ctx, run: WindowRun, step: Step): VerbResult {
       run.fired.push(step.key)
       return 'ok'
     }
+    // an offer spends a once-per limit whether or not it is taken: "after his first attack this round" is not offered again
+    if (effect.limit && !step.marked) {
+      markLimit(ctx, inst, effect.limit, owner)
+      step.marked = true
+    }
     raiseChoice(ctx, run, step, 'use', [
       { id: 'use', labelKey: 'keyword.use' },
       { id: 'skip', labelKey: 'keyword.skip' },
@@ -1006,7 +1023,7 @@ function execStep(ctx: Ctx, run: WindowRun, step: Step): VerbResult {
     if (r === 'suspend') return 'suspend'
     step.vi++
   }
-  if (effect.limit) markLimit(ctx, inst, effect.limit, owner)
+  if (effect.limit && !step.marked) markLimit(ctx, inst, effect.limit, owner)
   // using a card with an exhaust icon exhausts it; a granted action did that when it was declared
   if (step.ref.src === 'upgrade' && !step.ref.action && owner) spendCard(owner, step.ref.id, state)
   run.fired.push(step.key)

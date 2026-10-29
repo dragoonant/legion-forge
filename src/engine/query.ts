@@ -27,6 +27,7 @@ import {
   poolKeywordX,
   tokensOf,
   unitDef,
+  unitDistance,
   unitKeywords,
   unitRank,
   weaponDef,
@@ -238,7 +239,9 @@ export function checkTarget(state: GameState, attackerId: string, defenderId: st
     if (atkEngaged.length > 0 || defEngaged.length > 0) rangedReason = 'engaged'
     else if (poolCandidates(state, atk.id, def.id, 'ranged', opts).length > 0) {
       const cap = foldNumber(Infinity, modValues(state, def, 'targetableFrom', { role: 'defender' }).map((m) => ({ ...m, value: Number(m.value) })))
-      if (band !== 'beyond' && band > cap) rangedReason = 'incognito'
+      // Incognito: only enemy units WITHIN the range attack it, and a unit is within when any one of its models is (CRB p51, p12),
+      // not the attacking leader alone
+      if (band !== 'beyond' && Number.isFinite(cap) && !withinBand(unitDistance(state, atk, def), cap, constants(state))) rangedReason = 'incognito'
       else kinds.push('ranged')
     } else rangedReason = 'outOfRange'
   }

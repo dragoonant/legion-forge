@@ -210,15 +210,26 @@ export function advance(ctx: Ctx): void {
         const af2 = frame(ctx.state)
         af2.current++
         if (af2.current >= af2.pools.length) {
-          af2.current = af2.pools.length - 1
+          af2.current = 0
+          af2.resolvedFor = []
           setStage(ctx, 'closing')
-          if (fireAttackWindow(ctx, 'attack.resolved')) return
-          setStage(ctx, 'finished')
         }
         break
       }
       case 'closing': {
-        setStage(ctx, 'finished')
+        // attack.resolved runs once per distinct defender of the attack: the first pass for everyone (attacker effects
+        // included), each further defender gets its own pass for the effects it carries (Nimble, Fear and Dead Men)
+        const done = af.resolvedFor ?? (af.resolvedFor = [])
+        const next = af.pools.map((p) => p.defenderId).find((d, i, all) => all.indexOf(d) === i && !done.includes(d))
+        if (next === undefined) {
+          af.current = af.pools.length - 1
+          setStage(ctx, 'finished')
+          break
+        }
+        af.current = af.pools.findIndex((p) => p.defenderId === next)
+        const first = done.length === 0
+        done.push(next)
+        if (fireWindow(ctx, 'attack.resolved', first ? {} : { defenderOnly: true }, { name: FRAME })) return
         break
       }
       case 'finished': {

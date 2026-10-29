@@ -50,6 +50,8 @@ registerCodeHook({
         const pf = env.pool
         if (!pf || !env.attack || env.role !== 'attacker' || !env.owner || pf.sniperEligible) return
         const st = ctx.state
+        // only an attack the unit makes during its own Activation (CRB p60), never a Standby shot
+        if (st.activation.current?.unitId !== env.owner.id) return
         if (!pf.weapons.every((w) => weaponKeywordList(st, pf, w.weaponId).some((k) => k.id === 'kw.sniper-team'))) return
         if (env.attack.moved) return
         const def = getUnit(st, pf.defenderId)
