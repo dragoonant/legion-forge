@@ -54,6 +54,8 @@ const Y_EPS = 1e-6
 
 /** Does the ray A -> B pass through the piece's volume? Returns the entry parameter t, or null. */
 function rayEntersPiece(p: TerrainPiece, a: Vec3, b: Vec3): number | null {
+  // the ray's height never drops below its lower end: a ray that starts and ends above the piece cannot enter it
+  if (Math.min(a.y, b.y) >= p.heightIn - Y_EPS) return null
   if (Math.max(a.x, b.x) < p.bbox.minX || Math.min(a.x, b.x) > p.bbox.maxX || Math.max(a.z, b.z) < p.bbox.minZ || Math.min(a.z, b.z) > p.bbox.maxZ) return null
   const ivs = segmentPolygonIntervals({ x: a.x, z: a.z }, { x: b.x, z: b.z }, p.footprint)
   for (const [t0, t1] of ivs) {
@@ -98,8 +100,49 @@ function ignoredFor(p: TerrainPiece, a: LosBody, d: LosBody): boolean {
   return p.kind === 'area' && (footprintOverlapsPolygon(footprintOf(a), p.footprint) || footprintOverlapsPolygon(footprintOf(d), p.footprint))
 }
 
+// Scans are pure functions of the table, the two bodies and the extra pieces, and the sim / bot / UI ask the same pair
+// again and again (target lists, odds, the attack itself, replays). Results are cached per table (never mutated by callers).
+const SCAN_CACHE_MAX = 40_000
+const scanCaches = new Map<string, Map<string, LosResult>>()
+const tableSigs = new WeakMap<TableDef, string>()
+
+/** Everything about a table that a scan reads, so games on the same layout (and a replay) share one cache. */
+function tableSig(table: TableDef): string {
+  let sig = tableSigs.get(table)
+  if (sig === undefined) {
+    sig = table.pieces
+      .map((p) => `${p.id}:${p.kind}:${p.heightIn}:${p.blocksLos ? 1 : 0}:${p.footprint.map((v) => `${v.x},${v.z}`).join(';')}`)
+      .join('|')
+    tableSigs.set(table, sig)
+  }
+  return sig
+}
+
+function bodyKey(b: LosBody): string {
+  const s = b.samples
+  return `${b.pos.x},${b.pos.y},${b.pos.z},${b.baseRadius},${b.height},${s.rings},${s.perRing},${s.axis ? 1 : 0}`
+}
+
 /** Scan every ray between the sample points of two bodies. The single source of LoS and cover verdicts. */
 export function scanRays(table: TableDef, a: LosBody, d: LosBody, opts: ScanOptions = {}): LosResult {
+  if (opts.keepRays) return scanRaysUncached(table, a, d, opts)
+  const sig = tableSig(table)
+  let cache = scanCaches.get(sig)
+  if (!cache) {
+    if (scanCaches.size >= 16) scanCaches.clear()
+    scanCaches.set(sig, (cache = new Map()))
+  }
+  const extra = opts.extraPieces && opts.extraPieces.length > 0 ? opts.extraPieces.map((p) => `${p.id}@${p.bbox.minX},${p.bbox.minZ}`).join('|') : ''
+  const key = `${bodyKey(a)}>${bodyKey(d)}>${opts.firstClearOnly ? 1 : 0}>${extra}`
+  const hit = cache.get(key)
+  if (hit) return hit
+  const res = scanRaysUncached(table, a, d, opts)
+  if (cache.size >= SCAN_CACHE_MAX) cache.clear()
+  cache.set(key, res)
+  return res
+}
+
+function scanRaysUncached(table: TableDef, a: LosBody, d: LosBody, opts: ScanOptions): LosResult {
   const lo = { x: Math.min(a.pos.x, d.pos.x) - Math.max(a.baseRadius, d.baseRadius), z: Math.min(a.pos.z, d.pos.z) - Math.max(a.baseRadius, d.baseRadius) }
   const hi = { x: Math.max(a.pos.x, d.pos.x) + Math.max(a.baseRadius, d.baseRadius), z: Math.max(a.pos.z, d.pos.z) + Math.max(a.baseRadius, d.baseRadius) }
   const near = (p: TerrainPiece) => p.bbox.maxX >= lo.x && p.bbox.minX <= hi.x && p.bbox.maxZ >= lo.z && p.bbox.minZ <= hi.z

@@ -117,6 +117,16 @@ export function cloneState(state: GameState): GameState {
   return out as unknown as GameState
 }
 
+const keyJson = new Map<string, string>()
+function keyString(k: string): string {
+  let j = keyJson.get(k)
+  if (j === undefined) {
+    j = JSON.stringify(k)
+    if (keyJson.size < 20_000) keyJson.set(k, j)
+  }
+  return j
+}
+
 /** Canonical JSON: sorted keys, undefined skipped. */
 export function canon(value: unknown): string {
   if (value === null) return 'null'
@@ -128,16 +138,28 @@ export function canon(value: unknown): string {
     case 'string':
       return JSON.stringify(value)
     case 'object': {
-      if (Array.isArray(value)) return '[' + value.map((v) => (v === undefined ? 'null' : canon(v))).join(',') + ']'
+      if (Array.isArray(value)) {
+        let out = '['
+        for (let i = 0; i < value.length; i++) {
+          const v = value[i]
+          if (i > 0) out += ','
+          out += v === undefined ? 'null' : canon(v)
+        }
+        return out + ']'
+      }
       const rec = value as Record<string, unknown>
-      const keys = Object.keys(rec).sort()
-      const parts: string[] = []
+      const keys = Object.keys(rec)
+      if (keys.length > 1) keys.sort()
+      let out = '{'
+      let first = true
       for (const k of keys) {
         const v = rec[k]
         if (v === undefined) continue
-        parts.push(JSON.stringify(k) + ':' + canon(v))
+        if (!first) out += ','
+        first = false
+        out += keyString(k) + ':' + canon(v)
       }
-      return '{' + parts.join(',') + '}'
+      return out + '}'
     }
     default:
       return 'null'
