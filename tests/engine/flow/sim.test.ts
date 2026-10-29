@@ -14,5 +14,7 @@ describe('sim gate', () => {
     expect(report.stats.woundsAssigned).toBeGreaterThan(0)
     expect(report.stats.keywordFires).toBeGreaterThan(0)
     expect(report.summaries.every((s) => s.rounds === 5 || s.reason === 'battle')).toBe(true)
-  })
+    // three full games take ~26 s locally at the current sim speed (0.14 games/s) and CI runners are ~2x slower;
+    // lower this back toward the default once the state-hash speedup lands
+  }, 180_000)
 })
