@@ -3,57 +3,53 @@
 // when a policy returns nothing usable, answers with the engine's `suggest` (then the first legal option, then a pass),
 // never at random for the easy and normal tiers. Every such use is counted (`stats.fallbacks`, `stats.unhandled` by kind) so
 // the bench can refuse a build that quietly stops handling a decision kind. All randomness comes from
-// `SeededRng(seed + decision id)`; the same inputs and seed give the same answer.
-import { query, SeededRng, validate, view as viewOf, legalActions, type Action, type Decider, type DecisionKind, type GameState, type PendingDecision, type PlayerView } from '@/engine'
-import * as end from './end'
+// `SeededRng(seed | decision id | tier)`; the same inputs and seed give the same answer. The AI reads only `view(state, seat)`.
+import { legalActions, SeededRng, validate, view as viewOf, type Action, type Decider, type DecisionKind, type GameState, type PendingDecision, type PlayerView, type Seat } from '@/engine'
+import { actionChoose, activationChoose, activationPick } from './activation'
+import * as attack from './attack'
+import * as command from './command'
 import { internBoard } from './intern'
-import * as fight from './fight'
-import * as moves from './moves'
+import * as misc from './misc'
+import { moveTool, moveTroopers } from './moves'
 import { passAction, randomPolicy, suggestPolicy } from './random'
 import * as setup from './setup'
-import * as shoot from './shoot'
-import * as skills from './skills'
 import { aiBudgetMs, clock, newMemory, tunedWeights, TIERS, workPerMs, type AiCtx, type AiMemory, type Tier, type TierParams, type Weights } from './tiers'
 
-type Policy = (ctx: AiCtx) => Action | null
+export type Policy = (ctx: AiCtx) => Action | null
 
-/** One policy per decision kind. A kind missing here is answered by `suggestPolicy` and counted as unhandled. */
+/** One policy per decision kind (a new kind does not compile without one). */
 export const POLICIES: Record<DecisionKind, Policy> = {
-  'setup.role': setup.role,
-  'setup.crew': setup.crew,
-  'setup.casket': setup.casket,
-  'setup.zone': setup.zone,
+  'setup.battle': setup.battle,
   'setup.deploy': setup.deploy,
-  'action.flee': end.flee,
-  'action.activate': moves.activate,
-  'action.group': moves.group,
-  'action.choose': moves.chooseAction,
-  'move.path': moves.movePath,
-  'shoot.weapon': shoot.weapon,
-  'shoot.target': shoot.target,
-  'shoot.aim': shoot.aim,
-  'shoot.allocate': shoot.allocate,
-  'shoot.firepower': shoot.firepower,
-  'fight.weapons': fight.weapons,
-  'fight.split': fight.split,
-  'fight.after': fight.after,
-  'fight.followUp': fight.followUp,
-  'end.bottle': end.bottle,
-  'end.assist': end.assist,
-  'end.recoveryPick': end.recoveryPick,
-  'skill.choice': skills.skillChoice,
-  'dice.reroll': end.reroll,
-  confirm: end.confirm,
+  'command.pick': command.pick,
+  'command.issuer': command.issuer,
+  'command.order': command.order,
+  'activation.choose': activationChoose,
+  'activation.pick': activationPick,
+  'action.choose': actionChoose,
+  'move.tool': moveTool,
+  'move.troopers': moveTroopers,
+  'attack.defender': attack.defender,
+  'attack.pool': attack.pool,
+  'attack.extraDefender': attack.extraDefender,
+  'attack.spend': attack.attackSpend,
+  'attack.allocate': attack.allocate,
+  'activation.standby': attack.standby,
+  'keyword.choice': misc.keywordChoice,
+  'card.choice': misc.cardChoice,
+  'battle.place': misc.battlePlace,
+  'end.choice': misc.endChoice,
+  confirm: misc.confirm,
 }
 
 export interface AiOpts {
   /** the game seed (any string); streams are derived per decision id */
   seed: string
-  /** per-decision budget in ms (default `AI_MS` or 150) */
+  /** per-decision budget in work units, about ms (default `AI_MS` or 60) */
   budgetMs?: number
   /** weights override (default: defaults with `AI_TUNE`) */
   weights?: Partial<Weights>
-  /** persistent memory (the intent of the activation, stats) */
+  /** persistent memory (the intent of the activation, caches, stats) */
   memory?: AiMemory
   /** clock for tests */
   now?: () => number
@@ -77,40 +73,17 @@ export function answerOk(view: GameState, legal: Action[] | null, a: Action | nu
   return validate(view, a) === null
 }
 
-/**
- * Forgotten Riches and Smash & Grab are won on caskets, and a battle ends the moment one gang is gone: finishing the last
- * enemies while level or behind on loot would throw the scenario away (an equal count in Forgotten Riches is a draw; in Smash &
- * Grab fewer than three caskets cracked is a defender win, whoever is left standing). Damage is worth little then; hauling and
- * cracking keep their full value.
- */
-function damped(w: Weights, state: GameState): Weights {
-  const id = state.scenario.id
-  if ((id !== 'scn.forgotten-riches' && id !== 'scn.smash-and-grab') || state.phase === 'setup') return w
-  const me = (state as unknown as PlayerView).viewer
-  const enemy = me === 'A' ? 'B' : 'A'
-  let standing = 0
-  for (const f of Object.values(state.fighters)) if (f.seat === enemy && f.location === 'board' && f.posture !== 'seriouslyInjured') standing++
-  const v = query.scenarioView(state)
-  if (id === 'scn.forgotten-riches') {
-    if (standing > 2) return w
-    return v.secured[me] > v.secured[enemy] ? w : { ...w, dmg: w.dmg * 0.25 }
-  }
-  // the raiders: a gang that breaks (or is wiped out) ends the battle, and the defenders win it with fewer than three caskets cracked, so kills matter less and less the closer the defenders are to breaking; discounted from the first kill, steeply near the end
-  if (state.players[me].role !== 'attacker' || v.opened >= (v.goal?.needed ?? 3)) return w
-  return { ...w, dmg: w.dmg * (standing <= 3 || state.players[enemy].bottled ? 0.1 : standing <= 6 ? 0.3 : 0.5) }
-}
-
 export function makeCtx(tier: Tier, rawView: PlayerView, pending: PendingDecision, legal: Action[] | null, opts: AiOpts, memory: AiMemory): AiCtx {
   const view = internBoard(rawView)
   const now = opts.now ?? clock
   const params: TierParams = tier === 'random' ? TIERS.normal : TIERS[tier]
-  const rng = SeededRng.fromSeed(`${opts.seed}|${pending.id}|${tier}`)
+  const rng = SeededRng.fromSeed(`${opts.seed}|${pending.id}|${view.viewer}|${tier}`)
   const budget = opts.budgetMs ?? aiBudgetMs()
   const t0 = now()
   return {
     tier,
     params,
-    w: damped({ ...tunedWeights(), ...opts.weights }, view as unknown as GameState),
+    w: { ...tunedWeights(), ...opts.weights },
     seat: view.viewer,
     view: view as unknown as GameState,
     pending,
@@ -119,7 +92,7 @@ export function makeCtx(tier: Tier, rawView: PlayerView, pending: PendingDecisio
     rand: () => rng.next32() / 0x100000000,
     int: (n: number) => rng.int(Math.max(1, n)),
     memory,
-    work: { n: 0, cap: Math.max(12, Math.ceil(budget * workPerMs())), hardAt: t0 + budget * 4, hard: false },
+    work: { n: 0, cap: Math.max(12, Math.ceil(budget * workPerMs())), hardAt: t0 + budget * 8, hard: false, typical: 0, typicalCap: Math.max(24, Math.ceil(budget * workPerMs() * 2)) },
     now,
     cache: new Map(),
   }
@@ -138,7 +111,7 @@ export function createAiDecider(tier: Tier, opts: AiOpts): AiDecider {
       try {
         action = randomPolicy(ctx)
       } catch {
-        action = passAction(pending)
+        action = passAction(pending, ctx.seat)
       }
     } else {
       const policy = (POLICIES as Partial<Record<string, Policy>>)[pending.kind]
@@ -159,7 +132,7 @@ export function createAiDecider(tier: Tier, opts: AiOpts): AiDecider {
         try {
           action = suggestPolicy(ctx)
         } catch {
-          action = passAction(pending)
+          action = passAction(pending, ctx.seat)
         }
       }
     }
@@ -167,9 +140,10 @@ export function createAiDecider(tier: Tier, opts: AiOpts): AiDecider {
     st.decisions++
     st.ms += ms
     st.maxMs = Math.max(st.maxMs, ms)
-    if (st.samples.length < 20000) st.samples.push(ms)
+    if (st.samples.length < 50000) st.samples.push(ms)
     if (fallback) st.fallbacks++
     if (ctx.work.hard) st.hardStops++
+    if (ctx.work.n >= ctx.work.cap) st.capped++
     const k = (st.byKind[pending.kind] ??= { n: 0, ms: 0, max: 0, fallbacks: 0 })
     k.n++
     k.ms += ms
@@ -188,13 +162,13 @@ export function createAiDecider(tier: Tier, opts: AiOpts): AiDecider {
 }
 
 /**
- * A drop-in bot for the client's bot loop (same shape as the random bot: `decide(state, pending) => Action`, synchronous,
- * reading the full state through the redacted view). One per seat; the memory lives as long as the bot.
+ * A drop-in bot for the client's bot loop (same shape as the random bot: `decide(state, pending, seat) => Action`, synchronous,
+ * reading the full state only through the redacted view of its own seat). One per seat; the memory lives as long as the bot.
  */
 export interface AiBot {
   readonly tier: Tier
   readonly memory: AiMemory
-  decide(state: GameState, pending: PendingDecision): Action
+  decide(state: GameState, pending: PendingDecision, seat: Seat): Action
 }
 
 export function createAiBot(tier: Tier, seed: string, opts: Partial<AiOpts> = {}): AiBot {
@@ -202,8 +176,8 @@ export function createAiBot(tier: Tier, seed: string, opts: Partial<AiOpts> = {}
   return {
     tier,
     memory: d.memory,
-    decide(state, pending) {
-      return d.decideSync(viewOf(state, pending.seat), pending, legalActions(state, pending)).action
+    decide(state, pending, seat) {
+      return d.decideSync(viewOf(state, seat), pending, legalActions(state, pending, seat)).action
     },
   }
 }
