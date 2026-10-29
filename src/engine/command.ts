@@ -1,9 +1,10 @@
 // CMD command.*: the Command phase (R-4). Both seats secretly pick a command card at once (`seat: 'all'`), the picks are
 // revealed together, the lower pip count takes priority (a red defence die breaks a tie), each seat nominates a commander and
 // issues the card's orders (no range or LoS limit, R-4.6), then each player's order pool is formed and the pass pool is granted.
-import { cardData, unitData, unitTypeData } from './bundle'
+import { cardData } from './bundle'
 import { beginActivationPhase } from './activation'
-import { activateCard, onOrderIssued } from './commandCards'
+import { activateCard, onOrderIssued, orderSpec, orderTargets as cardOrderTargets } from './commandCards'
+import { orderLimit } from './keywords'
 import { bd, flowOf, freshFlow, openWindow } from './battle'
 import { expireEffects } from './effects'
 import { registerFrameResume, runHook } from './hooks'
@@ -32,30 +33,21 @@ export function playableCards(state: GameState, seat: Seat): string[] {
   })
 }
 
-/** Units that may be nominated commander by the seat's card (R-4.5): the card's named units, else Commander-rank units (Operatives if none). */
+/**
+ * Units that may be nominated commander by the seat's card (CRB p22): one of the card's named units, otherwise any Commander
+ * unit. A player with only an Operative may play a card (R-4.2) but has nobody to nominate, so the card issues no orders
+ * (RULING R-4.5, Corrected).
+ */
 export function commanderCandidates(state: GameState, seat: Seat, cardId: string): Unit[] {
   const card = cardData(state.data, cardId)
   const units = seatUnits(state, seat)
   if (card.orders.named && card.orders.named.length > 0) return units.filter((u) => card.orders.named!.includes(u.unitTypeId))
-  const cmd = units.filter((u) => u.rank === 'commander')
-  return cmd.length > 0 ? cmd : units.filter((u) => u.rank === 'operative')
+  return units.filter((u) => u.rank === 'commander')
 }
 
-/** Units that can still receive an order from this card (R-4.6): no order yet this round and matching the card's limit. */
-export function orderTargets(state: GameState, seat: Seat, cardId: string): Unit[] {
-  const f = cardData(state.data, cardId).orders.filter
-  return seatUnits(state, seat).filter((u) => {
-    if (u.order.state !== 'none') return false
-    if (!f) return true
-    if (f.ranks && !f.ranks.includes(u.rank)) return false
-    if (f.units && !f.units.includes(u.unitTypeId)) return false
-    if (f.unitTypes) {
-      const key = unitData(state.data, u.unitTypeId).unitType
-      const trooper = unitTypeData(state.data, key)?.flags.trooper === true
-      if (!f.unitTypes.some((t) => t === key || (t === 'trooper-any' && trooper))) return false
-    }
-    return true
-  })
+/** The orders a card gives its commander this round: the named units plus `count`, cut by Sabotaged Communications (RC p1). */
+export function ordersToIssue(state: GameState, seat: Seat, cardId: string): number {
+  return Math.min(orderSpec(state, seat, cardId).total, orderLimit(state, seat))
 }
 
 /** A unit left the game: its token leaves the order pool (call it where a unit is defeated; WND-008). */
@@ -209,10 +201,16 @@ export function issueNext(ctx: Ctx): void {
         })
         return
       }
-      s.command.issuing = { issuerId: cands[0]!.id, seat, remaining: cardData(s.data, cardId).orders.count, cardId }
+      s.command.issuing = { issuerId: cands[0]!.id, seat, remaining: ordersToIssue(s, seat, cardId), cardId }
     }
     const iss = s.command.issuing
-    const eligible = iss.remaining > 0 ? orderTargets(s, seat, cardId) : []
+    // the units the card names get their orders first (CRB p22); the card's `count` orders go wherever the commander likes
+    const named = iss.remaining > 0 ? orderSpec(s, seat, cardId).named.filter((id) => s.units[id]!.order.state === 'none') : []
+    if (named.length > 0) {
+      if (issue(ctx, s.units[named[0]!]!)) return
+      continue
+    }
+    const eligible = iss.remaining > 0 ? cardOrderTargets(s, seat, cardId).map((id) => s.units[id]!) : []
     if (iss.remaining <= 0 || eligible.length === 0) {
       // orders that cannot be issued are lost (R-4.6)
       s.command.issuing = null
@@ -292,7 +290,7 @@ export const commandModule: ModuleDef = {
         return {
           run(ctx) {
             const cardId = ctx.state.command.picks[seat]!
-            ctx.state.command.issuing = { issuerId: unitId, seat, remaining: cardData(ctx.state.data, cardId).orders.count, cardId }
+            ctx.state.command.issuing = { issuerId: unitId, seat, remaining: ordersToIssue(ctx.state, seat, cardId), cardId }
             issueNext(ctx)
           },
         }
