@@ -2,15 +2,14 @@
 // a unit with a face-up order, draws a random token from its pool and picks an unordered unit of that rank, or passes with a
 // pass-pool token (not twice in a row). A unit's activation: rally, 2 actions (1 Suppressed, 0 Panicked), order token flipped.
 //
-// Seams for the combat stage (merge): the Attack action goes through `registerAttackSeam` (attack.ts registers
-// `{ canStart, start }` and calls `getFrameResume('activation.action')` when the action is over); `rallyRoll` below is a local
-// stand-in for morale.ts. Suppressed / Panicked / courage are computed here (`isSuppressed`, `isPanicked`).
+// Combat seams: the Attack action goes through `registerAttackSeam` (attack.ts registers `{ canStart, start }` and calls
+// `getFrameResume('activation.action')` when the action is over). Courage, Suppressed, Panicked, rally and the action
+// allowance live in morale.ts.
 import { actionData, unitData, unitTypeData } from './bundle'
 import {
   bd,
   checkWipeout,
   contests,
-  dropAssets,
   flowOf,
   heldAssets,
   markersOf,
@@ -21,87 +20,16 @@ import {
 } from './battle'
 import { beginEndPhase } from './endphase'
 import { reconcilePools } from './command'
-import { expireEffects } from './effects'
+import { expireEffects, removeEffects } from './effects'
 import { registerFrameResume, runHook } from './hooks'
-import { distance, miniBody, unitWithin } from './measure'
+import { cardActions, runCardAction } from './commandCards'
+import { distance, miniBody } from './measure'
+import { actionsFor, courageSource, isPanicked, isSuppressed, panicRelief, rallyRoll, refreshPanic, removeSuppression } from './morale'
 import { beginMove, planMove, unitSpeed } from './movement'
 import { reject, type Ctx, type ModuleDef } from './registry'
-import { constants, EngineInvariantError, leaderOf, otherSeat, poolCounts, seatUnits, unitsOnTable } from './state'
+import { constants, EngineInvariantError, leaderOf, otherSeat, poolCounts, seatUnits } from './state'
 import { hasLos, miniLosBody } from './los'
-import type { Action, GameState, PendingDecision, Seat, Unit } from './types'
-
-// ---------------------------------------------------------------------------
-// Courage, Suppressed, Panicked (R-15)
-// ---------------------------------------------------------------------------
-
-/** Printed courage plus `courage.value` hook deltas; null = no courage ("-"): never gains suppression. */
-export function courageOf(state: GameState, unit: Unit): number | null {
-  const c = unitData(state.data, unit.unitTypeId).courage
-  if (c === null) return null
-  const delta = runHook('courage.value', { seat: unit.seat, state, unitId: unit.id }).reduce((n, r) => n + (r.delta ?? 0), 0)
-  return c + delta
-}
-
-/** Suppressed: tokens >= courage (R-15.2). Units with no courage never are. */
-export function isSuppressed(state: GameState, unit: Unit): boolean {
-  const c = courageOf(state, unit)
-  return c !== null && c > 0 && unit.suppression >= c
-}
-
-/**
- * The courage a Panic check uses (R-15.2): the highest of the unit's own and that of allied Commander units within range 3;
- * null when the unit has no courage or an allied Commander within range 3 has none (nobody panics then).
- */
-export function panicCourage(state: GameState, unit: Unit): number | null {
-  const own = courageOf(state, unit)
-  if (own === null) return null
-  let best = own
-  const c = constants(state)
-  const bodies = unit.minis.filter((m) => m.alive).map((m) => miniBody(state, m))
-  for (const cmd of unitsOnTable(state)) {
-    if (cmd.seat !== unit.seat || cmd.id === unit.id || cmd.rank !== 'commander') continue
-    const near = cmd.minis.some((m) => m.alive && unitWithin(bodies, miniBody(state, m), 3, c))
-    if (!near) continue
-    const cc = courageOf(state, cmd)
-    if (cc === null) return null
-    best = Math.max(best, cc)
-  }
-  return best
-}
-
-/** Panicked: tokens >= 2 x courage (R-15.2). */
-export function isPanicked(state: GameState, unit: Unit): boolean {
-  const c = panicCourage(state, unit)
-  return c !== null && c > 0 && unit.suppression >= 2 * c
-}
-
-const isDroid = (state: GameState, unit: Unit): boolean => unitData(state.data, unit.unitTypeId).unitType.includes('droid')
-
-/** Actions the unit gets after rally: 2; Suppressed 1 (Droid Troopers keep 2); Panicked 0 (R-5.6). */
-export function actionAllowance(state: GameState, unit: Unit): number {
-  const c = constants(state)
-  if (isPanicked(state, unit)) return 0
-  if (isSuppressed(state, unit) && !isDroid(state, unit)) return c.suppressedActions ?? 1
-  return c.actionsPerActivation ?? 2
-}
-
-// ---------------------------------------------------------------------------
-// Rally (R-15.3): local stand-in for morale.rallyRoll until the combat stage merges
-// ---------------------------------------------------------------------------
-
-/** One white defence die per suppression token; one token removed per block or surge. Automatic. */
-export function rallyRoll(ctx: Ctx, unit: Unit): void {
-  const n = unit.suppression
-  if (n <= 0) return
-  const idx = ctx.roll('rally', n, 'def:white')
-  const faces = ctx.state.data.dice.defence.white
-  const names = idx.map((i) => faces[i]!)
-  const removed = names.filter((f) => f === 'block' || f === 'surge').length
-  const from = unit.suppression
-  unit.suppression = Math.max(0, from - removed)
-  ctx.emit({ type: 'Rallied', unitId: unit.id, dice: names, removed }, unit.seat)
-  if (unit.suppression !== from) ctx.emit({ type: 'SuppressionChanged', unitId: unit.id, from, to: unit.suppression, reason: 'rally' }, unit.seat)
-}
+import type { Action, FreeActionGrant, GameState, PendingDecision, Seat, Unit } from './types'
 
 // ---------------------------------------------------------------------------
 // Attack seam (attack.ts registers itself at merge)
@@ -109,6 +37,8 @@ export function rallyRoll(ctx: Ctx, unit: Unit): void {
 
 export interface AttackOpts {
   free: boolean
+  /** a granted free attack may be limited to one weapon type (FreeActionGrant.weapons) */
+  weapons?: 'melee' | 'ranged'
   /** a Standby attack may only declare this unit as the defender (R-5.12) */
   against?: string
 }
@@ -157,7 +87,16 @@ export interface MenuItem {
 export interface Menu {
   items: MenuItem[]
   withheld: { action: string; whyNot: string }[]
+  /** a start-of-actions free action (Compel) is pending: it is the only item and the activation cannot end first */
+  forced?: boolean
 }
+
+/** Free actions granted to the unit by effects (`freeAction`, FreeActionGrant), oldest first. */
+export function grantedFreeActions(state: GameState, unitId: string): { effectId: string; grant: FreeActionGrant }[] {
+  return state.effects.filter((e) => e.kind === 'freeAction' && e.unitId === unitId).map((e) => ({ effectId: e.id, grant: e.data as unknown as FreeActionGrant }))
+}
+
+const shortAction = (id: string): string => id.replace(/^core\.action\./, '')
 
 const used = (state: GameState, action: string): boolean => (state.activation.current?.performed ?? []).some((p) => p.action === action)
 
@@ -245,6 +184,32 @@ export function actionMenu(state: GameState, unit: Unit): Menu {
   else if (alreadyUsed('claim')) hold('claim', 'alreadyUsed')
   else if (claim) items.push({ id: 'claim', action: 'claim', free: true, data: { markerId: claim } })
 
+  // Free actions granted by effects (Compel's move, granted attacks): consumed when taken
+  const grants = grantedFreeActions(state, unit.id).filter((g) => !isPanicked(state, unit) || g.grant.startOfActions)
+  const forced = grants.find((g) => g.grant.startOfActions && g.grant.action === 'core.action.move' && deployed && !engaged && speed >= 1 && probeEntry(state, unit))
+  if (forced) {
+    return { items: [{ id: `free:${forced.effectId}`, action: 'free', params: { effectId: forced.effectId }, free: true, data: { action: 'move', maxSpeed: speed, source: forced.grant.source } }], withheld, forced: true }
+  }
+  for (const g of grants) {
+    if (g.grant.startOfActions) continue
+    const name = shortAction(g.grant.action)
+    const item: MenuItem = { id: `free:${g.effectId}`, action: 'free', params: { effectId: g.effectId }, free: true, data: { action: name, source: g.grant.source } }
+    if (name === 'move' && deployed && !engaged && speed >= 1) items.push({ ...item, data: { ...item.data, maxSpeed: speed } })
+    else if (name === 'attack' && deployed && attackSeam?.canStart(state, unit.id, { free: true, ...(g.grant.weapons ? { weapons: g.grant.weapons } : {}) })) items.push(item)
+    else if ((name === 'aim' || name === 'dodge') && deployed) items.push(item)
+    else hold(`free:${name}`, 'notAvailable')
+  }
+
+  // Card actions: upgrade grants (Force Push, Specialist) and command-card actions, free or one action each
+  if (deployed && !isPanicked(state, unit)) {
+    for (const a of cardActions({ state }, unit)) {
+      const item: MenuItem = { id: `card:${a.id}`, action: 'cardAction', params: { actionId: a.id }, free: a.kind === 'free', data: { name: a.name, kind: a.kind, upgradeId: a.upgradeId } }
+      if (!a.available) hold(`card:${a.id}`, a.whyNot ?? 'unavailable')
+      else if (a.kind === 'free') items.push(item)
+      else paid(`card:${a.id}`, true, '', () => [item])
+    }
+  }
+
   // R-5.11: an undeployed unit may only Move (and free Moves)
   if (!deployed) {
     const keep = items.filter((i) => i.action === 'move')
@@ -289,7 +254,7 @@ export function continueActivation(ctx: Ctx): void {
       return
     }
   }
-  raiseMenu(ctx, unit, menu, true)
+  raiseMenu(ctx, unit, menu, !menu.forced)
 }
 
 function raiseMenu(ctx: Ctx, unit: Unit, menu: Menu, withEnd: boolean): void {
@@ -327,12 +292,7 @@ export function endActivation(ctx: Ctx): void {
   if (!act) return
   const unit = activeUnit(s)
   // a Panicked unit that took no actions sheds suppression equal to its own courage (R-15.5)
-  if (unit.location !== 'defeated' && act.performed.length === 0 && isPanicked(s, unit)) {
-    const c = courageOf(s, unit) ?? 0
-    const from = unit.suppression
-    unit.suppression = Math.max(0, from - c)
-    ctx.emit({ type: 'SuppressionChanged', unitId: unit.id, from, to: unit.suppression, reason: 'panic' }, unit.seat)
-  }
+  if (unit.location !== 'defeated' && act.performed.length === 0 && isPanicked(s, unit)) panicRelief(ctx, unit)
   runHook('activation.end', { seat: unit.seat, state: s, engine: ctx, unitId: unit.id })
   if (openWindow(ctx, 'activation.end', { unitId: unit.id }, `a${flowOf(s).activations}`, 'act.ended')) return
   afterEndWindow(ctx)
@@ -345,9 +305,15 @@ export function afterEndWindow(ctx: Ctx): void {
   const unit = activeUnit(s)
   if (unit.location !== 'defeated') {
     onActivationEnd(ctx, unit)
-    unit.activated = true
-    unit.order.state = 'spent'
+    // Implacable (and any effect that returns the order token to the pool) leaves the unit activatable again
+    if (unit.flags.returnedToPool) delete unit.flags.returnedToPool
+    else {
+      unit.activated = true
+      unit.order.state = 'spent'
+    }
   }
+  const mover = s.units[act.unitId]
+  if (mover) delete mover.flags.movedThisActivation
   ctx.emit({ type: 'ActivationEnded', unitId: unit.id, actionsUsed: act.performed.filter((p) => !p.free).length }, act.seat)
   s.activation.current = null
   expireEffects(ctx, 'activation')
@@ -436,6 +402,7 @@ function startActivation(ctx: Ctx, unit: Unit, via: 'order' | 'pool'): void {
   flow.activations++
   expireEffects(ctx, `startOfActivation:${unit.id}`)
   s.activation.drawn = null
+  delete unit.flags.movedThisActivation
   s.activation.current = { unitId: unit.id, seat: unit.seat, via, actionsLeft: 0, performed: [], declared: null }
   ctx.emit({ type: 'UnitActivated', unitId: unit.id, via, rank: unit.rank }, unit.seat)
   runHook('activation.start', { seat: unit.seat, state: s, engine: ctx, unitId: unit.id })
@@ -448,6 +415,7 @@ export function afterStartWindow(ctx: Ctx): void {
   const unit = activeUnit(s)
   // rally happens for units on the table; undeployed units have no suppression
   rallyRoll(ctx, unit)
+  refreshPanic(ctx)
   if (openWindow(ctx, 'activation.rallied', { unitId: unit.id }, `a${flowOf(s).activations}`, 'act.rallied')) return
   afterRallied(ctx)
 }
@@ -456,13 +424,14 @@ export function afterRallied(ctx: Ctx): void {
   const s = ctx.state
   const unit = activeUnit(s)
   const act = s.activation.current!
+  // a unit that panicked earlier in the round was already announced (and dropped its Assets) by morale.refreshPanic
+  const wasPanicked = Boolean(unit.flags.panicked)
+  refreshPanic(ctx)
   const panicked = isPanicked(s, unit)
-  if (unit.suppression > 0) ctx.emit({ type: 'PanicChecked', unitId: unit.id, suppression: unit.suppression, courage: panicCourage(s, unit), panicked }, unit.seat)
-  if (panicked) {
-    dropAssets(ctx, unit)
-    ctx.emit({ type: 'UnitPanicked', unitId: unit.id }, unit.seat)
+  if (unit.suppression > 0 && !(panicked && !wasPanicked)) {
+    ctx.emit({ type: 'PanicChecked', unitId: unit.id, suppression: unit.suppression, courage: courageSource(s, unit).courage, panicked }, unit.seat)
   }
-  act.actionsLeft = actionAllowance(s, unit)
+  act.actionsLeft = actionsFor(s, unit)
   continueActivation(ctx)
 }
 
@@ -475,9 +444,19 @@ function declare(ctx: Ctx, unit: Unit, action: string, params: Record<string, un
   const act = s.activation.current!
   const free = actionData(s.data, `core.action.${action}`)?.free ?? false
   act.declared = { action, ...(params ? { params } : {}) }
-  ctx.emit({ type: 'ActionDeclared', unitId: unit.id, action, free }, unit.seat)
+  if (action !== 'cardAction') ctx.emit({ type: 'ActionDeclared', unitId: unit.id, action, free }, unit.seat)
   loseStandby(ctx, unit)
   switch (action) {
+    case 'cardAction': {
+      const actionId = String(params?.actionId)
+      const a = cardActions({ state: s }, unit).find((x) => x.id === actionId)
+      // recorded under the card action's own id so the once-per-activation ledger and the sim can tell them apart
+      act.declared = { action: actionId, params: { ...params, card: true, free: a?.kind === 'free' } }
+      if (runCardAction(ctx, unit.id, actionId, { name: CARD_ACTION })) return
+      return afterCardAction(ctx)
+    }
+    case 'free':
+      return declareFree(ctx, unit, String(params?.effectId))
     case 'aim':
     case 'dodge':
       setToken(ctx, unit, action, (unit.tokens[action] ?? 0) + 1)
@@ -487,11 +466,7 @@ function declare(ctx: Ctx, unit: Unit, action: string, params: Record<string, un
       return completeAction(ctx)
     case 'recover': {
       const remove = Math.min(unit.suppression, Number(params?.remove ?? 0))
-      if (remove > 0) {
-        const from = unit.suppression
-        unit.suppression = from - remove
-        ctx.emit({ type: 'SuppressionChanged', unitId: unit.id, from, to: unit.suppression, reason: 'recover' }, unit.seat)
-      }
+      if (remove > 0) removeSuppression(ctx, unit.id, remove, 'recover')
       if (unit.flags.exhausted) delete unit.flags.exhausted
       return completeAction(ctx)
     }
@@ -518,15 +493,74 @@ function declare(ctx: Ctx, unit: Unit, action: string, params: Record<string, un
   }
 }
 
+// ---------------------------------------------------------------------------
+// Free actions granted by effects, card actions, controlled moves (Force Push)
+// ---------------------------------------------------------------------------
+
+const CARD_ACTION = 'activation.cardAction'
+
+/** Take a granted free action (Compel's Move, a granted Attack, Aim or Dodge); the grant is spent when taken. */
+function declareFree(ctx: Ctx, unit: Unit, effectId: string): void {
+  const s = ctx.state
+  const act = s.activation.current!
+  const eff = s.effects.find((e) => e.id === effectId && e.kind === 'freeAction' && e.unitId === unit.id)
+  if (!eff) throw new EngineInvariantError(`no free action grant ${effectId} for ${unit.id}`)
+  const grant = eff.data as unknown as FreeActionGrant
+  removeEffects(ctx, (e) => e.id === effectId)
+  const name = shortAction(grant.action)
+  // recorded as `free.<action>` so a granted Attack neither uses up nor is blocked by the Attack action of the activation
+  act.declared = { action: `free.${name}`, params: { free: true, source: grant.source } }
+  ctx.emit({ type: 'ActionDeclared', unitId: unit.id, action: `free.${name}`, free: true }, unit.seat)
+  switch (name) {
+    case 'move':
+      return beginMove(ctx, { unitId: unit.id, seat: unit.seat, kind: 'move', maxSpeed: unitSpeed(s, unit), free: true })
+    case 'attack':
+      if (!attackSeam) throw new EngineInvariantError('free attack granted but no attack seam is registered')
+      return attackSeam.start(ctx, unit.id, { free: true, ...(grant.weapons ? { weapons: grant.weapons } : {}) })
+    case 'aim':
+    case 'dodge':
+      setToken(ctx, unit, name, (unit.tokens[name] ?? 0) + 1)
+      return completeAction(ctx)
+    default:
+      throw new EngineInvariantError(`unsupported free action ${grant.action}`)
+  }
+}
+
+/** A card action finished (possibly after a choice): resolve controlled moves it set up, then complete the action. */
+function afterCardAction(ctx: Ctx): void {
+  if (startControlledMove(ctx)) return
+  completeAction(ctx)
+}
+
+registerFrameResume(CARD_ACTION, (ctx) => afterCardAction(ctx))
+
+/**
+ * Force Push: a `controlledMove` effect names an enemy unit that makes a Move its opponent controls (speed X, optionally
+ * even while engaged). The controlling player places the tool; the effect is spent when the Move starts.
+ */
+function startControlledMove(ctx: Ctx): boolean {
+  const s = ctx.state
+  const eff = s.effects.find((e) => e.kind === 'controlledMove' && e.unitId && s.units[e.unitId]?.location === 'table')
+  if (!eff) return false
+  const target = s.units[eff.unitId!]!
+  const data = eff.data as { speed?: number; ignoreEngagement?: boolean }
+  removeEffects(ctx, (e) => e.id === eff.id)
+  const speed = Math.max(1, Math.min(3, Number(data.speed ?? 1)))
+  if (target.engagedWith.length > 0 && !data.ignoreEngagement) return false
+  beginMove(ctx, { unitId: target.id, seat: otherSeat(target.seat), kind: 'controlled', maxSpeed: speed, free: true })
+  return true
+}
+
 /** The declared action resolved: record it, spend the action, then Standby triggers and the next menu. */
 export function completeAction(ctx: Ctx): void {
   const s = ctx.state
   const act = s.activation.current
   if (!act || !act.declared) throw new EngineInvariantError('completeAction with no declared action')
-  const free = actionData(s.data, `core.action.${act.declared.action}`)?.free ?? false
+  const free = (actionData(s.data, `core.action.${act.declared.action}`)?.free ?? false) || act.declared.params?.free === true
   act.performed.push({ action: act.declared.action, free })
   if (!free) act.actionsLeft = Math.max(0, act.actionsLeft - 1)
-  ctx.emit({ type: 'ActionResolved', unitId: act.unitId, action: act.declared.action }, act.seat)
+  // a card action emitted its own ActionResolved (keywords.ts / commandCards.ts)
+  if (!act.declared.params?.card) ctx.emit({ type: 'ActionResolved', unitId: act.unitId, action: act.declared.action }, act.seat)
   act.declared = null
   if (openWindow(ctx, 'action.resolved', { unitId: act.unitId }, `a${flowOf(s).activations}:${act.performed.length}`, 'act.resolved')) return
   afterActionResolved(ctx)
@@ -611,6 +645,7 @@ function standbyResponseDone(ctx: Ctx): void {
 /** Movement hands back here when a Move (or a cancelled placement) is over. */
 export function afterMoveFinished(ctx: Ctx, frameKind: string, outcome: 'finished' | 'cancelled'): void {
   if (frameKind === 'standby') return standbyResponseDone(ctx)
+  if (frameKind === 'controlled') return afterCardAction(ctx)
   if (outcome === 'cancelled') return cancelAction(ctx)
   completeAction(ctx)
 }

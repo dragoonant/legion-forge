@@ -1,6 +1,6 @@
 // Headless simulation core (docs/spec/60-testing.md section 3): two random-legal bots play seeded games while the invariants
-// below are checked after every step. This loop (like the client store) is the only caller of `step`. Until the attack module
-// is merged the attack action is not offered, so games are decided by movement and objectives.
+// below are checked after every step. This loop (like the client store) is the only caller of `step`. Attacks are real:
+// ranged and melee pools, cover, wounds, suppression, panic, keywords, upgrade actions and command cards all run.
 import {
   createGame,
   legalActions,
@@ -78,7 +78,7 @@ export const STALL_LIMIT = 200
 // Random-legal bot with light weights
 // ---------------------------------------------------------------------------
 
-const ACTION_WEIGHTS: Record<string, number> = { move: 4, climb: 1, withdraw: 2, attack: 3, aim: 1, dodge: 1, recover: 1.5, standby: 0.7, claim: 6, end: 0.15 }
+const ACTION_WEIGHTS: Record<string, number> = { move: 4, climb: 1, withdraw: 2, attack: 3, aim: 1, dodge: 1, recover: 1.5, standby: 0.7, claim: 6, cardAction: 2, free: 4, end: 0.15 }
 
 export class RandomBot {
   private readonly rng: SeededRng
@@ -255,10 +255,11 @@ export function checkInvariants(prev: GameState, next: GameState, action: Action
   const cur = next.activation.current
   if (cur) {
     const used = cur.performed.filter((p) => !p.free).length
-    if (cur.actionsLeft < 0 || used + cur.actionsLeft > 2) add('ACT', `${cur.unitId}: ${used} spent with ${cur.actionsLeft} left`)
-    const once = cur.performed.filter((p) => !['move', 'climb'].includes(p.action)).map((p) => p.action)
+    const extra = next.effects.filter((e) => e.kind === 'extraAction' && e.unitId === cur.unitId).reduce((n, e) => n + Number(e.data?.n ?? 1), 0)
+    if (cur.actionsLeft < 0 || used + cur.actionsLeft > 2 + extra) add('ACT', `${cur.unitId}: ${used} spent with ${cur.actionsLeft} left`)
+    const once = cur.performed.filter((p) => !['move', 'climb'].includes(p.action) && !p.action.includes('.act.') && !p.action.startsWith('free.')).map((p) => p.action)
     if (new Set(once).size !== once.length) add('ACT', `${cur.unitId} repeated an action: ${once.join(',')}`)
-    if (cur.performed.some((p) => p.free && p.action !== 'claim')) add('ACT', `${cur.unitId} took a free action that was not granted`)
+    if (cur.performed.some((p) => p.free && p.action !== 'claim' && !p.action.includes('.act.') && !p.action.startsWith('free.'))) add('ACT', `${cur.unitId} took a free action that was not granted`)
     const names = cur.performed.map((p) => p.action)
     if (names.includes('attack') && names.includes('standby')) add('ACT', `${cur.unitId} attacked and went on standby`)
   }
@@ -413,6 +414,50 @@ function countEvent(stats: Record<string, number>, ev: GameEvent): void {
       break
     case 'Rallied':
       bump(stats, 'rallies')
+      break
+    case 'AttackDeclared':
+      bump(stats, 'attacks')
+      break
+    case 'AttackEnded':
+      bump(stats, 'attacksEnded')
+      bump(stats, 'attackWounds', ev.wounds)
+      break
+    case 'AttackSkipped':
+      bump(stats, `attackSkipped:${ev.reason}`)
+      break
+    case 'WoundsAssigned':
+      bump(stats, 'woundsAssigned', ev.wounds)
+      break
+    case 'WoundsSuffered':
+      bump(stats, 'woundsSuffered', ev.n)
+      break
+    case 'MiniDefeated':
+      bump(stats, 'minisDefeated')
+      break
+    case 'UnitDefeated':
+      bump(stats, 'unitsDefeated')
+      break
+    case 'SuppressionChanged':
+      if (ev.to > ev.from) bump(stats, 'suppressionGained', ev.to - ev.from)
+      break
+    case 'UnitPanicked':
+      bump(stats, 'panics')
+      break
+    case 'MeleeContact':
+      bump(stats, 'meleeContacts')
+      break
+    case 'DodgeSpent':
+      bump(stats, 'dodgesSpent', ev.cancelled)
+      break
+    case 'LeaderReplaced':
+      bump(stats, 'leaderReplaced')
+      break
+    case 'KeywordFired':
+      bump(stats, `keyword:${ev.keyword}`)
+      bump(stats, 'keywordFires')
+      break
+    case 'CardEffect':
+      bump(stats, 'cardEffects')
       break
     case 'DiceRolled':
       bump(stats, `dice:${ev.purpose.split(':')[0]}`, ev.faces.length)

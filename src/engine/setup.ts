@@ -160,7 +160,7 @@ export function buildUnit(data: GameData, seat: Seat, index: number, r: RosterUn
     const a = up.addsMinis
     if (!a) continue
     for (let i = 0; i < a.count; i++) {
-      const m = mk({ upgradeId: uid, ...(a.weapon ? { weaponId: a.weapon } : {}) })
+      const m = mk({ upgradeId: uid, ...(a.weapon ? { weaponId: a.weapon, weaponIds: [a.weapon] } : {}) })
       if (a.leader && !leader) leader = m
     }
     for (const k of a.persistent?.keywords ?? []) if (!keywords.some((x) => x.id === k.id)) keywords.push({ id: k.id, ...(k.x !== undefined ? { x: k.x } : {}) })

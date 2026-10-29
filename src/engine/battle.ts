@@ -7,7 +7,7 @@
 // says so with an `ObjectiveChanged` event, never silently. Recon needs exactly the shapes handled here.
 import type { BattleCardData, MapData } from '../data/types'
 import { battleCardData, mapData, unitPoints } from './bundle'
-import { markFired, registerCodeHook } from './code-hooks'
+import { markFired } from './code-hooks'
 import { footprintGap2D, footprintInsideBounds, footprintInsidePolygon, footprintOverlapsPolygon, type Footprint } from './footprint'
 import { pointInPolygon } from './geometry'
 import { getWindowOpener } from './hooks'
@@ -29,7 +29,7 @@ import type {
   Unit,
   Vec2,
 } from './types'
-import { isPanicked, isSuppressed } from './activation'
+import { isPanicked, isSuppressed } from './morale'
 
 // ---------------------------------------------------------------------------
 // Shared flow state
@@ -771,26 +771,8 @@ export function finishAtRoundLimit(ctx: Ctx): void {
   endGame(ctx, 'roundLimit', undefined, { winner })
 }
 
-// ---------------------------------------------------------------------------
-// Code hooks of the Recon deck (each fires in a real game: tests/engine/flow)
-// ---------------------------------------------------------------------------
-
-registerCodeHook({
-  name: 'bunkerAssault',
-  kind: 'battle',
-  params: (p) => (p && typeof p.woundsToDestroy === 'number' ? null : 'bunkerAssault needs params.woundsToDestroy'),
-  install() {
-    /* applied directly by battle.ts onEndPhaseStart */
-  },
-})
-registerCodeHook({
-  name: 'scoringTable',
-  kind: 'battle',
-  params: () => null,
-  install() {
-    /* applied directly by battle.ts onStepEvents */
-  },
-})
+// The Recon deck's code hooks (`bunkerAssault`, `scoringTable`) are registered in armies/index.ts; the rules themselves are
+// applied directly by `onEndPhaseStart` and `onStepEvents` above, which mark them fired for the firing tests.
 
 // ---------------------------------------------------------------------------
 // The battle namespace module: battle.place (tokens placed by a player) and confirm

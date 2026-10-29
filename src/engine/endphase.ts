@@ -17,6 +17,7 @@ import {
 } from './battle'
 import { expireEffects } from './effects'
 import { runHook } from './hooks'
+import { refreshPanic } from './morale'
 import { reject, type Ctx, type ModuleDef } from './registry'
 import { SEATS, seatUnits } from './state'
 import type { Action, GameState, Seat, Unit } from './types'
@@ -80,7 +81,9 @@ export function afterScoring(ctx: Ctx): void {
       u.suppression = from - 1
       ctx.emit({ type: 'SuppressionChanged', unitId: u.id, from, to: u.suppression, reason: 'endPhase' }, u.seat)
     }
+    delete u.flags.returnedToPool
   }
+  refreshPanic(ctx)
   for (const seat of SEATS) s.players[seat].passTokens = 0
   flowOf(s).issueSeats = priorityFirst(s)
   promoteNext(ctx)

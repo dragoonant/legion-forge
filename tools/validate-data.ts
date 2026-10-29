@@ -1,11 +1,14 @@
 /**
- * npm run validate:data [-- --print lists] [--no-pending-codes] [--no-sources] [--quiet]
+ * npm run validate:data [-- --print lists] [--allow-pending-codes] [--no-sources] [--quiet]
  *
  * Validates every JSON record under src/data (docs/spec/20-data-schema.md section 12). Prints `ok (<n> records)` (after a table of the
- * data files) or `path: V-xx message` lines and exits non-zero. Pending code hooks are allowed until the engine registry exists (M2):
- * pass --no-pending-codes to turn that off.
+ * data files) or `path: V-xx message` lines and exits non-zero. Every `{ "code": ... }` hook the data uses must be registered in
+ * the engine (src/engine/armies, battle.ts); --allow-pending-codes is the opt-in for data that runs ahead of the engine.
  */
 import { validateAll } from '../src/data/validate'
+import '../src/engine/armies'
+import '../src/engine/battle'
+import { registeredCodeHooks } from '../src/engine/code-hooks'
 import { armyListProblems, listPoints } from '../src/data/roster'
 import type { DataBundle } from '../src/data/types'
 
@@ -13,8 +16,7 @@ const args = process.argv.slice(2)
 const flag = (name: string) => args.includes(name)
 const printWhat = args.includes('--print') ? args[args.indexOf('--print') + 1] : undefined
 
-// TODO(M2): replace with `new Set(registeredCodeHooks())` from src/engine/code-hooks once the registry exists, and drop the flag.
-const result = validateAll({ registeredCodes: new Set<string>(), allowPendingCodes: !flag('--no-pending-codes'), sourcesDir: flag('--no-sources') ? false : undefined })
+const result = validateAll({ registeredCodes: new Set<string>(registeredCodeHooks()), allowPendingCodes: flag('--allow-pending-codes'), sourcesDir: flag('--no-sources') ? false : undefined })
 
 const pad = (s: string, n: number) => (s.length >= n ? s : s + ' '.repeat(n - s.length))
 

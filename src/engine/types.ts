@@ -591,7 +591,7 @@ export interface Mini {
 export interface MoveFrame {
   unitId: string
   seat: Seat
-  kind: 'move' | 'climb' | 'withdraw' | 'standby' | 'deploy'
+  kind: 'move' | 'climb' | 'withdraw' | 'standby' | 'deploy' | 'controlled'
   maxSpeed: number
   free: boolean
 }
@@ -637,4 +637,179 @@ export interface BattleData {
   /** chooseUnits results by name */
   picks: Record<string, string[]>
   flow: FlowState
+}
+
+// ---------------------------------------------------------------------------
+// --- M2b-combat --- (append only; attack pipeline, keywords, morale, command-card state shapes)
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-model loadout (declaration merge into `Mini`): `weaponIds` are the only weapons this model may add to a pool
+ * (upgrade models such as a heavy weapon trooper); absent means the unit's base weapons (`Unit.weapons`).
+ */
+export interface Mini {
+  weaponIds?: string[]
+  /** the upgrade card that added this model, when it did */
+  upgradeId?: string
+}
+
+export type AttackKind = 'ranged' | 'melee'
+
+export interface PoolWeapon {
+  miniId: string
+  weaponId: string
+}
+
+/** One attack die of a pool: its current colour and face, the weapon that contributed it and the effects that changed its colour. */
+export interface AtkDie {
+  colour: AttackColour
+  face: AttackFace
+  weaponId: string
+  changedBy: string[]
+}
+
+export interface ShiftRec {
+  effectId: string
+  party: 'attacker' | 'defender'
+  dir: 1 | -1
+  /** number of different dice the effect changes; 0 = all */
+  count: number
+  /** restrict to the dice of one weapon (Assault X: "that weapon's dice") */
+  weaponId?: string
+}
+
+/** A keyword gained for the pool (Assault from a Saboteur, Pierce from Duelist), optionally only for some weapons. */
+export interface GrantedKw {
+  id: string
+  x?: number
+  /** weapon ids that gain it; absent = the whole pool */
+  weaponIds?: string[]
+}
+
+export type PoolStep =
+  | 'start'
+  | 'roll'
+  | 'reroll'
+  | 'surges'
+  | 'cover'
+  | 'dodge'
+  | 'modifyAtk'
+  | 'defRoll'
+  | 'defSurges'
+  | 'modifyDef'
+  | 'compare'
+  | 'wounds'
+  | 'suppression'
+  | 'surgeTokens'
+  | 'sniper'
+  | 'defSurgeTokens'
+  | 'done'
+
+export interface CoverRecord {
+  level: CoverValue
+  /** cover before the Suppressed improvement and Sharpshooter */
+  base: CoverValue
+  obscured: number
+  total: number
+  byTerrainId: string[]
+  /** the cover dice rolled (white defence faces) and the hits they cancelled */
+  dice: DefenceFace[]
+  cancelled: number
+}
+
+export interface PoolFrame {
+  defenderId: string
+  kind: AttackKind
+  weapons: PoolWeapon[]
+  step: PoolStep
+  /** windows already fired for this pool (each opens at most once) */
+  windows: string[]
+  /** effect keys already executed this pool (windows are re-collected until nothing new fires) */
+  fired: string[]
+  granted: GrantedKw[]
+  shifts: ShiftRec[]
+  dice: AtkDie[]
+  /** tokens each side spent in this pool, by token kind */
+  spent: { attacker: Record<string, number>; defender: Record<string, number> }
+  /** a hit or crit existed when Roll Attack Dice ended (R-12.11) */
+  suppressFlag: boolean
+  cover: CoverRecord | null
+  hits: number
+  crits: number
+  defColour: DefenceColour
+  def: DefenceFace[]
+  defChart: 'block' | null
+  blocks: number
+  wounds: number
+  /** extra suppression from Suppressive / Overwhelm */
+  extraSuppression: number
+  /** Sniper Team: the pool was upgraded, so the surge-step cancel is offered */
+  sniperEligible: boolean
+  sniperOffered: boolean
+  /** the whole pool was cancelled (Sniper Team) */
+  cancelled: boolean
+  /** wounds actually suffered by the defender (after the ranged cap) */
+  woundsSuffered: number
+  /** models defeated in this pool */
+  defeated: string[]
+  /** wounds still to assign while the allocate loop is mid-way */
+  allocLeft: number
+}
+
+export interface AttackFrame {
+  /** the frame-resume name registered with `registerFrameResume` that continues the caller when the attack ends */
+  resume: string
+  resumeData: Record<string, unknown>
+  free: boolean
+  rangedOnly: boolean
+  meleeOnly: boolean
+  forcedDefenderId: string | null
+  /** the unit moved this activation (Cumbersome, Sniper Team) */
+  moved: boolean
+  /** extra range bands granted by Long Shot for this attack */
+  rangeBonus: number
+  longShotAsked: boolean
+  stage: 'declaring' | 'defender' | 'form' | 'extra' | 'resolve' | 'closing' | 'finished'
+  usedMinis: string[]
+  usedWeapons: string[]
+  pools: PoolFrame[]
+  current: number
+  /** wounds the defending units suffered, by unit id (Fear and Dead Men) */
+  woundsTaken: Record<string, number>
+}
+
+/** What the flow module passes to `startAttack`. */
+export interface StartAttackInput {
+  attackerId: string
+  resume: string
+  resumeData?: Record<string, unknown>
+  free?: boolean
+  rangedOnly?: boolean
+  meleeOnly?: boolean
+  /** the Standby free attack and Charge name their only legal defender */
+  forcedDefenderId?: string
+}
+
+/** A free action granted by a keyword or card (`ActiveEffect.kind === 'freeAction'`, `data`). */
+export interface FreeActionGrant {
+  action: string
+  weapons?: 'melee' | 'ranged'
+  target?: string
+  ignoreAttackLimit?: boolean
+  /** the unit must take it at the start of its Make Actions (Compel) */
+  startOfActions?: boolean
+  source: string
+}
+
+/** A pending offer a code effect hands the keywords module to turn into a decision. */
+export interface CodeOffer {
+  seat: Seat
+  unitId: string
+  keyword: string
+  labelKey: string
+  options: { id: string; labelKey: string; data?: Record<string, unknown> }[]
+  /** free-form payload handed back to the code effect's `resolve` */
+  payload: Record<string, unknown>
+  /** the code effect that made the offer */
+  code: string
 }

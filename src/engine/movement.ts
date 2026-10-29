@@ -11,6 +11,7 @@ import { runHook } from './hooks'
 import { miniLosBody, type LosBody } from './los'
 import { makeAction } from './actions'
 import { miniBody } from './measure'
+import { refreshPanic } from './morale'
 import { reject, type Ctx, type Handled, type ModuleDef } from './registry'
 import { constants, EngineInvariantError, leaderOf, unitsOnTable } from './state'
 import { piecesOverlapping } from './table'
@@ -438,6 +439,9 @@ function finishMove(ctx: Ctx, unit: Unit, info: { toolSpeed: number; toolPath: V
   if (wasReserve) unit.location = 'table'
   ctx.emit({ type: 'UnitMoved', unitId: unit.id, speed: info.toolSpeed, toolPath: info.toolPath, leaderFrom: info.leaderFrom, leaderTo: { ...leaderOf(unit).pos }, minis: snapshot(unit) }, unit.seat)
   if (wasReserve) ctx.emit({ type: 'UnitDeployed', unitId: unit.id, minis: snapshot(unit) }, unit.seat)
+  // Cumbersome / Sniper Team read this; the activation clears it. Allied Commander range may have changed: re-derive Panicked.
+  if (ctx.state.activation.current?.unitId === unit.id) unit.flags.movedThisActivation = true
+  refreshPanic(ctx)
   // the `move.ended` window (keywords and cards); the frame stays until the window is done
   if (openWindow(ctx, 'move.ended', { unitId: unit.id }, `m${ctx.state.seq}`, 'move.ended')) return
   resumeAfterMove(ctx)

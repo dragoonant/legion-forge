@@ -1,28 +1,31 @@
 // Namespace -> module table. Exactly one owner per decision-kind namespace. Every module exists from M2a as a stub that
 // owns its namespaces and rejects every answer with E_TODO; a later stage replaces its stub here and edits only its own
 // module file. `setModule` / `resetModules` let tests install a fixture module in place of a stub.
+import { attackModule } from './attack'
+import { commandCardsModule } from './commandCards'
+import { fireWindow, keywordsModule } from './keywords'
+import { meleeModule } from './melee'
 import { activationModule, afterActionResolved, afterEndWindow, afterRallied, afterStartWindow, nextTurn } from './activation'
 import { battleModule } from './battle'
 import { afterOrders, afterReveal, commandModule } from './command'
 import { afterRoundEnd, afterScoring, afterStart, endphaseModule } from './endphase'
-import { registerFrameResume } from './hooks'
+import { registerFrameResume, registerWindowOpener } from './hooks'
 import { movementModule, resumeAfterMove } from './movement'
 import { setupModule as setupModuleDef } from './setup'
 import { EngineInvariantError } from './state'
 import { stubModule, type Ctx, type ModuleDef } from './registry'
 import { flowOf } from './battle'
 
-// M2b-flow: setup, command, activation, movement, battle and endphase are real. The four combat modules below stay stubs
-// until the coordinator merges M2b-combat; each TODO is the one line that replaces its stub.
+// All ten modules are real (M2b-flow + M2b-combat merged).
 const DEFAULT_MODULES: ModuleDef[] = [
   setupModuleDef, // SET: army lists, blue player, mission draw, Prepared Position deployment
   commandModule, // CMD: hidden simultaneous pick, priority, orders, order pool
   activationModule, // ACT: turn alternation, order use or pool draw, action ledger, standby
   movementModule, // MOV: tool moves, trooper placement, cohesion, climb
-  stubModule('attack', ['attack']), // TODO(merge): import { attackModule } from './attack'
-  stubModule('melee', ['melee']), // TODO(merge): import { meleeModule } from './melee'
-  stubModule('keywords', ['keyword']), // TODO(merge): import { keywordsModule } from './keywords'
-  stubModule('commandCards', ['card']), // TODO(merge): import { commandCardsModule } from './commandCards'
+  attackModule, // ATK: pool, dice, cover, spend, allocate, wounds
+  meleeModule, // MEL: melee contact and attacks
+  keywordsModule, // KEY: keyword windows and code hooks
+  commandCardsModule, // CC: command cards
   battleModule, // BTL: objectives, scoring, victory
   endphaseModule, // END
 ]
@@ -57,6 +60,11 @@ export function resumeFlow(ctx: Ctx): void {
 }
 
 registerFrameResume('flow', (ctx) => resumeFlow(ctx))
+
+// Every lifecycle window the flow passes (`openWindow`) runs the keyword / upgrade / command-card effects that trigger there.
+// A decision they raise (a keyword.choice or card.choice) suspends the flow; the interpreter calls the 'flow' frame-resume
+// after the last answer and `resumeFlow` continues at the step that offered the window.
+registerWindowOpener((ctx, window, info) => fireWindow(ctx, window, info.unitId ? { unitId: info.unitId, ...(info.targetId ? { targetId: info.targetId } : {}) } : {}, { name: 'flow' }))
 
 let modules: ModuleDef[] = DEFAULT_MODULES.slice()
 let table: Map<string, ModuleDef> | null = null

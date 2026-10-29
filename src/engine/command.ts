@@ -3,9 +3,10 @@
 // issues the card's orders (no range or LoS limit, R-4.6), then each player's order pool is formed and the pass pool is granted.
 import { cardData, unitData, unitTypeData } from './bundle'
 import { beginActivationPhase } from './activation'
+import { activateCard, onOrderIssued } from './commandCards'
 import { bd, flowOf, freshFlow, openWindow } from './battle'
 import { expireEffects } from './effects'
-import { runHook } from './hooks'
+import { registerFrameResume, runHook } from './hooks'
 import type { OptionInput } from './registry'
 import { reject, type Ctx, type ModuleDef } from './registry'
 import { EngineInvariantError, otherSeat, poolCounts, SEATS, seatUnits } from './state'
@@ -59,7 +60,9 @@ export function orderTargets(state: GameState, seat: Seat, cardId: string): Unit
 
 /** A unit left the game: its token leaves the order pool (call it where a unit is defeated; WND-008). */
 export function dropOrderToken(ctx: Ctx, unit: Unit): void {
-  if (unit.order.state === 'pool') {
+  const cur = ctx.state.activation.current
+  const drawnNow = cur?.via === 'pool' && cur.unitId === unit.id // its token was drawn when the activation began
+  if (unit.order.state === 'pool' && !drawnNow) {
     const pool = ctx.state.players[unit.seat].pool.tokens
     const i = pool.indexOf(unit.rank)
     if (i >= 0) {
@@ -136,6 +139,7 @@ function afterPicks(ctx: Ctx): void {
   s.command.revealed = true
   ctx.reveal()
   ctx.emit({ type: 'CommandCardsRevealed', picks: { ...s.command.picks } }, null)
+  for (const seat of SEATS) if (s.command.picks[seat]) activateCard(ctx, seat, s.command.picks[seat]!)
   if (openWindow(ctx, 'command.revealed', {}, `r${s.round}`, 'cmd.revealed')) return
   afterReveal(ctx)
 }
@@ -169,12 +173,18 @@ export function afterReveal(ctx: Ctx): void {
 // Nominating a commander and issuing orders
 // ---------------------------------------------------------------------------
 
-function issue(ctx: Ctx, unit: Unit): void {
+/** Give one order. True when the OrderIssued trigger raised a decision: stop, `issueNext` continues after the answer. */
+function issue(ctx: Ctx, unit: Unit): boolean {
   const s = ctx.state
+  const iss = s.command.issuing!
   unit.order.state = 'faceUp'
-  s.command.issuing!.remaining--
-  ctx.emit({ type: 'OrderIssued', unitId: unit.id, by: s.command.issuing!.issuerId ?? '' }, unit.seat)
+  iss.remaining--
+  ctx.emit({ type: 'OrderIssued', unitId: unit.id, by: iss.issuerId ?? '' }, unit.seat)
+  return onOrderIssued(ctx, unit.id, iss.cardId, { name: ISSUE_RESUME })
 }
+
+const ISSUE_RESUME = 'command.issue'
+registerFrameResume(ISSUE_RESUME, (ctx) => issueNext(ctx))
 
 /** Continue the issuing sequence until a decision is needed or every seat is done. */
 export function issueNext(ctx: Ctx): void {
@@ -211,7 +221,7 @@ export function issueNext(ctx: Ctx): void {
     }
     if (eligible.length <= iss.remaining) {
       // no choice: every eligible unit gets an order
-      for (const u of eligible) issue(ctx, u)
+      for (const u of eligible) if (issue(ctx, u)) return
       continue
     }
     ctx.raise({
@@ -292,7 +302,7 @@ export const commandModule: ModuleDef = {
         if (!unitId) return reject('E_PASS_NOT_ALLOWED', 'an order must be issued while a unit can receive one')
         return {
           run(ctx) {
-            issue(ctx, ctx.state.units[unitId]!)
+            if (issue(ctx, ctx.state.units[unitId]!)) return
             issueNext(ctx)
           },
         }
