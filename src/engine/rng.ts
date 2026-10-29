@@ -93,6 +93,8 @@ export function fnv1a(text: string): string {
 }
 
 export interface Rng {
+  /** uniform integer in [0, n): a die face index or a draw from a pool (M2a: additive, every die goes through this) */
+  int(n: number): number
   /** uniform integer 1..6 */
   d6(): number
   /** state to store back into `GameState.rng`, or null when the source is external (scripted) */
@@ -165,8 +167,8 @@ export class SeededRng implements Rng {
 export class ScriptedRng implements Rng {
   private i = 0
   /**
-   * One value per draw, in order: a D6 result (1..6) for each die and, from S3a, a whole number of degrees (0..359) for
-   * each scatter direction (`int(360)`).
+   * One value per draw, in order. `int(n)` takes the next value as a face index or pool index (must be below n);
+   * `d6()` takes a D6 result (1..6). Legion rolls and draws go through `int`, so scripts name face indexes.
    */
   constructor(private readonly values: number[]) {
     for (const v of values) {

@@ -1,6 +1,6 @@
-// Timed effects (00 section 7.5 `GameState.effects`): added by skills, wargear, traits and scenario rules, removed when
-// their expiry key comes up. Expiry keys: `activation` (end of the current activation), `round` (end of the round),
-// `battle`, and `startOfActivation:<fighterId>` (the fighter's next activation starts).
+// Timed effects (00 section 7.6 `GameState.effects`): added by keywords, upgrades, command cards and battle rules, removed
+// when their expiry key comes up. Expiry keys: `activation` (end of the current activation), `round` (end of the round),
+// `phase` (end of the current phase), `game`, and `startOfActivation:<unitId>` (the unit's next activation starts).
 import type { Ctx } from './registry'
 import type { ActiveEffect, GameState, Seat } from './types'
 
@@ -14,6 +14,10 @@ export function addEffect(ctx: Ctx, e: Omit<ActiveEffect, 'id'>): ActiveEffect {
 
 export function effectsOf(state: GameState, kind: string, filter?: (e: ActiveEffect) => boolean): ActiveEffect[] {
   return state.effects.filter((e) => e.kind === kind && (!filter || filter(e)))
+}
+
+export function effectsOfUnit(state: GameState, unitId: string): ActiveEffect[] {
+  return state.effects.filter((e) => e.unitId === unitId)
 }
 
 export function hasEffect(state: GameState, source: string, seat?: Seat): boolean {

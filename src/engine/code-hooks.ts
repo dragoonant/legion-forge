@@ -1,9 +1,9 @@
 // Registry of `{ "code": "<name>" }` escape hatches (docs/spec/20-data-schema.md section 11). Every name the data uses is
-// registered here (core and scenario hooks) or from src/engine/gangs/<house>.ts (house hooks, imported through
-// gangs/index.ts), with a params validator. tests/engine/code-hooks.test.ts proves each one fires in a real game
+// registered here (core hooks) or from src/engine/armies/<faction>.ts (faction hooks, imported through
+// armies/index.ts), with a params validator. tests/engine/code-hooks.test.ts proves each one fires in a real game
 // (`hookFireCount(name) > 0`). A definition's `install` registers the engine hooks (hooks.ts) it needs.
 
-export type CodeHookKind = 'skill' | 'rule' | 'wargear' | 'weapon' | 'scenario' | 'casket'
+export type CodeHookKind = 'unit' | 'upgrade' | 'keyword' | 'card' | 'battle'
 
 export interface CodeHookDef {
   name: string

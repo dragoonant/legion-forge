@@ -1,12 +1,12 @@
 // step(): envelope checks -> dispatch to the owner of pending.kind -> afterAction -> log + hash.
-// Rejections never throw and return the SAME state reference.
-import { drainNerve } from './fight'
+// Rejections never throw and return the SAME state reference. A decision for 'all' stays open under the same id until
+// every seat that owes an answer has given one; the module sees `ctx.lastAnswer` and resolves it on the last.
 import { refreshEngagement } from './measure'
 import { moduleFor } from './modules'
 import { SeededRng, type Rng } from './rng'
 import { canon, cloneState, EngineInvariantError, hashState, SEATS } from './state'
 import { createCtx, endGame, reject, type Ctx, type Handled } from './registry'
-import type { Action, GameState, PendingDecision, Rejection, StepResult } from './types'
+import type { Action, GameState, PendingDecision, Rejection, Seat, StepResult } from './types'
 import type { GameEvent } from './events'
 
 function rejectionResult(state: GameState, action: Action | undefined, rejection: Rejection): StepResult {
@@ -22,17 +22,25 @@ function rejectionResult(state: GameState, action: Action | undefined, rejection
   return { state, events: [ev], pending: state.pending, rejection }
 }
 
+/** The seats that owe an answer to a decision for 'all' (default both), and those that have answered. */
+export function owingSeats(pending: PendingDecision): Seat[] {
+  return (pending.context.seats as Seat[] | undefined) ?? [...SEATS]
+}
+export function answeredSeats(pending: PendingDecision): Seat[] {
+  return (pending.context.answered as Seat[] | undefined) ?? []
+}
+
 function matchesOption(pending: PendingDecision, action: Action): boolean {
   if (!pending.options) return true
   const payload = canon(action.payload ?? {})
-  return pending.options.some((o) => o.action.type === action.type && canon(o.action.payload ?? {}) === payload)
+  return pending.options.some((o) => o.action.type === action.type && o.action.seat === action.seat && canon(o.action.payload ?? {}) === payload)
 }
 
 export { endGame }
 
 /** Envelope + dispatch. Returns either a rejection or the closure that applies the action. */
 function evaluate(state: GameState, action: Action): Handled {
-  if (!action || typeof action !== 'object' || typeof action.type !== 'string' || !SEATS.includes(action.seat)) {
+  if (!action || typeof action !== 'object' || typeof action.type !== 'string' || typeof action.decisionId !== 'string' || !SEATS.includes(action.seat)) {
     return reject('E_SCHEMA', 'malformed action envelope')
   }
   if (state.phase === 'ended' || !state.pending) return reject('E_GAME_OVER', 'the battle is over')
@@ -47,7 +55,12 @@ function evaluate(state: GameState, action: Action): Handled {
   if (action.decisionId !== pending.id) {
     return reject('E_WRONG_DECISION', `expected an answer to ${pending.id} (${pending.kind})`)
   }
-  if (action.seat !== pending.seat) return reject('E_WRONG_SEAT', `seat ${pending.seat} must answer`)
+  if (pending.seat === 'all') {
+    if (!owingSeats(pending).includes(action.seat)) return reject('E_WRONG_SEAT', `seat ${action.seat} owes no answer to ${pending.kind}`)
+    if (answeredSeats(pending).includes(action.seat)) return reject('E_ALREADY_ANSWERED', `seat ${action.seat} already answered ${pending.kind}`)
+  } else if (action.seat !== pending.seat) {
+    return reject('E_WRONG_SEAT', `seat ${pending.seat} must answer`)
+  }
   const mod = moduleFor(pending.kind)
   if (action.type === 'pass') {
     if (!pending.canPass) return reject('E_PASS_NOT_ALLOWED', 'this decision cannot be passed')
@@ -68,13 +81,11 @@ export function validate(state: GameState, action: Action): Rejection | null {
 }
 
 /**
- * Hook point for rules that react after every accepted action: engagement refresh (EngagementChanged) and the nerve queue
- * drain (casualties are recorded where they happen, casualties.ts). `apply.ts` stays the one place that orders them.
+ * Rules that react after every accepted action. Engagement is derived from geometry and cached on each unit
+ * (`unit.engagedWith`); cohesion is checked where units are placed (movement module), never here (R-7.3).
  */
 function afterAction(ctx: Ctx): void {
   refreshEngagement(ctx)
-  // nerve tests still owed (an action normally settles its own through activation.continueActivation); re-raises the decision
-  drainNerve(ctx)
 }
 
 export function step(state: GameState, action: Action, rng?: Rng): StepResult {
@@ -85,8 +96,28 @@ export function step(state: GameState, action: Action, rng?: Rng): StepResult {
   const source = rng ?? SeededRng.restore(state.rng)
   const seq = state.seq
   const ctx = createCtx(draft, source, action, seq)
-  draft.pending = null
+  const pending = state.pending!
+
+  let holdOpen = false
+  if (pending.seat === 'all' && action.type !== 'resign') {
+    const answered = [...answeredSeats(pending), action.seat]
+    ctx.lastAnswer = SEATS.filter((s) => owingSeats(pending).includes(s)).every((s) => answered.includes(s))
+    if (!ctx.lastAnswer) {
+      holdOpen = true
+      // keep the decision (same id); drop this seat's options; `answered` names who, never what
+      draft.pending = {
+        ...pending,
+        context: { ...pending.context, answered },
+        ...(pending.options ? { options: pending.options.filter((o) => o.action.seat !== action.seat) } : {}),
+      }
+    }
+  }
+  const before = draft.pending
+  if (!holdOpen) draft.pending = null
   handled.run(ctx)
+  if (holdOpen && draft.pending !== before) {
+    throw new EngineInvariantError(`${action.type}: a decision for 'all' raised another decision before every seat answered`)
+  }
   afterAction(ctx)
 
   if (draft.phase === 'ended') {
@@ -96,7 +127,7 @@ export function step(state: GameState, action: Action, rng?: Rng): StepResult {
   }
   draft.log.push({ ...action, seq } as Action)
   draft.seq = seq + 1
-  if (ctx.rolled) draft.lastRollSeq = seq
+  if (ctx.rolled || ctx.revealed) draft.undoFence = seq
   const serialised = source.serialize()
   if (serialised) draft.rng = serialised
   draft.hash = hashState(draft)

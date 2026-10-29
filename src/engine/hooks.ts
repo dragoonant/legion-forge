@@ -1,59 +1,42 @@
-// Hook names, contexts and results (frozen after M2). The registry lets rules modules (traits.ts, wargear.ts, skills.ts,
-// gangs/*) attach handlers to named points; the engine calls `runHook` where the rule says (docs/spec/00-architecture.md
-// section 4 names the timing windows, this file the code hook points).
+// Hook names, contexts and results (frozen after M2). The registry lets rules modules (keywords.ts, commandCards.ts,
+// armies/*) attach handlers to named points; the engine calls `runHook` where the rule says (docs/spec/00-architecture.md
+// section 4 names the timing windows, this file the hook points).
 import type { Ctx } from './registry'
 import type { GameState, Seat, TimingWindowId } from './types'
 
 export const HOOK_NAMES = [
-  'stat.modify',
-  'test.modify',
+  'attack.pool',
+  'attack.reroll',
+  'attack.surge',
+  'attack.modify',
+  'defence.pool',
+  'defence.surge',
+  'attack.cover',
+  'wound.apply',
+  'suppression.apply',
+  'courage.value',
+  'move.speed',
   'action.available',
-  'action.type',
-  'shoot.targets',
-  'shoot.hitMods',
-  'fight.hitMods',
-  'fight.attackDice',
-  'weapon.traits',
-  'wound.mods',
-  'save.mods',
-  'damage.mods',
-  'injury.dice',
-  'injury.applied',
-  'pin.allowed',
-  'nerve.mods',
-  'move.limit',
-  'fighter.downed',
   'activation.start',
   'activation.end',
   'round.start',
   'round.end',
   'phase.end',
-  // S4K-A (additive): see docs/spec/00-architecture.md change log
-  'save.extra',
-  'blast.victims',
-  'attack.reroll',
-  'test.failed',
-  'bottle.mods',
-  'recovery.start',
-  'nerve.queue',
-  'los.smoke',
+  'mini.defeated',
+  'unit.defeated',
 ] as const
 
 export type HookName = (typeof HOOK_NAMES)[number]
 
 /*
- * Conventions (carried over from the Murder Squad contract):
+ * Conventions:
  *  - A handler receives a HookContext whose `data` is the LIVE object for that hook point: it mutates it in place and
  *    may also return a HookResult (ignored unless the hook point says otherwise).
  *  - `state` is the current state (a draft while a step runs, so handlers only mutate `data`, or `engine` when present).
- *  - Lifecycle hook points (activation.*, round.*, phase.end, fighter.downed) run with `engine` and must not raise
- *    decisions; a rule that needs a choice asks through `skill.choice` at the next decision point.
+ *  - Lifecycle hook points (activation.*, round.*, phase.end, *.defeated) run with `engine` and must not raise
+ *    decisions; a rule that needs a choice asks through `keyword.choice` or `card.choice` at the next decision point.
  *  - Handlers must be idempotent: the engine may re-run a hook after a decision it requested was answered.
- *  - `fighterId` is the subject of the hook (the shooter, the fighter taking the test or the wound); `targetId` is its
- *    opponent in the sequence.
- *  - Close combat (S4K-B): `fight.attackDice` data carries `{ weaponIds, charge, role: 'fight' | 'reaction', failed }` (`failed`: the
- *    opponent's attacks at this fighter that failed to hit, for reactions); `weapon.traits` runs for each melee profile with
- *    `data: { melee: true, traits, rangeLong? }`, a handler pushes onto `traits` (and may set `rangeLong`, the Versatile reach).
+ *  - `unitId` is the subject of the hook (the attacker, the unit checking courage); `targetId` its opponent.
  */
 
 export interface HookContext {
@@ -63,7 +46,7 @@ export interface HookContext {
   state?: GameState
   /** the step context when running inside a step (absent for queries and validation) */
   engine?: Ctx
-  fighterId?: string
+  unitId?: string
   targetId?: string
   weaponId?: string
   action?: string
@@ -127,13 +110,13 @@ export function runHook(name: HookName, ctx: Omit<HookContext, 'hook'>): HookRes
 
 /**
  * Timing windows (00-architecture section 4). A sequence calls the opener at each window it passes; the opener may raise
- * a decision with `ctx.raise` (a `skill.choice` or `dice.reroll`) and return true, and the sequence then stays
+ * a decision with `ctx.raise` (a `keyword.choice`, `card.choice` or `attack.spend`) and return true, and the sequence then stays
  * suspended until whoever owns that decision resumes it. Each window is offered at most once per sequence.
  */
 export type WindowOpener = (
   ctx: Ctx,
   window: TimingWindowId,
-  info: { kind: 'shoot' | 'fight' | 'hit' | 'other'; fighterId: string; targetId?: string },
+  info: { kind: 'attack' | 'melee' | 'other'; unitId: string; targetId?: string },
 ) => boolean
 
 let windowOpener: WindowOpener | null = null
@@ -147,7 +130,7 @@ export function getWindowOpener(): WindowOpener | null {
 }
 
 // ---------------------------------------------------------------------------
-// Frames: Shoot, Fight and free actions run as a temporary activation; the frame names a resume callback.
+// Frames: an attack, a free action or a card window suspends the machine; the frame names a resume callback.
 // ---------------------------------------------------------------------------
 
 /** Called when a frame's action finishes or is cancelled. */
