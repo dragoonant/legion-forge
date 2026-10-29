@@ -4,7 +4,7 @@
 // LoS verdict and the cover verdict, so `query.losCover` and the attack step cannot disagree (LOS-008).
 import { footprintGapToPiece, piecesWithin } from './table'
 import { footprintOverlapsPolygon, type Footprint } from './footprint'
-import { round3, segmentPolygonIntervals } from './geometry'
+import { round3, segmentBBoxOverlaps, segmentPolygonIntervals } from './geometry'
 import { EngineInvariantError } from './state'
 import type { CoverValue, GameState, Mini, RuleConstants, RuntimeSilhouette, TableDef, TerrainPiece, Vec2, Vec3 } from './types'
 
@@ -52,13 +52,15 @@ export function samplePoints(b: LosBody): Vec3[] {
 
 const Y_EPS = 1e-6
 
-/** Does the ray A -> B pass through the piece's volume? Returns the entry parameter t, or null. */
-function rayEntersPiece(p: TerrainPiece, a: Vec3, b: Vec3): number | null {
-  if (Math.max(a.x, b.x) < p.bbox.minX || Math.min(a.x, b.x) > p.bbox.maxX || Math.max(a.z, b.z) < p.bbox.minZ || Math.min(a.z, b.z) > p.bbox.maxZ) return null
-  const ivs = segmentPolygonIntervals({ x: a.x, z: a.z }, { x: b.x, z: b.z }, p.footprint)
+/**
+ * The ray test with the 2D clipping already done: `ivs` are the parameter intervals of the ray's ground line inside the piece's
+ * footprint. Rays of a scan that start and end above the same ground points share them (the sample rings differ only in height).
+ */
+function entryFromIntervals(p: TerrainPiece, ivs: readonly (readonly [number, number])[], ay: number, by: number): number | null {
+  if (Math.min(ay, by) >= p.heightIn - Y_EPS) return null
   for (const [t0, t1] of ivs) {
-    const y0 = a.y + (b.y - a.y) * t0
-    const y1 = a.y + (b.y - a.y) * t1
+    const y0 = ay + (by - ay) * t0
+    const y1 = ay + (by - ay) * t1
     if (Math.min(y0, y1) < p.heightIn - Y_EPS) return t0
   }
   return null
@@ -98,25 +100,92 @@ function ignoredFor(p: TerrainPiece, a: LosBody, d: LosBody): boolean {
   return p.kind === 'area' && (footprintOverlapsPolygon(footprintOf(a), p.footprint) || footprintOverlapsPolygon(footprintOf(d), p.footprint))
 }
 
+// Scans are pure functions of the table, the two bodies and the extra pieces, and the sim / bot / UI ask the same pair
+// again and again (target lists, odds, the attack itself, replays). Results are cached per table (never mutated by callers).
+const SCAN_CACHE_MAX = 40_000
+const scanCaches = new Map<string, Map<string, LosResult>>()
+const tableSigs = new WeakMap<TableDef, string>()
+
+/** Everything about a table that a scan reads, so games on the same layout (and a replay) share one cache. */
+function tableSig(table: TableDef): string {
+  let sig = tableSigs.get(table)
+  if (sig === undefined) {
+    sig = table.pieces
+      .map((p) => `${p.id}:${p.kind}:${p.heightIn}:${p.blocksLos ? 1 : 0}:${p.footprint.map((v) => `${v.x},${v.z}`).join(';')}`)
+      .join('|')
+    tableSigs.set(table, sig)
+  }
+  return sig
+}
+
+function bodyKey(b: LosBody): string {
+  const s = b.samples
+  return `${b.pos.x},${b.pos.y},${b.pos.z},${b.baseRadius},${b.height},${s.rings},${s.perRing},${s.axis ? 1 : 0}`
+}
+
 /** Scan every ray between the sample points of two bodies. The single source of LoS and cover verdicts. */
 export function scanRays(table: TableDef, a: LosBody, d: LosBody, opts: ScanOptions = {}): LosResult {
+  if (opts.keepRays) return scanRaysUncached(table, a, d, opts)
+  const sig = tableSig(table)
+  let cache = scanCaches.get(sig)
+  if (!cache) {
+    if (scanCaches.size >= 16) scanCaches.clear()
+    scanCaches.set(sig, (cache = new Map()))
+  }
+  const extra = opts.extraPieces && opts.extraPieces.length > 0 ? opts.extraPieces.map((p) => `${p.id}@${p.bbox.minX},${p.bbox.minZ}`).join('|') : ''
+  const key = `${bodyKey(a)}>${bodyKey(d)}>${opts.firstClearOnly ? 1 : 0}>${extra}`
+  const hit = cache.get(key)
+  if (hit) return hit
+  const res = scanRaysUncached(table, a, d, opts)
+  if (cache.size >= SCAN_CACHE_MAX) cache.clear()
+  cache.set(key, res)
+  return res
+}
+
+function scanRaysUncached(table: TableDef, a: LosBody, d: LosBody, opts: ScanOptions): LosResult {
   const lo = { x: Math.min(a.pos.x, d.pos.x) - Math.max(a.baseRadius, d.baseRadius), z: Math.min(a.pos.z, d.pos.z) - Math.max(a.baseRadius, d.baseRadius) }
   const hi = { x: Math.max(a.pos.x, d.pos.x) + Math.max(a.baseRadius, d.baseRadius), z: Math.max(a.pos.z, d.pos.z) + Math.max(a.baseRadius, d.baseRadius) }
-  const near = (p: TerrainPiece) => p.bbox.maxX >= lo.x && p.bbox.minX <= hi.x && p.bbox.maxZ >= lo.z && p.bbox.minZ <= hi.z
+  // every ray lies inside the capsule of the two bodies' centres, so a piece whose box misses that corridor cannot be hit
+  const reach = Math.max(a.baseRadius, d.baseRadius)
+  const apos = { x: a.pos.x, z: a.pos.z }
+  const dpos = { x: d.pos.x, z: d.pos.z }
+  const near = (p: TerrainPiece) => p.bbox.maxX >= lo.x && p.bbox.minX <= hi.x && p.bbox.maxZ >= lo.z && p.bbox.minZ <= hi.z && segmentBBoxOverlaps(apos, dpos, p.bbox, reach)
   const losPieces = table.pieces.filter((p) => p.blocksLos && near(p) && !ignoredFor(p, a, d))
   const extra = (opts.extraPieces ?? []).filter((p) => p.blocksLos && near(p) && !ignoredFor(p, a, d))
   const pieces: { p: TerrainPiece; los: boolean }[] = [...losPieces.map((p) => ({ p, los: true })), ...extra.map((p) => ({ p, los: false }))]
 
   const from = samplePoints(a)
   const to = samplePoints(d)
+  // open ground between the two: every ray is clear (a yes/no question stops at the first one)
+  if (pieces.length === 0 && !opts.keepRays) {
+    const n = opts.firstClearOnly ? 1 : from.length * to.length
+    return { visible: true, clear: n, total: n, firstBlocker: {}, blocks: {} }
+  }
   const out: LosResult = { visible: false, clear: 0, total: 0, firstBlocker: {}, blocks: {} }
   if (opts.keepRays) out.rays = []
-  for (const pa of from) {
-    for (const pd of to) {
+  // the sample rings of a body share their ground points, so each ground-to-ground line is clipped against a piece once
+  const groundA = a.samples.perRing + (a.samples.axis ? 1 : 0)
+  const groundD = d.samples.perRing + (d.samples.axis ? 1 : 0)
+  const clipped: (readonly [number, number][] | undefined)[] = new Array(pieces.length * groundA * groundD)
+  for (let fi = 0; fi < from.length; fi++) {
+    const pa = from[fi]!
+    for (let ti = 0; ti < to.length; ti++) {
+      const pd = to[ti]!
       out.total++
       const hits: { id: string; t: number; los: boolean }[] = []
-      for (const { p, los } of pieces) {
-        const t = rayEntersPiece(p, pa, pd)
+      for (let pi = 0; pi < pieces.length; pi++) {
+        const { p, los } = pieces[pi]!
+        if (Math.min(pa.y, pd.y) >= p.heightIn - Y_EPS) continue
+        const key = (pi * groundA + (fi % groundA)) * groundD + (ti % groundD)
+        let ivs = clipped[key]
+        if (ivs === undefined) {
+          ivs =
+            Math.max(pa.x, pd.x) < p.bbox.minX || Math.min(pa.x, pd.x) > p.bbox.maxX || Math.max(pa.z, pd.z) < p.bbox.minZ || Math.min(pa.z, pd.z) > p.bbox.maxZ
+              ? []
+              : segmentPolygonIntervals({ x: pa.x, z: pa.z }, { x: pd.x, z: pd.z }, p.footprint)
+          clipped[key] = ivs
+        }
+        const t = entryFromIntervals(p, ivs, pa.y, pd.y)
         if (t !== null) hits.push({ id: p.id, t, los })
       }
       hits.sort((x, y) => x.t - y.t)

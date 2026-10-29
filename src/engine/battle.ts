@@ -30,6 +30,8 @@ import type {
   Vec2,
 } from './types'
 import { isPanicked, isSuppressed } from './morale'
+import { handleBarricadePlace, suggestBarricadeAction } from './barricades'
+import { foldBool, modValues } from './keywords'
 
 // ---------------------------------------------------------------------------
 // Shared flow state
@@ -66,6 +68,8 @@ export function bd(state: GameState): BattleData {
       caps: {},
       marks: {},
       picks: {},
+      barricades: [],
+      barricadeSteps: [],
       flow: freshFlow(),
     })
   }
@@ -109,7 +113,7 @@ export function priorityFirst(state: GameState): Seat[] {
 export function openWindow(
   ctx: Ctx,
   window: TimingWindowId,
-  info: { unitId?: string; targetId?: string },
+  info: { unitId?: string; targetId?: string; [key: string]: unknown },
   scope: string,
   resume: string,
 ): boolean {
@@ -119,7 +123,8 @@ export function openWindow(
   flow.opened.push(key)
   const opener = getWindowOpener()
   if (!opener) return false
-  const raised = opener(ctx, window, { kind: 'other', unitId: info.unitId ?? '', ...(info.targetId ? { targetId: info.targetId } : {}) })
+  // everything the flow knows about the window travels with it: the declarative triggers read action, moveKind and so on
+  const raised = opener(ctx, window, { ...info, kind: 'other', unitId: info.unitId ?? '' })
   if (raised) flow.resume = resume
   return raised
 }
@@ -193,6 +198,11 @@ export function leaderInTerritory(state: GameState, unit: Unit, polys: readonly 
   return polys.some((poly) => footprintOverlapsPolygon(f, poly))
 }
 
+/** A unit is within a Territory when any one of its models is (CRB p12). */
+export function unitInTerritory(state: GameState, unit: Unit, polys: readonly Polygon[]): boolean {
+  return unit.minis.some((m) => m.alive && polys.some((poly) => footprintOverlapsPolygon(miniFootprint(state, m), poly)))
+}
+
 function miniFootprint(state: GameState, m: Parameters<typeof miniBody>[1]): Footprint {
   return miniBody(state, m)
 }
@@ -221,7 +231,8 @@ export function heldAssets(state: GameState, unitId: string, asset?: string): Ob
 export function canContest(state: GameState, unit: Unit): boolean {
   if (unit.location !== 'table') return false
   if (!unit.minis.some((m) => m.alive && m.id === unit.leaderId)) return false
-  if (unit.keywords.some((k) => k.id === 'kw.incognito')) return false
+  // Incognito stops contesting for as long as the unit has the keyword; one that lost it (CRB p51) contests again
+  if (!foldBool(true, modValues(state, unit, 'canContest'))) return false
   return !isPanicked(state, unit)
 }
 
@@ -381,8 +392,8 @@ function resolveSetup(ctx: Ctx, card: BattleCardData): void {
         }
       }
     } else if (e.placeTerrain) {
-      // Fortified Position: barricades need a terrain record that does not exist yet (RULING Unsourced); none are placed.
-      ctx.emit({ type: 'ObjectiveChanged', objectiveId: card.id, detail: { skipped: 'placeTerrain', why: 'no barricade record in v1 data' } }, null)
+      // Fortified Position: the barricades are placed by their own steps right after this one (barricades.ts)
+      ctx.emit({ type: 'ObjectiveChanged', objectiveId: card.id, detail: { deferred: 'placeTerrain' } }, null)
     } else {
       ctx.emit({ type: 'ObjectiveChanged', objectiveId: card.id, detail: { skipped: Object.keys(e)[0] ?? 'unknown' } }, null)
     }
@@ -485,7 +496,8 @@ function countTokens(state: GameState, count: Rule, seat: Seat): number {
     if (filt.tag && !hasTag(m, String(filt.tag))) continue
     if (filt.notTag && hasTag(m, String(filt.notTag))) continue
     if (filt.enemyOf === 'scorer' && !hasTag(m, `enemyOf:${colour}`)) continue
-    if (territory === 'notAllied' && inAnyPolygon(m.pos, bd(state).territories[seat])) continue
+    // a token is within a Territory when any part of it is
+    if (territory === 'notAllied' && bd(state).territories[seat].some((poly) => footprintOverlapsPolygon(markerFootprint(state, m), poly))) continue
     const secured = securedBy(state, m) === seat
     let ok = count.state === 'secured' ? secured : false
     if (!ok && count.orContested?.byUnitsHolding) {
@@ -517,7 +529,7 @@ function countUnits(state: GameState, r: Rule, seat: Seat, only?: Unit): number 
   }
   if (r.min !== undefined) {
     const qualifying = holders.filter((u) => {
-      if (r.notIn === 'alliedTerritory' && leaderInTerritory(state, u, territories)) return false
+      if (r.notIn === 'alliedTerritory' && unitInTerritory(state, u, territories)) return false
       if (r.notContestingPoiIn === 'alliedTerritory') {
         for (const m of markersOf(state, 'poi')) if (inAnyPolygon(m.pos, territories) && contests(state, u, m)) return false
       }
@@ -781,7 +793,11 @@ export function finishAtRoundLimit(ctx: Ctx): void {
 export const battleModule: ModuleDef = {
   id: 'battle',
   namespaces: ['battle', 'confirm'],
+  suggest(state, pending, seat) {
+    return pending.kind === 'battle.place' && pending.context.terrain === 'barricade' ? suggestBarricadeAction(state, pending, seat) : null
+  },
   handle(state: GameState, action: Action, pending: PendingDecision) {
+    if (pending.kind === 'battle.place' && pending.context.terrain === 'barricade') return handleBarricadePlace(state, action, pending)
     if (action.type === 'battle.place') {
       const kind = String(pending.context.markerKind ?? 'asset')
       const check = checkObjectivePlacement(state, { x: action.payload.x, z: action.payload.z }, kind, pending.context.markerId as string | undefined)

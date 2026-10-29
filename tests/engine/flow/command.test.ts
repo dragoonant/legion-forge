@@ -97,8 +97,12 @@ describe('the Command phase', () => {
     // A (3 pips) has priority over B (4 pips); every unit is in reserve, nowhere near Vader
     expect(r.state.command.priority).toBe('A')
     expect(r.pending!.seat).toBe('A')
+    // Master of Evil names Vader: he is ordered first (no choice, CRB p22), the other two orders go anywhere
+    const vader = unitBy(r.state, 'A', 'emp.u.darth-vader-dlots')
+    expect(vader.order.state).toBe('faceUp')
     const ids = r.pending!.options!.map((o) => o.id)
-    expect(ids).toHaveLength(Object.values(r.state.units).filter((u) => u.seat === 'A').length)
+    expect(ids).toHaveLength(Object.values(r.state.units).filter((u) => u.seat === 'A').length - 1)
+    expect(ids).not.toContain(vader.id)
     const target = unitBy(r.state, 'A', 'emp.u.scout-troopers', 0)
     const done = must(r.state, optionAction(r.state, target.id))
     expect(done.state.units[target.id]!.order.state).toBe('faceUp')

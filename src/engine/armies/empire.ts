@@ -50,6 +50,8 @@ registerCodeHook({
         const pf = env.pool
         if (!pf || !env.attack || env.role !== 'attacker' || !env.owner || pf.sniperEligible) return
         const st = ctx.state
+        // only an attack the unit makes during its own Activation (CRB p60), never a Standby shot
+        if (st.activation.current?.unitId !== env.owner.id) return
         if (!pf.weapons.every((w) => weaponKeywordList(st, pf, w.weaponId).some((k) => k.id === 'kw.sniper-team'))) return
         if (env.attack.moved) return
         const def = getUnit(st, pf.defenderId)
@@ -134,7 +136,8 @@ registerCodeHook({
       resolve(ctx: Ctx, offer: CodeOffer, option: string) {
         if (option !== 'accept') return
         const subjectId = String(offer.payload['subjectId'])
-        applySuppression(ctx, subjectId, 1, 'compel')
+        // the free Move is paid for with the Suppression token: no token gained, no Move
+        if (applySuppression(ctx, subjectId, 1, 'compel') <= 0) return
         const u = getUnit(ctx.state, subjectId)
         addEffect(ctx, { source: 'kw.compel', seat: u.seat, kind: 'freeAction', unitId: u.id, expires: 'activation', data: { action: 'core.action.move', startOfActions: true, source: 'kw.compel' } })
         markFired('compel')

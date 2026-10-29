@@ -84,11 +84,11 @@ describe('ATK declare and pool (R-12.2 to R-12.4)', () => {
     expect(checkTarget(close, 'ST', 'RT').reason).toBe('engaged')
   })
 
-  it('ATK-006 an upgrade model uses only its own weapon and base models cannot borrow it', () => {
+  it('ATK-006 an upgrade model uses its own weapon in addition to the unit card\'s (CRB p17) and base models cannot borrow the upgrade weapon', () => {
     const st = ST({ upgrades: ['emp.up.dlt19-stormtrooper'], extra: [{ at: [0, -7.5], weapon: 'emp.w.dlt19', upgradeId: 'emp.up.dlt19-stormtrooper' }] })
     const s = game([st, RT()])
     const c = poolCandidates(s, 'ST', 'RT', 'ranged')
-    expect(c.find((x) => x.miniId === 'ST.u1')!.weapons).toEqual(['emp.w.dlt19'])
+    expect(c.find((x) => x.miniId === 'ST.u1')!.weapons).toEqual(['emp.w.dlt19', 'emp.w.e11'])
     expect(c.find((x) => x.miniId === 'ST.1')!.weapons).toEqual(['emp.w.e11'])
     const r = beginAttack(s, 'ST', 'RT')
     const steal: Action = { type: 'attack.pool', seat: 'A', decisionId: r.state.pending!.id, payload: { weaponIds: { 'ST.1': 'emp.w.dlt19' } } }

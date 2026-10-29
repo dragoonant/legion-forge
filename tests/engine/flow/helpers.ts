@@ -71,7 +71,9 @@ export function reconSetup(o: SetupOpts = {}, bundle: EngineBundle = realBundle(
  */
 export function newGame(o: SetupOpts & { edge?: string | null } = {}, seed = 't1', bundle: EngineBundle = realBundle()): StepResult {
   const blue = 'blue' in o ? o.blue : 'A'
-  const r = createGame(reconSetup({ ...o, ...(blue ? { blue } : {}) }, bundle), seed, bundle)
+  // the Divulge offers of the hands are declined unless a test asks for them
+  const options = { autoDivulge: true, ...(o.options ?? {}) }
+  const r = createGame(reconSetup({ ...o, options, ...(blue ? { blue } : {}) }, bundle), seed, bundle)
   if (r.pending?.kind === 'setup.battle' && o.edge !== null) return must(r.state, optionAction(r.state, `edge:${o.edge ?? 'zMax'}`))
   return r
 }

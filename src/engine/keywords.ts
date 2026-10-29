@@ -12,7 +12,7 @@ import { getFrameResume, runHook } from './hooks'
 import { distance, miniBody, withinBand } from './measure'
 import { applySuppression, courageOf, isPanicked, isSuppressed, removeSuppression } from './morale'
 import { reject, type Ctx, type ModuleDef } from './registry'
-import { aliveMinis, constants, EngineInvariantError, getUnit, leaderOf, otherSeat, unitsOnTable } from './state'
+import { aliveMinis, constants, EngineInvariantError, getUnit, leaderOf, otherSeat, seatUnits, unitsOnTable } from './state'
 import type {
   AttackFrame,
   CodeOffer,
@@ -148,6 +148,16 @@ function addKw(acc: Map<string, KwInst>, k: J): void {
   else acc.set(k.id, { id: k.id, x, ...(k.param ? { param: String(k.param) } : {}) })
 }
 
+/**
+ * Does the unit still have the rules of an equipped upgrade card? A card that added figures stops applying when every figure
+ * it added is defeated (CRB p18); the `persistent` block of a Squad card stays by its own text. A unit whose figures carry no
+ * upgrade marker (a hand-built test unit) keeps every card.
+ */
+export function upgradeLive(unit: Unit, upId: string): boolean {
+  const mine = unit.minis.filter((m) => m.upgradeId === upId)
+  return mine.length === 0 || mine.some((m) => m.alive)
+}
+
 /** Keywords of a unit: its card, equipped upgrades (current side), persistent upgrade rules, granted keywords. X values add. */
 export function unitKeywords(state: GameState, unit: Unit): KwInst[] {
   const acc = new Map<string, KwInst>()
@@ -156,9 +166,11 @@ export function unitKeywords(state: GameState, unit: Unit): KwInst[] {
   for (const upId of unit.upgrades) {
     const ud = upgradeDef(state, upId)
     if (!ud) continue
-    for (const k of ud.keywords ?? []) addKw(acc, k)
-    const side = ud.sides?.[upgradeSide(unit, upId)]
-    for (const k of side?.keywords ?? []) addKw(acc, k)
+    if (upgradeLive(unit, upId)) {
+      for (const k of ud.keywords ?? []) addKw(acc, k)
+      const side = ud.sides?.[upgradeSide(unit, upId)]
+      for (const k of side?.keywords ?? []) addKw(acc, k)
+    }
     for (const k of ud.addsMinis?.persistent?.keywords ?? []) addKw(acc, k)
   }
   const derived = new Set(acc.keys())
@@ -183,26 +195,35 @@ export function keywordParam(state: GameState, unit: Unit, kwId: string): string
   return unitKeywords(state, unit).find((k) => k.id === kwId)?.param
 }
 
-/** Weapons a model may add (R-12.3): its own upgrade weapons, or the unit's card weapons. */
+/**
+ * Weapons a model may add (R-12.3): the weapon its upgrade card gave it (the current side of a two-sided card) in addition
+ * to the weapons on the unit card (CRB p17); a model with no upgrade weapon has the unit card's.
+ */
 export function miniWeapons(state: GameState, unit: Unit, miniId: string): string[] {
   const m = unit.minis.find((x) => x.id === miniId)
   if (!m) return []
+  const def: J = state.data.units[unit.unitTypeId]
+  const card: string[] = [...(def?.weapons ?? unit.weapons)]
+  let own: string[] = []
   if (m.upgradeId) {
     const ud = upgradeDef(state, m.upgradeId)
     const side = ud?.sides?.[upgradeSide(unit, m.upgradeId)]
-    if (side?.weapons) return [...side.weapons]
+    if (side?.weapons) own = [...side.weapons]
   }
-  if (m.weaponIds) return [...m.weaponIds]
-  const def: J = state.data.units[unit.unitTypeId]
-  return [...(def?.weapons ?? unit.weapons)]
+  if (own.length === 0 && m.weaponIds) own = [...m.weaponIds]
+  return [...own, ...card.filter((w) => !own.includes(w))]
 }
 
 export type WeaponType = 'melee' | 'ranged'
 
-/** Melee weapons have range 0-0; everything else is ranged (a dual-icon weapon is not in the slice data). */
+/**
+ * Melee weapons have range 0-0 and ranged weapons start at range 1; a weapon with both icons (Sonic Charge, Proton Charge:
+ * melee and range 1, range 0-1 in the data) is chosen as melee or ranged when it is added to a pool (CRB p31).
+ */
 export function weaponTypes(w: J): WeaponType[] {
   const r = w.range ?? { min: 1, max: 1 }
-  return r.max === 0 ? ['melee'] : ['ranged']
+  if (r.max === 0) return ['melee']
+  return (r.min ?? 1) === 0 ? ['melee', 'ranged'] : ['ranged']
 }
 
 // ---------------------------------------------------------------------------
@@ -322,7 +343,7 @@ export function unitEffects(state: GameState, unit: Unit, pf?: PoolFrame | null)
   }
   for (const upId of unit.upgrades) {
     const ud = upgradeDef(state, upId)
-    if (!ud) continue
+    if (!ud || !upgradeLive(unit, upId)) continue
     ;(ud.effects ?? []).forEach((effect: J, ei: number) => out.push({ ref: { src: 'upgrade', id: upId, ei, x: 0 }, effect, owner: unit, seat: unit.seat }))
     const side = upgradeSide(unit, upId)
     ;(ud.sides?.[side]?.effects ?? []).forEach((effect: J, ei: number) => out.push({ ref: { src: 'upgrade', id: upId, ei, side, x: 0 }, effect, owner: unit, seat: unit.seat }))
@@ -375,6 +396,11 @@ export interface WindowInfo {
   moveKind?: string
   fromAction?: boolean
   startedMelee?: boolean
+  suppressionDue?: boolean
+  /** an extra attack.resolved pass for a further defender: defender-side effects only */
+  defenderOnly?: boolean
+  /** a phase-level window: self triggers run once for every unit that carries the effect */
+  eachOwner?: boolean
   action?: string
   byCard?: string
   byCommandCard?: boolean
@@ -461,6 +487,12 @@ export function condOk(env: Env, when: J | undefined): boolean {
         if (got < v.min) return false
         break
       }
+      case 'spentAny': {
+        // the attacker spent the token in any pool of the attack (Coordinated Fire, once per attack)
+        const hit = a?.af.pools.some((p) => (!v.kind || p.kind === v.kind) && (p.spent.attacker[tokenKey(v.token)] ?? 0) >= v.min)
+        if (!hit) return false
+        break
+      }
       case 'poolOnly':
         if (!a?.pf || !poolAllHave(st, a.pf, v)) return false
         break
@@ -521,6 +553,10 @@ export function condOk(env: Env, when: J | undefined): boolean {
         break
       case 'startedMelee':
         if (!!env.info.startedMelee !== v) return false
+        break
+      case 'suppressionDue':
+        // the attack gives its defender the base Suppression token (a ranged attack with a hit or crit in the pool)
+        if (!!env.info.suppressionDue !== v) return false
         break
       case 'poolHasWeapon':
         if (!a?.pf || !a.pf.weapons.some((w) => w.weaponId === v)) return false
@@ -672,6 +708,23 @@ export function orderLimit(state: GameState, seat: Seat): number {
   return lim
 }
 
+/** The exhaust / expend state of an upgrade card on a unit: spent cards cannot be used (CRB p17). */
+export function cardSpent(state: GameState, unit: Unit, upId: string): boolean {
+  const kind = upgradeDef(state, upId)?.exhaust ?? 'none'
+  if (kind === 'exhaust') return ((unit.flags.exhausted as string[] | undefined) ?? []).includes(upId) || ((unit.flags.expended as string[] | undefined) ?? []).includes(upId)
+  if (kind === 'expend') return ((unit.flags.expended as string[] | undefined) ?? []).includes(upId)
+  return false
+}
+
+/** Exhaust or expend the card after one of its effects was used. */
+function spendCard(unit: Unit, upId: string, state: GameState): void {
+  const kind = upgradeDef(state, upId)?.exhaust ?? 'none'
+  const key = kind === 'exhaust' ? 'exhausted' : kind === 'expend' ? 'expended' : null
+  if (!key) return
+  const list = (unit.flags[key] as string[] | undefined) ?? []
+  if (!list.includes(upId)) unit.flags[key] = [...list, upId]
+}
+
 /** Net extra actions from effects (extraAction minus fewerActions) for a unit's current activation. */
 export function actionDelta(state: GameState, unitId: string): number {
   let d = 0
@@ -750,6 +803,8 @@ export interface Step {
   vi: number
   /** per-verb partial answers */
   bound: Record<string, { picks?: string[]; option?: number }>
+  /** the effect's limit was marked when it was offered, so declining spends it (Son of Skywalker, CRB RC p4) */
+  marked?: boolean
 }
 
 const ATTACK_FIRST = (w: string): boolean => !w.startsWith('defence.')
@@ -788,6 +843,8 @@ export function collectSteps(state: GameState, run: WindowRun): Step[] {
   const consider = (inst: EffInst, owner: Unit | null): void => {
     const e = inst.effect
     if (!e) return
+    // an exhausted (or expended) card cannot be used until it is readied (CRB p17): its triggered effects wait
+    if (inst.ref.src === 'upgrade' && !inst.ref.action && owner && cardSpent(state, owner, inst.ref.id)) return
     if (e.unimplemented) {
       // reached only when the unit actually carries the effect in a running window
       throw new EngineInvariantError(`unimplemented effect reached (${inst.ref.id}): ${String(e.unimplemented)}`)
@@ -805,6 +862,8 @@ export function collectSteps(state: GameState, run: WindowRun): Step[] {
         if (!owner) return
         if (info.unitId) {
           if (owner.id !== info.unitId) return
+        } else if (info.eachOwner) {
+          // a phase-level window (the Activation Phase starts): every unit that carries the effect is its subject
         } else if (attack) {
           if (!roleOf(attack, owner)) return
         } else if (!subject || owner.id !== subject.id) return
@@ -820,6 +879,8 @@ export function collectSteps(state: GameState, run: WindowRun): Step[] {
       }
       // a code effect reads the owner's own role; a declarative effect the role of the unit it is about
       const role = e.code ? roleOf(attack, owner) : roleOf(attack, sub ?? owner)
+      // the extra pass for another defender of the same attack (attack.resolved) runs defender effects only
+      if (info.defenderOnly && role !== 'defender') continue
       const key = `${inst.ref.src}:${inst.ref.id}:${inst.ref.ei}:${inst.ref.weaponId ?? ''}:${owner?.id ?? inst.seat}:${sub?.id ?? ''}`
       if (run.fired.includes(key) || considered.has(key)) continue
       considered.add(key)
@@ -841,7 +902,8 @@ export function collectSteps(state: GameState, run: WindowRun): Step[] {
     }
   }
 
-  const units: Unit[] = unitsOnTable(state)
+  // a phase-level window reaches units still in reserve too (Reliable on an undeployed unit)
+  const units: Unit[] = info.eachOwner ? [...seatUnits(state, 'A'), ...seatUnits(state, 'B')] : unitsOnTable(state)
   if (attack) {
     for (const u of [attack.attacker, attack.defender]) if (u && !units.includes(u)) units.push(u)
   }
@@ -944,6 +1006,11 @@ function execStep(ctx: Ctx, run: WindowRun, step: Step): VerbResult {
       run.fired.push(step.key)
       return 'ok'
     }
+    // an offer spends a once-per limit whether or not it is taken: "after his first attack this round" is not offered again
+    if (effect.limit && !step.marked) {
+      markLimit(ctx, inst, effect.limit, owner)
+      step.marked = true
+    }
     raiseChoice(ctx, run, step, 'use', [
       { id: 'use', labelKey: 'keyword.use' },
       { id: 'skip', labelKey: 'keyword.skip' },
@@ -956,7 +1023,9 @@ function execStep(ctx: Ctx, run: WindowRun, step: Step): VerbResult {
     if (r === 'suspend') return 'suspend'
     step.vi++
   }
-  if (effect.limit) markLimit(ctx, inst, effect.limit, owner)
+  if (effect.limit && !step.marked) markLimit(ctx, inst, effect.limit, owner)
+  // using a card with an exhaust icon exhausts it; a granted action did that when it was declared
+  if (step.ref.src === 'upgrade' && !step.ref.action && owner) spendCard(owner, step.ref.id, state)
   run.fired.push(step.key)
   emitFired(ctx, step)
   const hookName = step.ref.src === 'keyword' ? step.ref.id : step.ref.id
@@ -1017,7 +1086,8 @@ function resolveTargets(ctx: Ctx, step: Step, to: J, env: Env): Unit[] {
   if (to === 'attacker') return env.attack ? [env.attack.attacker] : []
   if (to?.aura) return center ? unitsAround(state, center, to.aura, step.seat, center) : []
   if (to?.all) {
-    return unitsOnTable(state).filter((u) => matchFilter(state, u, to.all.filter, center, step.seat) && (!to.all.side || (to.all.side === 'ally') === (u.seat === step.seat)))
+    // every unit still in the game, units in reserve included (Turning the Tide reaches Support and Heavy units not yet deployed)
+    return [...seatUnits(state, 'A'), ...seatUnits(state, 'B')].filter((u) => matchFilter(state, u, to.all.filter, center, step.seat) && (!to.all.side || (to.all.side === 'ally') === (u.seat === step.seat)))
   }
   throw new EngineInvariantError(`unsupported verb target ${JSON.stringify(to)}`)
 }
@@ -1309,7 +1379,61 @@ interface ContJson {
   offer?: CodeOffer
 }
 
+// ---------------------------------------------------------------------------
+// Divulge (CRB p61): at Resolve Setup Effects a player may reveal a card with the Divulge keyword, blue first; declining ends
+// the chance for that card. commandCards.ts registers the function that applies the text below the card's line.
+// ---------------------------------------------------------------------------
+
+interface DivulgeEntry {
+  seat: Seat
+  cardId: string
+}
+
+/** Raise the next Divulge offer (blue first); false when no card is left to offer. */
+export function offerDivulges(ctx: Ctx): boolean {
+  const s = ctx.state
+  if (s.origin.setup.options?.autoDivulge) return false
+  let queue = s.battle.data['divulgeQueue'] as DivulgeEntry[] | undefined
+  if (!queue) {
+    const blue = s.battle.blue ?? 'A'
+    queue = []
+    for (const seat of [blue, otherSeat(blue)]) {
+      for (const cardId of s.players[seat].hand) if (cardDef(s, cardId)?.divulge) queue.push({ seat, cardId })
+    }
+    s.battle.data['divulgeQueue'] = queue
+  }
+  const next = queue.shift()
+  if (!next) return false
+  ctx.raise({
+    kind: 'card.choice',
+    seat: next.seat,
+    window: 'setup.*',
+    context: { stage: 'divulge', cardId: next.cardId, unitId: null, subjectId: null },
+    options: [
+      { id: 'divulge', labelKey: 'card.divulge', type: 'card.choice', payload: { option: 'divulge' } },
+      { id: 'decline', labelKey: 'card.divulge.decline', type: 'card.choice', payload: { option: 'decline' } },
+    ],
+    canPass: false,
+  })
+  return true
+}
+
+function resolveDivulge(ctx: Ctx, pending: PendingDecision, option: string): void {
+  const cardId = String(pending.context['cardId'])
+  const seat = pending.seat as Seat
+  if (option === 'divulge') {
+    const d = (ctx.state.battle.data['divulged'] as Record<string, boolean> | undefined) ?? {}
+    ctx.state.battle.data['divulged'] = { ...d, [cardId]: true }
+    getFrameResume('divulge.apply')?.(ctx, 'finished', { seat, cardId })
+  }
+  if (offerDivulges(ctx)) return
+  const fn = getFrameResume('setup.divulge')
+  if (!fn) throw new EngineInvariantError('no frame resume registered for setup.divulge')
+  fn(ctx, 'finished', {})
+}
+
 export function resolveChoice(ctx: Ctx, pending: PendingDecision, option: string): void {
+  if (pending.context['stage'] === 'divulge') return resolveDivulge(ctx, pending, option)
   const raw = pending.context['cont']
   if (!raw) throw new EngineInvariantError(`${pending.kind} ${pending.id} carries no continuation`)
   const cont = JSON.parse(JSON.stringify(raw)) as ContJson
@@ -1371,16 +1495,29 @@ export interface GrantedAction {
   name: string
   kind: 'card' | 'free'
   exhaust: 'none' | 'exhaust' | 'expend'
+  /** the upgrade card (or, for a keyword grant, the keyword id) the action belongs to */
   upgradeId: string
   available: boolean
   whyNot?: string
+  /** Jump X: the action is a Move that ignores terrain up to this height (CRB p52) */
+  jump?: number
 }
 
 export function grantedActions(state: GameState, unit: Unit): GrantedAction[] {
   const out: GrantedAction[] = []
+  // actions a keyword grants (Jump X): usable whenever the unit could make a Move action
+  for (const k of unitKeywords(state, unit)) {
+    for (const e of keywordDef(state, k.id)?.effects ?? []) {
+      const a = e.grant?.action
+      if (!a) continue
+      const native = (a.effects ?? []).find((x: J) => x.native === 'jump')
+      const canMove = unit.location === 'table' && unit.engagedWith.length === 0
+      out.push({ id: a.id, name: a.name, kind: a.kind, exhaust: 'none', upgradeId: k.id, available: canMove, ...(canMove ? {} : { whyNot: 'engaged' }), ...(native ? { jump: Math.max(1, k.x) } : {}) })
+    }
+  }
   for (const upId of unit.upgrades) {
     const ud = upgradeDef(state, upId)
-    if (!ud) continue
+    if (!ud || !upgradeLive(unit, upId)) continue
     for (const e of ud.effects ?? []) {
       const a = e.grant?.action
       if (!a) continue
@@ -1399,6 +1536,7 @@ export function runGrantedAction(ctx: Ctx, unitId: string, actionId: string, res
   const unit = getUnit(ctx.state, unitId)
   const ga = grantedActions(ctx.state, unit).find((g) => g.id === actionId)
   if (!ga) throw new EngineInvariantError(`unit ${unitId} has no action ${actionId}`)
+  if (ga.jump !== undefined) throw new EngineInvariantError(`${actionId} is a Move: the activation runs it`)
   if (!ga.available) throw new EngineInvariantError(`action ${actionId} is ${ga.whyNot}`)
   if (ga.exhaust === 'exhaust') unit.flags.exhausted = [...((unit.flags.exhausted as string[] | undefined) ?? []), ga.upgradeId]
   if (ga.exhaust === 'expend') unit.flags.expended = [...((unit.flags.expended as string[] | undefined) ?? []), ga.upgradeId]

@@ -120,7 +120,7 @@ function raiseMenu(ctx: Ctx): void {
 registerFrameResume('test.flow', (ctx) => raiseMenu(ctx))
 
 export type MenuPayload =
-  | { action: 'attack'; unitId: string; forced?: string; rangedOnly?: boolean; meleeOnly?: boolean; free?: boolean }
+  | { action: 'attack'; unitId: string; forced?: string; rangedOnly?: boolean; meleeOnly?: boolean; free?: boolean; standby?: boolean }
   | { action: 'fire'; window: string; info?: Record<string, unknown>; resume?: boolean }
   | { action: 'cardAction'; unitId: string; actionId: string }
   | { action: 'activateCard'; seat: Seat; cardId: string }
@@ -141,6 +141,8 @@ const flow: ModuleDef = {
         switch (p.action) {
           case 'attack':
             ctx.state.activation.turn = ctx.state.units[p.unitId]!.seat
+            // the attack is made during the attacker's own Activation unless it is a Standby response (Sniper Team reads this)
+            if (!p.standby) ctx.state.activation.current = { unitId: p.unitId, seat: ctx.state.units[p.unitId]!.seat, via: 'order', actionsLeft: 2, performed: [], declared: null }
             startAttack(ctx, {
               attackerId: p.unitId,
               resume: 'test.flow',

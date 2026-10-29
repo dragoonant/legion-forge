@@ -105,7 +105,23 @@ export function computeEngagement(state: GameState): Record<string, string[]> {
   const c = constants(state)
   const units = unitsOnTable(state)
   const bodies = new Map<string, { unit: Unit; bodies: Body[] }>()
-  for (const u of units) bodies.set(u.id, { unit: u, bodies: u.minis.filter((m) => m.alive).map((m) => miniBody(state, m)) })
+  const boxes = new Map<string, { x0: number; x1: number; z0: number; z1: number }>()
+  for (const u of units) {
+    const bs = u.minis.filter((m) => m.alive).map((m) => miniBody(state, m))
+    bodies.set(u.id, { unit: u, bodies: bs })
+    // the box of the unit's bases, to skip pairs of units that are nowhere near each other
+    let x0 = Infinity
+    let x1 = -Infinity
+    let z0 = Infinity
+    let z1 = -Infinity
+    for (const b of bs) {
+      if (b.pos.x - b.baseRadius < x0) x0 = b.pos.x - b.baseRadius
+      if (b.pos.x + b.baseRadius > x1) x1 = b.pos.x + b.baseRadius
+      if (b.pos.z - b.baseRadius < z0) z0 = b.pos.z - b.baseRadius
+      if (b.pos.z + b.baseRadius > z1) z1 = b.pos.z + b.baseRadius
+    }
+    boxes.set(u.id, { x0, x1, z0, z1 })
+  }
   const out: Record<string, string[]> = {}
   for (const u of units) out[u.id] = []
   for (let i = 0; i < units.length; i++) {
@@ -113,6 +129,10 @@ export function computeEngagement(state: GameState): Record<string, string[]> {
       const a = units[i]!
       const b = units[j]!
       if (a.seat === b.seat) continue
+      const A = boxes.get(a.id)!
+      const B = boxes.get(b.id)!
+      const pad = c.contactEpsilon + 1e-6
+      if (A.x1 + pad < B.x0 || B.x1 + pad < A.x0 || A.z1 + pad < B.z0 || B.z1 + pad < A.z0) continue
       const ba = bodies.get(a.id)!.bodies
       const bb = bodies.get(b.id)!.bodies
       if (ba.some((x) => bb.some((y) => inBaseContact(x, y, c)))) {

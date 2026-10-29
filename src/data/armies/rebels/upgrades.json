@@ -180,9 +180,9 @@
           },
           {
             "applyModifier": {
-              "modifier": "suppressible",
+              "modifier": "notSuppressed",
               "op": "set",
-              "value": false,
+              "value": true,
               "duration": "activation"
             }
           }
@@ -191,7 +191,7 @@
         "limit": "oncePerActivation"
       }
     ],
-    "text": "Adds a Captain figure who leads the unit and grants a training icon. Exhaust at the start of the unit's activation: it cannot remove suppression or become Suppressed this activation. Text assumed equal to the Stormtrooper Captain.",
+    "text": "Adds a Captain figure who leads the unit and grants a training icon. Exhaust at the start of the unit's activation: it cannot remove suppression and is not Suppressed (or Panicked) this activation. Text assumed equal to the Stormtrooper Captain.",
     "source": {
       "doc": "LHQ",
       "url": "legionhq2 bundle id ah upgrade list",

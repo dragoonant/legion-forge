@@ -10,7 +10,7 @@ import { battleModule } from './battle'
 import { afterOrders, afterReveal, commandModule } from './command'
 import { afterRoundEnd, afterScoring, afterStart, endphaseModule } from './endphase'
 import { registerFrameResume, registerWindowOpener } from './hooks'
-import { movementModule, resumeAfterMove } from './movement'
+import { afterMoveEndedWindow, movementModule, resumeAfterMove } from './movement'
 import { setupModule as setupModuleDef } from './setup'
 import { EngineInvariantError } from './state'
 import { stubModule, type Ctx, type ModuleDef } from './registry'
@@ -43,7 +43,8 @@ const RESUMERS: Record<string, (ctx: Ctx) => void> = {
   'act.rallied': afterRallied,
   'act.ended': afterEndWindow,
   'act.resolved': afterActionResolved,
-  'move.ended': resumeAfterMove,
+  'move.ended': afterMoveEndedWindow,
+  'move.charged': resumeAfterMove,
   'end.started': afterStart,
   'end.scored': afterScoring,
   'round.ended': afterRoundEnd,
@@ -64,7 +65,10 @@ registerFrameResume('flow', (ctx) => resumeFlow(ctx))
 // Every lifecycle window the flow passes (`openWindow`) runs the keyword / upgrade / command-card effects that trigger there.
 // A decision they raise (a keyword.choice or card.choice) suspends the flow; the interpreter calls the 'flow' frame-resume
 // after the last answer and `resumeFlow` continues at the step that offered the window.
-registerWindowOpener((ctx, window, info) => fireWindow(ctx, window, info.unitId ? { unitId: info.unitId, ...(info.targetId ? { targetId: info.targetId } : {}) } : {}, { name: 'flow' }))
+registerWindowOpener((ctx, window, info) => {
+  const { kind: _kind, unitId, ...rest } = info
+  return fireWindow(ctx, window, { ...rest, ...(unitId ? { unitId } : {}) }, { name: 'flow' })
+})
 
 let modules: ModuleDef[] = DEFAULT_MODULES.slice()
 let table: Map<string, ModuleDef> | null = null

@@ -13,6 +13,7 @@ import { aliveMinis, constants, EngineInvariantError, getUnit, leaderOf, unitsOn
 import { reject, type Ctx, type ModuleDef, type OptionInput } from './registry'
 import {
   attackTargets,
+  canAttackAny,
   backupHits,
   blankAttack,
   blankPool,
@@ -21,6 +22,7 @@ import {
   coverVerdict,
   attackOdds,
   distanceLeaderToUnit,
+  engagedUnitIds,
   minisSeenByUnit,
   poolDiceCounts,
   poolOptions,
@@ -157,8 +159,9 @@ registerFrameResume(FRAME, (ctx) => advance(ctx))
 // attack calls back through the 'activation.action' frame-resume when it ends.
 registerAttackSeam({
   canStart(state, unitId, opts) {
-    const targets = attackTargets(state, unitId, { ...(opts.weapons === 'ranged' ? { rangedOnly: true } : {}), ...(opts.weapons === 'melee' ? { meleeOnly: true } : {}) }).filter((t) => t.ok)
-    return opts.against ? targets.some((t) => t.unitId === opts.against) : targets.length > 0
+    // a yes / no question: no cover or odds are computed, and the first legal target answers it
+    const o = { ...(opts.weapons === 'ranged' ? { rangedOnly: true } : {}), ...(opts.weapons === 'melee' ? { meleeOnly: true } : {}) }
+    return canAttackAny(state, unitId, o, opts.against)
   },
   start(ctx, unitId, opts) {
     startAttack(ctx, {
@@ -209,15 +212,26 @@ export function advance(ctx: Ctx): void {
         const af2 = frame(ctx.state)
         af2.current++
         if (af2.current >= af2.pools.length) {
-          af2.current = af2.pools.length - 1
+          af2.current = 0
+          af2.resolvedFor = []
           setStage(ctx, 'closing')
-          if (fireAttackWindow(ctx, 'attack.resolved')) return
-          setStage(ctx, 'finished')
         }
         break
       }
       case 'closing': {
-        setStage(ctx, 'finished')
+        // attack.resolved runs once per distinct defender of the attack: the first pass for everyone (attacker effects
+        // included), each further defender gets its own pass for the effects it carries (Nimble, Fear and Dead Men)
+        const done = af.resolvedFor ?? (af.resolvedFor = [])
+        const next = af.pools.map((p) => p.defenderId).find((d, i, all) => all.indexOf(d) === i && !done.includes(d))
+        if (next === undefined) {
+          af.current = af.pools.length - 1
+          setStage(ctx, 'finished')
+          break
+        }
+        af.current = af.pools.findIndex((p) => p.defenderId === next)
+        const first = done.length === 0
+        done.push(next)
+        if (fireWindow(ctx, 'attack.resolved', first ? {} : { defenderOnly: true }, { name: FRAME })) return
         break
       }
       case 'finished': {
@@ -459,10 +473,16 @@ function faceNames(dice: readonly AtkDie[]): string[] {
 
 type PoolResult = 'suspended' | 'done'
 
-function fireP(ctx: Ctx, pf: PoolFrame, window: string): boolean {
+function fireP(ctx: Ctx, pf: PoolFrame, window: string, info: Record<string, unknown> = {}): boolean {
   if (pf.windows.includes(window)) return false
   pf.windows.push(window)
-  return fireAttackWindow(ctx, window)
+  return fireWindow(ctx, window, info, { name: FRAME })
+}
+
+/** Does spending an Aim pay off beyond rerolling dice? Duelist's melee Pierce and Overwhelm's extra Suppression (CRB p49, p59). */
+function aimPayoff(st: GameState, atk: Unit, pf: PoolFrame): boolean {
+  if ((pf.spent.attacker['aim'] ?? 0) > 0) return false
+  return (pf.kind === 'melee' && hasKeyword(st, atk, 'kw.duelist')) || poolHasKeyword(st, pf, 'kw.overwhelm')
 }
 
 function resolvePool(ctx: Ctx): PoolResult {
@@ -495,10 +515,14 @@ function resolvePool(ctx: Ctx): PoolResult {
       }
       case 'reroll': {
         const aim = tokensOf(atk, 'aim')
+        const obs = tokensOf(def, 'observation')
         const k = aimDice(st, atk)
         const auto = autoRerollPick(st, atk, pf, k)
-        if (aim > 0 && auto.length > 0 && !pf.windows.includes('rerollDone')) {
-          raiseReroll(ctx, atk, def, pf, k, auto)
+        // an Aim is worth spending for the keyword that reads it even when every die is already good (CRB p49, p59);
+        // the defender's Observation tokens only ever reroll dice
+        const payoff = aim > 0 && aimPayoff(st, atk, pf)
+        if (!pf.windows.includes('rerollDone') && ((aim > 0 && (auto.length > 0 || payoff)) || (obs > 0 && auto.length > 0))) {
+          raiseReroll(ctx, atk, def, pf, k, auto, { aim, obs, payoff })
           return 'suspended'
         }
         pf.step = 'surges'
@@ -562,7 +586,8 @@ function resolvePool(ctx: Ctx): PoolResult {
           pf.windows.push('dodgeAsked')
           const allowed = foldBool(true, modValues(st, atk, 'dodgeAllowed', { role: 'attacker' })) && !poolAllHave(st, pf, 'kw.high-velocity')
           const tokens = tokensOf(def, 'dodge')
-          const benefit = hasKeyword(st, def, 'kw.block') && pf.crits > 0
+          // a Dodge with no hit left to cancel still pays for Block (a crit) and for Duelist's Immune: Pierce in melee
+          const benefit = (hasKeyword(st, def, 'kw.block') && pf.crits > 0) || (hasKeyword(st, def, 'kw.duelist') && pf.kind === 'melee')
           const max = Math.min(tokens, Math.max(pf.hits, benefit ? 1 : 0))
           if (allowed && max > 0) {
             raiseSpend(
@@ -660,12 +685,15 @@ function resolvePool(ctx: Ctx): PoolResult {
         }
         if (fireP(ctx, pf, 'attack.woundsAssigned')) return 'suspended'
         const defAlive = def.location === 'table' && aliveMinis(def).length > 0
-        if (pf.kind === 'ranged' && pf.suppressFlag && defAlive && !pf.windows.includes('suppressionWindow')) {
+        const baseDue = pf.kind === 'ranged' && pf.suppressFlag
+        // Overwhelm's token does not wait for the base one: an Aim spent in Reroll Dice is all it asks (CRB p59)
+        const overwhelmDue = poolHasKeyword(st, pf, 'kw.overwhelm') && (pf.spent.attacker['aim'] ?? 0) > 0
+        if ((baseDue || overwhelmDue) && defAlive && !pf.windows.includes('suppressionWindow')) {
           pf.windows.push('suppressionWindow')
           pf.step = 'done'
-          // Suppressive / Overwhelm add their token in this window, only when the base token is due (R-12.11)
-          applySuppression(ctx, def.id, 1, 'attack')
-          if (fireP(ctx, pf, 'attack.suppression')) return 'suspended'
+          // Suppressive adds its token on top of the base one (RULING K-suppressive: only when the base token is due)
+          if (baseDue) applySuppression(ctx, def.id, 1, 'attack')
+          if (fireP(ctx, pf, 'attack.suppression', { suppressionDue: baseDue })) return 'suspended'
         } else pf.step = 'done'
         break
       }
@@ -676,7 +704,7 @@ function resolvePool(ctx: Ctx): PoolResult {
   throw new EngineInvariantError('pool did not settle')
 }
 
-function raiseReroll(ctx: Ctx, atk: Unit, def: Unit, pf: PoolFrame, k: number, auto: number[]): void {
+function raiseReroll(ctx: Ctx, atk: Unit, def: Unit, pf: PoolFrame, k: number, auto: number[], tokens: { aim: number; obs: number; payoff: boolean }): void {
   const power = (c: AttackColour) => ({ red: 3, black: 2, white: 1 })[c]
   const byFace = new Map<string, number[]>()
   pf.dice.forEach((d, i) => byFace.set(d.face, [...(byFace.get(d.face) ?? []), i]))
@@ -702,10 +730,19 @@ function raiseReroll(ctx: Ctx, atk: Unit, def: Unit, pf: PoolFrame, k: number, a
     const pool = byFace.get(face)!
     for (let take = 0; take <= Math.min(left, pool.length); take++) rec(fi + 1, left - take, take > 0 ? [...chosen, { face, idx: pool.slice(0, take) }] : chosen)
   }
-  rec(0, k, [])
-  options.sort((a, b) => Number(b.data!['auto']) - Number(a.data!['auto']))
+  if (tokens.aim > 0) rec(0, k, [])
+  else options.length = 0
+  // an Aim spent only for the keyword that reads it: reroll no dice
+  if (tokens.aim > 0 && tokens.payoff) options.push({ id: 'reroll:none', choice: 'reroll', params: { dice: [] }, data: { faces: [], auto: auto.length === 0 } })
+  // Observation tokens belong to the defender and reroll one die each (CRB p53); the same die may be rerolled again
+  if (tokens.obs > 0 && auto.length > 0) {
+    for (const face of faces) {
+      options.push({ id: `observe:${face}`, choice: 'observe', params: { dice: [byFace.get(face)![0]!] }, data: { faces: [face], auto: tokens.aim === 0 && autoFaces[0] === face } })
+    }
+  }
+  options.sort((a, b) => Number(b.data?.['auto'] ?? 0) - Number(a.data?.['auto'] ?? 0))
   options.push({ id: 'reroll:done', choice: 'rerollDone' })
-  raiseSpend(ctx, atk.seat, 'reroll', 'attack.rerolled', options, { aim: tokensOf(atk, 'aim'), perAim: k, dice: faceNames(pf.dice), defenderId: def.id })
+  raiseSpend(ctx, atk.seat, 'reroll', 'attack.rerolled', options, { aim: tokens.aim, observation: tokens.obs, perAim: k, dice: faceNames(pf.dice), defenderId: def.id })
 }
 
 /** Remaining surges become blanks; offers the Sniper Team cancel. Returns true when a decision was raised. */
@@ -973,7 +1010,6 @@ function lookupPool(state: GameState, action: Extract<Action, { type: 'attack.po
   const af = frame(state)
   const atk = attackerOf(state)
   const defenderId = state.attack!.defenderId!
-  void defenderId
   const entries = Object.entries(action.payload.weaponIds)
   if (entries.length === 0) return { error: 'a pool needs at least one weapon', code: 'E_ACTION_RESTRICTED' }
   const kinds = new Set<AttackKind>()
@@ -987,9 +1023,14 @@ function lookupPool(state: GameState, action: Extract<Action, { type: 'attack.po
     weapons.push({ miniId, weaponId })
     for (const t of weaponTypes(weaponDef(state, weaponId))) kinds.add(t)
   }
-  const types = weapons.map((w) => weaponTypes(weaponDef(state, w.weaponId))[0]!)
-  if (new Set(types).size > 1) return { error: 'melee and ranged weapons cannot share a pool', code: 'E_ACTION_RESTRICTED' }
-  const kind = types[0]!
+  // a weapon with both icons takes the kind of the pool: melee against a unit the attacker is engaged with, ranged otherwise
+  const allowed = new Set<AttackKind>(['melee', 'ranged'])
+  for (const w of weapons) {
+    const own = weaponTypes(weaponDef(state, w.weaponId))
+    for (const k of [...allowed]) if (!own.includes(k)) allowed.delete(k)
+  }
+  if (allowed.size === 0) return { error: 'melee and ranged weapons cannot share a pool', code: 'E_ACTION_RESTRICTED' }
+  const kind: AttackKind = allowed.size === 1 ? [...allowed][0]! : engagedUnitIds(state, atk).includes(defenderId) ? 'melee' : 'ranged'
   return { kind, weapons }
 }
 
@@ -1105,6 +1146,15 @@ function applySpend(ctx: Ctx, pending: PendingDecision, choice: string, params: 
       const which = (params['dice'] as number[]) ?? []
       loseToken(ctx, atk.id, 'aim', 1, 'aim')
       pf.spent.attacker['aim'] = (pf.spent.attacker['aim'] ?? 0) + 1
+      rollInto(ctx, pf.dice, which, 'reroll')
+      ctx.emit({ type: 'Rerolled', indexes: which, faces: which.map((i) => pf.dice[i]!.face) }, atk.seat)
+      break
+    }
+    case 'observe': {
+      // one Observation token of the defender rerolls one attack die (CRB p53)
+      const which = (params['dice'] as number[]) ?? []
+      loseToken(ctx, def.id, 'observation', 1, 'observation')
+      pf.spent.attacker['observation'] = (pf.spent.attacker['observation'] ?? 0) + 1
       rollInto(ctx, pf.dice, which, 'reroll')
       ctx.emit({ type: 'Rerolled', indexes: which, faces: which.map((i) => pf.dice[i]!.face) }, atk.seat)
       break

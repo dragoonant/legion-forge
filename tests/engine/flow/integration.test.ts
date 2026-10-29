@@ -145,12 +145,12 @@ describe('flow and combat together', () => {
     st = advance(must(st.state, optionAction(st.state, `free:${eff.id}`)), (p) => p.kind === 'action.choose')
     expect(st.state.effects.some((e) => e.id === eff.id)).toBe(false)
     expect(st.state.activation.current!.actionsLeft).toBe(2)
-    expect(st.state.activation.current!.performed).toEqual([{ action: 'free.move', free: true }])
+    expect(st.state.activation.current!.performed).toEqual([{ action: 'free.move', free: true, move: true }])
     expect(hasOption(st.state, 'move')).toBe(true)
     expect(hasOption(st.state, 'end')).toBe(true)
   })
 
-  it('INT-007 a granted free Attack is its own action: it neither uses up nor is blocked by the Attack action', () => {
+  it('INT-007 a granted free Attack costs no action but is still the unit\'s one Attack action for the turn (CRB p30, M2c review 7)', () => {
     const d = duel(6)
     const ctx = ctxFor(d.state)
     const eff = addEffect(ctx, { source: 'test', seat: 'A', kind: 'freeAction', unitId: d.atk, expires: 'activation', data: { action: 'core.action.attack', weapons: 'ranged', source: 'test' } })
@@ -163,7 +163,7 @@ describe('flow and combat together', () => {
     r = advance(must(r.state, optionAction(r.state, `unit:${d.def}`)), (p) => p.kind === 'action.choose')
     expect(r.state.activation.current!.performed).toEqual([{ action: 'free.attack', free: true }])
     expect(r.state.activation.current!.actionsLeft).toBe(2)
-    expect(hasOption(r.state, 'attack')).toBe(true)
+    expect(hasOption(r.state, 'attack')).toBe(false)
   })
 
   it('INT-008 extra and fewer actions from effects change the allowance (morale.actionsFor)', () => {

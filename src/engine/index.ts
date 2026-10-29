@@ -1,6 +1,6 @@
 // Public engine API (frozen after M2): createGame / step / legalActions / validate / replay / view / suggest /
 // save / load / undo. The client store and tools/sim-core.ts are the only callers of `step`.
-import { answeredSeats, owingSeats, step, validate } from './apply'
+import { answeredSeats, owingSeats, setHashEvery, step, stepInPlace, validate } from './apply'
 import { setupModule, moduleFor } from './modules'
 import { SeededRng } from './rng'
 import { createCtx } from './registry'
@@ -11,7 +11,7 @@ import { redactEvents, view } from './view'
 
 export const ENGINE_VERSION = '0.1.0'
 
-export { step, validate, view, redactEvents, EngineInvariantError }
+export { step, validate, view, redactEvents, EngineInvariantError, setHashEvery }
 export * from './types'
 export type { GameEvent, GameEventBody } from './events'
 export { act, makeAction } from './actions'
@@ -110,7 +110,8 @@ export function replay(setup: GameSetup, seed: string, actions: Action[], bundle
   let result: StepResult = createGame(setup, seed, bundle)
   const hashes = [result.state.hash]
   for (let i = 0; i < actions.length; i++) {
-    const next = step(result.state, actions[i]!)
+    // nobody keeps the intermediate states, so each step applies to the one state (no copy per action)
+    const next = stepInPlace(result.state, actions[i]!)
     if (next.rejection) {
       return { ...result, rejection: next.rejection, hashes, failedAt: i }
     }

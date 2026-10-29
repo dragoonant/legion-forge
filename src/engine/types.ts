@@ -216,8 +216,11 @@ export interface Activation {
   seat: Seat
   via: 'order' | 'pool'
   actionsLeft: number
-  performed: { action: string; free: boolean }[]
+  /** `move`: the action was a Move action (a Move, Climb, Withdraw, free Move or a Jump), what Relentless and Standby read */
+  performed: { action: string; free: boolean; move?: boolean }[]
   declared: { action: string; params?: Record<string, unknown> } | null
+  /** the unit began its Make Actions step Panicked (CRB p23): it is tested once, then fixed for the activation */
+  panickedAtStart?: boolean
 }
 
 export interface OrderPool {
@@ -282,7 +285,7 @@ export interface GameSetup {
   armies: Record<Seat, { factionId: string; listId?: string; units: RosterUnit[]; commandHand: string[] }>
   /** which compiled layout of `GameData.layouts` to play on (additive, M2a); default: the first one */
   layout?: string
-  options?: { autoDeploy?: boolean; autoBattle?: boolean; maxRounds?: number; firstPriority?: Seat }
+  options?: { autoDeploy?: boolean; autoBattle?: boolean; maxRounds?: number; firstPriority?: Seat; /** decline every Divulge offer without asking (tests and demos that do not care) */ autoDivulge?: boolean }
 }
 
 export interface GameState {
@@ -438,7 +441,7 @@ export interface ActionPayloadMap {
   'activation.standby': { unitId?: string; response?: string }
   'keyword.choice': { option: string }
   'card.choice': { option: string }
-  'battle.place': { x: number; z: number }
+  'battle.place': { x: number; z: number; /** a barricade's turn, radians (CRB p12) */ yaw?: number }
   'end.choice': { option: string }
   confirm: { choice: 'continue' | 'concede' }
   pass: Record<string, never>
@@ -594,6 +597,12 @@ export interface MoveFrame {
   kind: 'move' | 'climb' | 'withdraw' | 'standby' | 'deploy' | 'controlled'
   maxSpeed: number
   free: boolean
+  /** a Scout or Jump Move: difficult terrain does not slow it (CRB p52, p54) */
+  ignoreDifficult?: boolean
+  /** a Jump X Move: terrain up to this height is ignored or stood on (CRB p52) */
+  jumpHeight?: number
+  /** the enemy unit this Move put the leader in base contact with (a Move into Melee, CRB p28) */
+  meleeWith?: string
 }
 
 /** The flow machine's private state, kept in `state.battle.data.flow`. */
@@ -611,7 +620,7 @@ export interface FlowState {
   activations: number
   move: MoveFrame | null
   /** a Standby window in progress: the triggering enemy unit, the standby units that already answered, and whether one is mid-response */
-  standby: { triggerUnitId: string; done: string[]; responding: boolean } | null
+  standby: { triggerUnitId: string; done: string[]; responding: boolean; then: 'move.ended' | 'action.resolved'; frame: MoveFrame | null } | null
   /** setup deployment cursor: the seat that places next */
   deployTurn: Seat | null
 }
@@ -636,6 +645,10 @@ export interface BattleData {
   marks: Record<string, number>
   /** chooseUnits results by name */
   picks: Record<string, string[]>
+  /** barricades placed in Setup (Fortified Position); the compiled table carries the pieces */
+  barricades: { id: string; seat: Seat; x: number; z: number; yaw: number }[]
+  /** barricade placements still to make: the card's owner, how many, and the spacing (range 1 = 6) */
+  barricadeSteps: { seat: Seat; cardId: string; left: number; minApart: number }[]
   flow: FlowState
 }
 
@@ -776,6 +789,8 @@ export interface AttackFrame {
   current: number
   /** wounds the defending units suffered, by unit id (Fear and Dead Men) */
   woundsTaken: Record<string, number>
+  /** defenders whose `attack.resolved` effects have run (each distinct defender gets its own pass, CRB p53, p51) */
+  resolvedFor?: string[]
 }
 
 /** What the flow module passes to `startAttack`. */

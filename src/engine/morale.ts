@@ -20,9 +20,14 @@ export function courageOf(state: GameState, unit: Unit): number | null {
   return foldNumber(Number(base), modValues(state, unit, 'courage'))
 }
 
+/** An activation-long effect says the unit is not Suppressed (and so not Panicked): the Captain (EUP p7). */
+function notSuppressedNow(state: GameState, unit: Unit): boolean {
+  return state.effects.some((e) => e.kind === 'modifier' && e.unitId === unit.id && e.data?.modifier === 'notSuppressed' && e.data?.value === true)
+}
+
 export function isSuppressed(state: GameState, unit: Unit): boolean {
   const c = courageOf(state, unit)
-  return c !== null && unit.suppression >= c && unit.suppression > 0
+  return c !== null && unit.suppression >= c && unit.suppression > 0 && !notSuppressedNow(state, unit)
 }
 
 function unitsDistance(state: GameState, a: Unit, b: Unit): number {
@@ -71,7 +76,7 @@ export function isPanicked(state: GameState, unit: Unit): boolean {
   if (unit.location !== 'table' && unit.location !== 'reserve') return false
   const src = courageSource(state, unit)
   if (src.courage === null) return false
-  return unit.suppression >= 2 * src.courage && unit.suppression > 0
+  return unit.suppression >= 2 * src.courage && unit.suppression > 0 && !notSuppressedNow(state, unit)
 }
 
 /** Panicked is a derived state; the false-to-true change is "the unit panics" (drops Assets, emits UnitPanicked). */

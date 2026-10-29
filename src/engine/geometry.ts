@@ -9,7 +9,9 @@ export function round3(n: number): number {
 }
 
 export function dist2(a: Vec2, b: Vec2): number {
-  return Math.hypot(a.x - b.x, a.z - b.z)
+  const dx = a.x - b.x
+  const dz = a.z - b.z
+  return Math.sqrt(dx * dx + dz * dz)
 }
 
 /**
@@ -32,28 +34,36 @@ export function lerp2(a: Vec2, b: Vec2, t: number): Vec2 {
   return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t }
 }
 
-export function distPointSegment(p: Vec2, a: Vec2, b: Vec2): number {
-  const dx = b.x - a.x
-  const dz = b.z - a.z
+function distPointSegment2(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
+  const dx = bx - ax
+  const dz = bz - az
   const len2 = dx * dx + dz * dz
-  if (len2 < 1e-12) return dist2(p, a)
-  let t = ((p.x - a.x) * dx + (p.z - a.z) * dz) / len2
-  t = Math.max(0, Math.min(1, t))
-  return Math.hypot(p.x - (a.x + dx * t), p.z - (a.z + dz * t))
+  if (len2 < 1e-12) return (px - ax) * (px - ax) + (pz - az) * (pz - az)
+  let t = ((px - ax) * dx + (pz - az) * dz) / len2
+  t = t < 0 ? 0 : t > 1 ? 1 : t
+  const ex = px - (ax + dx * t)
+  const ez = pz - (az + dz * t)
+  return ex * ex + ez * ez
+}
+
+export function distPointSegment(p: Vec2, a: Vec2, b: Vec2): number {
+  return Math.sqrt(distPointSegment2(p.x, p.z, a.x, a.z, b.x, b.z))
 }
 
 export function distToPolygonBoundary(p: Vec2, poly: Polygon): number {
   let best = Infinity
+  let q = poly[poly.length - 1]!
   for (let i = 0; i < poly.length; i++) {
-    const d = distPointSegment(p, poly[i]!, poly[(i + 1) % poly.length]!)
+    const c = poly[i]!
+    const d = distPointSegment2(p.x, p.z, q.x, q.z, c.x, c.z)
     if (d < best) best = d
+    q = c
   }
-  return best
+  return Math.sqrt(best)
 }
 
 /** Even-odd containment; points on the boundary count as inside. */
-export function pointInPolygon(p: Vec2, poly: Polygon): boolean {
-  if (distToPolygonBoundary(p, poly) < 1e-9) return true
+function insideByParity(p: Vec2, poly: Polygon): boolean {
   let inside = false
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const a = poly[i]!
@@ -61,6 +71,18 @@ export function pointInPolygon(p: Vec2, poly: Polygon): boolean {
     if (a.z > p.z !== b.z > p.z && p.x < ((b.x - a.x) * (p.z - a.z)) / (b.z - a.z) + a.x) inside = !inside
   }
   return inside
+}
+
+export function pointInPolygon(p: Vec2, poly: Polygon): boolean {
+  if (insideByParity(p, poly)) return true
+  // outside by parity: still inside when the point sits on the boundary
+  let q = poly[poly.length - 1]!
+  for (let i = 0; i < poly.length; i++) {
+    const c = poly[i]!
+    if (distPointSegment2(p.x, p.z, q.x, q.z, c.x, c.z) < 1e-18) return true
+    q = c
+  }
+  return false
 }
 
 /** Horizontal distance from a point to a polygon region (0 when inside). */
@@ -130,13 +152,17 @@ export function segmentPolygonIntervals(a: Vec2, b: Vec2, poly: Polygon): [numbe
   const dx = b.x - a.x
   const dz = b.z - a.z
   const ts: number[] = [0, 1]
+  let parallel = false
   for (let i = 0; i < poly.length; i++) {
     const p = poly[i]!
     const q = poly[(i + 1) % poly.length]!
     const ex = q.x - p.x
     const ez = q.z - p.z
     const denom = dx * ez - dz * ex
-    if (Math.abs(denom) < 1e-12) continue
+    if (Math.abs(denom) < 1e-12) {
+      parallel = true
+      continue
+    }
     const t = ((p.x - a.x) * ez - (p.z - a.z) * ex) / denom
     const u = ((p.x - a.x) * dz - (p.z - a.z) * dx) / denom
     if (t > 0 && t < 1 && u >= 0 && u <= 1) ts.push(t)
@@ -148,7 +174,8 @@ export function segmentPolygonIntervals(a: Vec2, b: Vec2, poly: Polygon): [numbe
     const t1 = ts[i + 1]!
     if (t1 - t0 < 1e-9) continue
     const mid = lerp2(a, b, (t0 + t1) / 2)
-    if (pointInPolygon(mid, poly)) {
+    // a midpoint can lie on the boundary only along an edge parallel to the segment
+    if (parallel ? pointInPolygon(mid, poly) : insideByParity(mid, poly)) {
       const last = out[out.length - 1]
       if (last && Math.abs(last[1] - t0) < 1e-9) last[1] = t1
       else out.push([t0, t1])

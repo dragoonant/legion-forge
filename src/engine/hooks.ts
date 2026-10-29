@@ -116,7 +116,7 @@ export function runHook(name: HookName, ctx: Omit<HookContext, 'hook'>): HookRes
 export type WindowOpener = (
   ctx: Ctx,
   window: TimingWindowId,
-  info: { kind: 'attack' | 'melee' | 'other'; unitId: string; targetId?: string },
+  info: { kind: 'attack' | 'melee' | 'other'; unitId: string; targetId?: string; [key: string]: unknown },
 ) => boolean
 
 let windowOpener: WindowOpener | null = null

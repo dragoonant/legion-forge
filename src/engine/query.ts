@@ -19,6 +19,7 @@ import {
   foldBool,
   foldNumber,
   hasKeyword,
+  isTrooperType,
   keywordX,
   matchesUnitType,
   miniWeapons,
@@ -27,6 +28,7 @@ import {
   poolKeywordX,
   tokensOf,
   unitDef,
+  unitDistance,
   unitKeywords,
   unitRank,
   weaponDef,
@@ -63,8 +65,11 @@ export function engagedUnitIds(state: GameState, unit: Unit): string[] {
   const c = constants(state)
   const mine = aliveMinis(unit).map((m) => miniBody(state, m))
   const out: string[] = []
+  // two bases touch only when their centres are within the sum of their radii plus the contact gap
+  const reach = 2 * Math.max(...Object.values(state.data.bases).map((b) => b.radius)) + c.contactEpsilon + 1e-6
   for (const o of unitsOnTable(state)) {
     if (o.seat === unit.seat || unit.location !== 'table') continue
+    if (!mine.some((a) => o.minis.some((m) => m.alive && Math.abs(a.pos.x - m.pos.x) <= reach && Math.abs(a.pos.z - m.pos.z) <= reach))) continue
     const theirs = aliveMinis(o).map((m) => miniBody(state, m))
     if (mine.some((a) => theirs.some((b) => inBaseContact(a, b, c)))) out.push(o.id)
   }
@@ -103,6 +108,12 @@ export function distanceLeaderToUnit(state: GameState, attacker: Unit, defender:
 export function minisSeenBy(state: GameState, from: Mini, defender: Unit): Mini[] {
   const a = miniLosBody(state, from)
   return aliveMinis(defender).filter((m) => hasLos(state.table.def, a, miniLosBody(state, m)))
+}
+
+/** Does the model see any model of the defender? Stops at the first one it sees. */
+export function seesAny(state: GameState, from: Mini, defender: Unit): boolean {
+  const a = miniLosBody(state, from)
+  return aliveMinis(defender).some((m) => hasLos(state.table.def, a, miniLosBody(state, m)))
 }
 
 /** Defending models seen by at least one attacking model (the ranged wound cap, R-14.3). */
@@ -171,6 +182,8 @@ export function losCover(state: GameState, attackerId: string, defenderId: strin
 // ---------------------------------------------------------------------------
 
 export interface TargetOpts {
+  /** the caller wants `ok` only: `visible` holds a placeholder instead of the ids of every model the leader sees */
+  quickVisible?: boolean
   rangeBonus?: number
   rangedOnly?: boolean
   meleeOnly?: boolean
@@ -218,9 +231,9 @@ export function checkTarget(state: GameState, attackerId: string, defenderId: st
   const d = distanceLeaderToUnit(state, atk, def)
   const band = rangeBand(d, constants(state))
   const leader = miniLosBody(state, leaderOf(atk))
-  const visible = aliveMinis(def)
-    .filter((m) => hasLos(state.table.def, leader, miniLosBody(state, m)))
-    .map((m) => m.id)
+  // a yes / no question (canAttackAny) needs only the first model the leader sees
+  const seen = (m: Mini): boolean => hasLos(state.table.def, leader, miniLosBody(state, m))
+  const visible = opts.quickVisible ? (aliveMinis(def).find(seen) ? ['_'] : []) : aliveMinis(def).filter(seen).map((m) => m.id)
   const res: TargetCheck = { ...base, distance: d, band, visible }
   if (visible.length === 0) return { ...res, reason: 'noLos' }
   const atkEngaged = engagedUnitIds(state, atk)
@@ -238,13 +251,40 @@ export function checkTarget(state: GameState, attackerId: string, defenderId: st
     if (atkEngaged.length > 0 || defEngaged.length > 0) rangedReason = 'engaged'
     else if (poolCandidates(state, atk.id, def.id, 'ranged', opts).length > 0) {
       const cap = foldNumber(Infinity, modValues(state, def, 'targetableFrom', { role: 'defender' }).map((m) => ({ ...m, value: Number(m.value) })))
-      if (band !== 'beyond' && band > cap) rangedReason = 'incognito'
+      // Incognito: only enemy units WITHIN the range attack it, and a unit is within when any one of its models is (CRB p51, p12),
+      // not the attacking leader alone
+      if (band !== 'beyond' && Number.isFinite(cap) && !withinBand(unitDistance(state, atk, def), cap, constants(state))) rangedReason = 'incognito'
       else kinds.push('ranged')
     } else rangedReason = 'outOfRange'
   }
   const reason = opts.meleeOnly ? meleeReason : (rangedReason ?? meleeReason)
   if (kinds.length > 0) return { ...res, ok: true, kinds }
   return { ...res, reason: reason ?? 'outOfRange' }
+}
+
+/**
+ * Is there any enemy unit (or the named one) the unit could declare as a defender? Same verdict as `attackTargets(...).some(ok)`
+ * without the cover and odds, with a cheap reach test before the line-of-sight scans: a unit beyond its longest weapon that is
+ * not engaged cannot be a target.
+ */
+export function canAttackAny(state: GameState, attackerId: string, opts: TargetOpts = {}, only?: string): boolean {
+  const atk = getUnit(state, attackerId)
+  if (atk.location !== 'table') return false
+  const c = constants(state)
+  let longest = 0
+  for (const m of aliveMinis(atk)) {
+    for (const wid of miniWeapons(state, atk, m.id)) longest = Math.max(longest, weaponDef(state, wid).range?.max ?? 1)
+  }
+  const engagedWith = engagedUnitIds(state, atk)
+  for (const u of unitsOnTable(state)) {
+    if (u.seat === atk.seat || (only !== undefined && u.id !== only)) continue
+    if (!engagedWith.includes(u.id)) {
+      const band = rangeBand(distanceLeaderToUnit(state, atk, u), c)
+      if (band === 'beyond' || band > longest + (opts.rangeBonus ?? 0)) continue
+    }
+    if (checkTarget(state, attackerId, u.id, { ...opts, quickVisible: true }).ok) return true
+  }
+  return false
 }
 
 /** `query.attackTargets`: every enemy unit with its check (distance, band, kinds, visible models, cover for ranged). */
@@ -277,7 +317,7 @@ export function poolCandidates(state: GameState, attackerId: string, defenderId:
   for (const m of aliveMinis(atk)) {
     const ws = usableWeapons(state, atk, m, kind, d, opts)
     if (ws.length === 0) continue
-    if (minisSeenBy(state, m, def).length === 0) continue
+    if (!seesAny(state, m, def)) continue
     out.push({ miniId: m.id, weapons: ws.sort((a, b) => weaponValue(state, b) - weaponValue(state, a) || (a < b ? -1 : 1)) })
   }
   return out
@@ -717,15 +757,13 @@ export function backupHits(state: GameState, atk: Unit, def: Unit, kind: AttackK
   const c = constants(state)
   const d = distanceLeaderToUnit(state, atk, def)
   if (withinBand(d, c['backupAttackerMinRange'] ?? 2, c)) return 0
-  if (!foldBool(true, modValues(state, def, 'canBackup', { role: 'defender' }))) return 0
   for (const o of unitsOnTable(state)) {
     if (o.seat !== def.seat || o.id === def.id || unitRank(o) !== 'corps' || isSuppressed(state, o)) continue
-    if (!foldBool(true, modValues(state, o, 'canBackup', { role: null }))) continue
+    if (!foldBool(true, modValues(state, o, 'canBackup', { role: null })) || !isTrooperType(state, o)) continue
     const lead = miniLosBody(state, leaderOf(o))
-    const ok = aliveMinis(def).some(
-      (m) => distance(miniBody(state, m), miniBody(state, leaderOf(o))) <= (c['backupRange'] ?? 3) + 1e-9 && hasLos(state.table.def, miniLosBody(state, m), lead),
-    )
-    if (ok) return 2
+    // the defending UNIT is within 3 of the provider's leader and has LOS to it (any of its models for each: CRB p12, p31)
+    const within = aliveMinis(def).some((m) => distance(miniBody(state, m), miniBody(state, leaderOf(o))) <= (c['backupRange'] ?? 3) + 1e-9)
+    if (within && aliveMinis(def).some((m) => hasLos(state.table.def, miniLosBody(state, m), lead))) return 2
   }
   return 0
 }

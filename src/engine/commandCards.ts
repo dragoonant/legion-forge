@@ -5,6 +5,7 @@
 // `card.choice` only when its seat can use something (an optional effect whose conditions hold).
 import { getCodeEffect, codeEffectNames } from './armies/registry'
 import { addEffect } from './effects'
+import { registerFrameResume } from './hooks'
 import { choiceModule, cardDef, fireWindow, grantedActions, raiseOffer, runGrantedAction, unitDef, matchFilter, type FrameRef, type GrantedAction, rankKey, unitRank, matchesUnitType } from './keywords'
 import { isPanicked } from './morale'
 import type { Ctx, ModuleDef } from './registry'
@@ -65,10 +66,13 @@ export function divulgeCard(ctx: Ctx, seat: Seat, cardId: string): void {
   ctx.emit({ type: 'CardEffect', cardId, detail: { divulged: true } }, seat)
 }
 
+registerFrameResume('divulge.apply', (ctx, _outcome, data) => divulgeCard(ctx, data['seat'] as Seat, String(data['cardId'])))
+
 function namedFor(state: GameState, cardId: string, seat: Seat): Unit[] {
   const names: string[] | undefined = cardDef(state, cardId)?.restriction?.units
   if (!names) return []
-  return seatUnits(state, seat).filter((u) => u.location === 'table' && names.includes(u.unitTypeId))
+  // a named unit still in reserve counts: Darkness Descends played in Round 1 with Vader undeployed must still reach him
+  return seatUnits(state, seat).filter((u) => names.includes(u.unitTypeId))
 }
 
 // ---------------------------------------------------------------------------

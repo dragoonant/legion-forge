@@ -10,6 +10,7 @@ import {
   bd,
   checkWipeout,
   contests,
+  deploySpans,
   flowOf,
   heldAssets,
   markersOf,
@@ -25,11 +26,12 @@ import { registerFrameResume, runHook } from './hooks'
 import { cardActions, runCardAction } from './commandCards'
 import { distance, miniBody } from './measure'
 import { actionsFor, courageSource, isPanicked, isSuppressed, panicRelief, rallyRoll, refreshPanic, removeSuppression } from './morale'
-import { beginMove, planMove, unitSpeed } from './movement'
+import { beginMove, moveEndedWindow, planMove, unitSpeed } from './movement'
 import { reject, type Ctx, type ModuleDef } from './registry'
 import { constants, EngineInvariantError, leaderOf, otherSeat, poolCounts, seatUnits } from './state'
 import { hasLos, miniLosBody } from './los'
-import type { Action, FreeActionGrant, GameState, PendingDecision, Seat, Unit } from './types'
+import { hasKeyword, keywordX } from './keywords'
+import type { Action, FreeActionGrant, GameState, MoveFrame, PendingDecision, Seat, Unit } from './types'
 
 // ---------------------------------------------------------------------------
 // Attack seam (attack.ts registers itself at merge)
@@ -100,6 +102,15 @@ const shortAction = (id: string): string => id.replace(/^core\.action\./, '')
 
 const used = (state: GameState, action: string): boolean => (state.activation.current?.performed ?? []).some((p) => p.action === action)
 
+/** The action was made this activation, as an action or as a free action (a free Attack counts as the Attack action, CRB p15, p30). */
+const usedAny = (state: GameState, action: string): boolean => used(state, action) || used(state, `free.${action}`)
+
+/** Was the unit Panicked when its Make Actions step began? Fixed for the whole activation (CRB p23). */
+function panickedForActions(state: GameState, unit: Unit): boolean {
+  const act = state.activation.current
+  return act && act.unitId === unit.id && act.panickedAtStart !== undefined ? act.panickedAtStart : isPanicked(state, unit)
+}
+
 function climbPossible(state: GameState, unit: Unit): boolean {
   const lead = miniBody(state, leaderOf(unit))
   if ((leaderOf(unit).pos.y ?? 0) > 0) return true
@@ -146,17 +157,20 @@ export function actionMenu(state: GameState, unit: Unit): Menu {
     items.push(...item())
   }
   const repeatOnce = (action: string): boolean => (actionData(state.data, `core.action.${action}`)?.repeat ?? 'once') === 'once'
-  const alreadyUsed = (action: string) => repeatOnce(action) && used(state, action)
+  const alreadyUsed = (action: string) => repeatOnce(action) && usedAny(state, action)
   const speed = unitSpeed(state, unit)
 
   // Move / Climb / Withdraw
   paid('move', !engaged && speed >= 1, engaged ? 'engaged' : 'speed', () => [{ id: 'move', action: 'move', free: false, data: { maxSpeed: speed } }])
   paid('climb', deployed && !engaged && climbPossible(state, unit), !deployed ? 'undeployed' : engaged ? 'engaged' : 'noClimbable', () => [{ id: 'climb', action: 'climb', free: false, data: { maxSpeed: 1 } }])
-  paid('withdraw', engaged && !alreadyUsed('withdraw'), alreadyUsed('withdraw') ? 'alreadyUsed' : 'notEngaged', () => [{ id: 'withdraw', action: 'withdraw', free: false, data: { maxSpeed: 1 } }])
+  // no attack and Withdraw in the same activation (Creature and Heavy Troopers may), no Standby and Withdraw (CRB p29, p39)
+  const attackedBeforeWithdraw = usedAny(state, 'attack') && !type?.flags.attackAfterWithdraw
+  const withdrawWhy = alreadyUsed('withdraw') ? 'alreadyUsed' : !engaged ? 'notEngaged' : attackedBeforeWithdraw ? 'afterAttack' : usedAny(state, 'standby') ? 'afterStandby' : null
+  paid('withdraw', withdrawWhy === null, withdrawWhy ?? '', () => [{ id: 'withdraw', action: 'withdraw', free: false, data: { maxSpeed: 1 } }])
 
   // Attack
   const wd = used(state, 'withdraw')
-  const noAttack = alreadyUsed('attack') ? 'alreadyUsed' : used(state, 'standby') ? 'afterStandby' : wd && !type?.flags.attackAfterWithdraw ? 'afterWithdraw' : !deployed ? 'undeployed' : !attackSeam ? 'notAvailable' : null
+  const noAttack = alreadyUsed('attack') ? 'alreadyUsed' : usedAny(state, 'standby') ? 'afterStandby' : wd && !type?.flags.attackAfterWithdraw ? 'afterWithdraw' : !deployed ? 'undeployed' : !attackSeam ? 'notAvailable' : null
   paid('attack', noAttack === null && attackSeam!.canStart(state, unit.id, { free: false }), noAttack ?? 'noTarget', () => [{ id: 'attack', action: 'attack', free: false }])
 
   // Aim, Dodge
@@ -175,17 +189,18 @@ export function actionMenu(state: GameState, unit: Unit): Menu {
   })
 
   // Standby: Trooper units, at most one token, never with Attack or Withdraw in the same activation
-  const standbyWhy = !type?.flags.trooper ? 'notTrooper' : !deployed ? 'undeployed' : alreadyUsed('standby') ? 'alreadyUsed' : (unit.tokens.standby ?? 0) >= (constants(state).standbyMax ?? 1) ? 'hasToken' : used(state, 'attack') ? 'afterAttack' : wd ? 'afterWithdraw' : null
+  const standbyWhy = !type?.flags.trooper ? 'notTrooper' : !deployed ? 'undeployed' : alreadyUsed('standby') ? 'alreadyUsed' : (unit.tokens.standby ?? 0) >= (constants(state).standbyMax ?? 1) ? 'hasToken' : usedAny(state, 'attack') ? 'afterAttack' : wd ? 'afterWithdraw' : null
   paid('standby', standbyWhy === null, standbyWhy ?? '', () => [{ id: 'standby', action: 'standby', free: false }])
 
   // Free card actions granted by the battle cards: Claim
   const claim = claimTarget(state, unit)
-  if (isPanicked(state, unit)) hold('claim', 'panicked')
+  const panicked = panickedForActions(state, unit)
+  if (panicked) hold('claim', 'panicked')
   else if (alreadyUsed('claim')) hold('claim', 'alreadyUsed')
   else if (claim) items.push({ id: 'claim', action: 'claim', free: true, data: { markerId: claim } })
 
   // Free actions granted by effects (Compel's move, granted attacks): consumed when taken
-  const grants = grantedFreeActions(state, unit.id).filter((g) => !isPanicked(state, unit) || g.grant.startOfActions)
+  const grants = grantedFreeActions(state, unit.id).filter((g) => !panicked || g.grant.startOfActions)
   const forced = grants.find((g) => g.grant.startOfActions && g.grant.action === 'core.action.move' && deployed && !engaged && speed >= 1 && probeEntry(state, unit))
   if (forced) {
     return { items: [{ id: `free:${forced.effectId}`, action: 'free', params: { effectId: forced.effectId }, free: true, data: { action: 'move', maxSpeed: speed, source: forced.grant.source } }], withheld, forced: true }
@@ -195,25 +210,33 @@ export function actionMenu(state: GameState, unit: Unit): Menu {
     const name = shortAction(g.grant.action)
     const item: MenuItem = { id: `free:${g.effectId}`, action: 'free', params: { effectId: g.effectId }, free: true, data: { action: name, source: g.grant.source } }
     if (name === 'move' && deployed && !engaged && speed >= 1) items.push({ ...item, data: { ...item.data, maxSpeed: speed } })
-    else if (name === 'attack' && deployed && attackSeam?.canStart(state, unit.id, { free: true, ...(g.grant.weapons ? { weapons: g.grant.weapons } : {}) })) items.push(item)
-    else if ((name === 'aim' || name === 'dodge') && deployed) items.push(item)
+    else if (name === 'attack' && deployed && (!usedAny(state, 'attack') || g.grant.ignoreAttackLimit) && attackSeam?.canStart(state, unit.id, { free: true, ...(g.grant.weapons ? { weapons: g.grant.weapons } : {}) })) items.push(item)
+    else if ((name === 'aim' || name === 'dodge') && deployed && !usedAny(state, name)) items.push(item)
     else hold(`free:${name}`, 'notAvailable')
   }
 
   // Card actions: upgrade grants (Force Push, Specialist) and command-card actions, free or one action each
-  if (deployed && !isPanicked(state, unit)) {
+  if (deployed && !panicked) {
     for (const a of cardActions({ state }, unit)) {
       const item: MenuItem = { id: `card:${a.id}`, action: 'cardAction', params: { actionId: a.id }, free: a.kind === 'free', data: { name: a.name, kind: a.kind, upgradeId: a.upgradeId } }
-      if (!a.available) hold(`card:${a.id}`, a.whyNot ?? 'unavailable')
+      // each card action at most once per activation, even after a Recover readied its card (CRB p15, p23)
+      if (used(state, a.id)) hold(`card:${a.id}`, 'alreadyUsed')
+      else if (!a.available) hold(`card:${a.id}`, a.whyNot ?? 'unavailable')
       else if (a.kind === 'free') items.push(item)
       else paid(`card:${a.id}`, true, '', () => [item])
     }
   }
 
+  // Scout X: an undeployed unit may deploy with a free Speed-X Move at the start of its Make Actions step (CRB p54)
+  const scout = Math.min(3, keywordX(state, unit, 'kw.scout'))
+  if (!deployed && scout > 0 && (act?.performed.length ?? 0) === 0 && !panicked) {
+    items.push({ id: 'scout', action: 'scout', free: true, data: { maxSpeed: scout, ignoreDifficult: true } })
+  }
+
   // R-5.11: an undeployed unit may only Move (and free Moves)
   if (!deployed) {
-    const keep = items.filter((i) => i.action === 'move')
-    for (const i of items) if (i.action !== 'move') hold(i.action, 'undeployed')
+    const keep = items.filter((i) => i.action === 'move' || i.action === 'scout')
+    for (const i of items) if (i.action !== 'move' && i.action !== 'scout') hold(i.action, 'undeployed')
     return { items: keep, withheld }
   }
   return { items, withheld }
@@ -278,7 +301,7 @@ function raiseMenu(ctx: Ctx, unit: Unit, menu: Menu, withEnd: boolean): void {
       performed: act.performed.map((p) => p.action),
       withheld: menu.withheld,
       suppressed: isSuppressed(s, unit),
-      panicked: isPanicked(s, unit),
+      panicked: panickedForActions(s, unit),
       deployed: unit.location === 'table',
     },
     options,
@@ -292,7 +315,7 @@ export function endActivation(ctx: Ctx): void {
   if (!act) return
   const unit = activeUnit(s)
   // a Panicked unit that took no actions sheds suppression equal to its own courage (R-15.5)
-  if (unit.location !== 'defeated' && act.performed.length === 0 && isPanicked(s, unit)) panicRelief(ctx, unit)
+  if (unit.location !== 'defeated' && act.performed.length === 0 && panickedForActions(s, unit)) panicRelief(ctx, unit)
   runHook('activation.end', { seat: unit.seat, state: s, engine: ctx, unitId: unit.id })
   if (openWindow(ctx, 'activation.end', { unitId: unit.id }, `a${flowOf(s).activations}`, 'act.ended')) return
   afterEndWindow(ctx)
@@ -343,7 +366,7 @@ export function beginActivationPhase(ctx: Ctx): void {
   s.activation.current = null
   s.activation.drawn = null
   if (s.round === 1) onActivationPhaseStart(ctx)
-  if (openWindow(ctx, 'activation.phaseStart', {}, `r${s.round}`, 'act.phaseStarted')) return
+  if (openWindow(ctx, 'activation.phaseStart', { eachOwner: true }, `r${s.round}`, 'act.phaseStarted')) return
   nextTurn(ctx)
 }
 
@@ -410,9 +433,30 @@ function startActivation(ctx: Ctx, unit: Unit, via: 'order' | 'pool'): void {
   afterStartWindow(ctx)
 }
 
+/** Infiltrate: an undeployed unit with the keyword may deploy inside allied Territory when its activation starts (CRB p51). */
+function offerInfiltrate(ctx: Ctx, unit: Unit): boolean {
+  const s = ctx.state
+  if (unit.location !== 'reserve' || !hasKeyword(s, unit, 'kw.infiltrate')) return false
+  const flow = flowOf(s)
+  const key = `infiltrate|a${flow.activations}`
+  if (flow.opened.includes(key)) return false
+  flow.opened.push(key)
+  const regions = bd(s).territories[unit.seat]
+  ctx.raise({
+    kind: 'setup.deploy',
+    seat: unit.seat,
+    window: 'activation.start',
+    context: { unitIds: [unit.id], regions, spans: deploySpans(s, unit.seat), infiltrate: true },
+    constraints: { kind: 'deploy', unitId: unit.id, region: regions[0]! },
+    canPass: true,
+  })
+  return true
+}
+
 export function afterStartWindow(ctx: Ctx): void {
   const s = ctx.state
   const unit = activeUnit(s)
+  if (offerInfiltrate(ctx, unit)) return
   // rally happens for units on the table; undeployed units have no suppression
   rallyRoll(ctx, unit)
   refreshPanic(ctx)
@@ -431,6 +475,7 @@ export function afterRallied(ctx: Ctx): void {
   if (unit.suppression > 0 && !(panicked && !wasPanicked)) {
     ctx.emit({ type: 'PanicChecked', unitId: unit.id, suppression: unit.suppression, courage: courageSource(s, unit).courage, panicked }, unit.seat)
   }
+  act.panickedAtStart = panicked
   act.actionsLeft = actionsFor(s, unit)
   continueActivation(ctx)
 }
@@ -442,14 +487,25 @@ export function afterRallied(ctx: Ctx): void {
 function declare(ctx: Ctx, unit: Unit, action: string, params: Record<string, unknown> | undefined): void {
   const s = ctx.state
   const act = s.activation.current!
-  const free = actionData(s.data, `core.action.${action}`)?.free ?? false
+  const free = (actionData(s.data, `core.action.${action}`)?.free ?? false) || action === 'scout'
   act.declared = { action, ...(params ? { params } : {}) }
   if (action !== 'cardAction') ctx.emit({ type: 'ActionDeclared', unitId: unit.id, action, free }, unit.seat)
   loseStandby(ctx, unit)
   switch (action) {
+    case 'scout': {
+      // a free Move that deploys the unit; it counts as a Move action for Relentless and the like (CRB p54)
+      act.declared = { action: 'free.move', params: { free: true, move: true, source: 'kw.scout' } }
+      return beginMove(ctx, { unitId: unit.id, seat: unit.seat, kind: 'move', maxSpeed: Math.min(3, keywordX(s, unit, 'kw.scout')), free: true, ignoreDifficult: true })
+    }
     case 'cardAction': {
       const actionId = String(params?.actionId)
       const a = cardActions({ state: s }, unit).find((x) => x.id === actionId)
+      if (a?.jump !== undefined) {
+        // Jump X: a Move action as normal that ignores difficult terrain and terrain of height X or lower (CRB p52)
+        act.declared = { action: actionId, params: { ...params, free: false, move: true } }
+        ctx.emit({ type: 'ActionDeclared', unitId: unit.id, action: actionId, free: false }, unit.seat)
+        return beginMove(ctx, { unitId: unit.id, seat: unit.seat, kind: 'move', maxSpeed: unitSpeed(s, unit), free: false, ignoreDifficult: true, jumpHeight: a.jump })
+      }
       // recorded under the card action's own id so the once-per-activation ledger and the sim can tell them apart
       act.declared = { action: actionId, params: { ...params, card: true, free: a?.kind === 'free' } }
       if (runCardAction(ctx, unit.id, actionId, { name: CARD_ACTION })) return
@@ -557,12 +613,33 @@ export function completeAction(ctx: Ctx): void {
   const act = s.activation.current
   if (!act || !act.declared) throw new EngineInvariantError('completeAction with no declared action')
   const free = (actionData(s.data, `core.action.${act.declared.action}`)?.free ?? false) || act.declared.params?.free === true
-  act.performed.push({ action: act.declared.action, free })
+  const isMove = MOVE_LEDGER.has(act.declared.action) || act.declared.params?.move === true
+  act.performed.push({ action: act.declared.action, free, ...(isMove ? { move: true } : {}) })
   if (!free) act.actionsLeft = Math.max(0, act.actionsLeft - 1)
   // a card action emitted its own ActionResolved (keywords.ts / commandCards.ts)
   if (!act.declared.params?.card) ctx.emit({ type: 'ActionResolved', unitId: act.unitId, action: act.declared.action }, act.seat)
   act.declared = null
-  if (openWindow(ctx, 'action.resolved', { unitId: act.unitId }, `a${flowOf(s).activations}:${act.performed.length}`, 'act.resolved')) return
+  // a Standby token is spent before any effect that triggers after the action resolves (CRB p37); a Move already gave its
+  // Standby units their chance when it ended (movement.finishMove), before the move.ended effects
+  if (!isMove && raiseStandby(ctx, 'action.resolved')) return
+  openActionResolved(ctx)
+}
+
+/** Ledger names of the Move family: a Move, Climb, Withdraw or a free Move are all Move actions (Relentless, Standby). */
+const MOVE_LEDGER = new Set(['move', 'climb', 'withdraw', 'free.move'])
+
+/** The ledger name of a performed action as the core action id the declarative triggers read. */
+function coreActionId(ledger: string, move: boolean): string {
+  if (move || MOVE_LEDGER.has(ledger)) return 'core.action.move'
+  return ledger.startsWith('free.') ? `core.action.${ledger.slice(5)}` : ledger.includes('.') ? ledger : `core.action.${ledger}`
+}
+
+function openActionResolved(ctx: Ctx): void {
+  const s = ctx.state
+  const act = s.activation.current!
+  const last = act.performed[act.performed.length - 1]!
+  const info = { unitId: act.unitId, action: coreActionId(last.action, last.move === true), free: last.free }
+  if (openWindow(ctx, 'action.resolved', info, `a${flowOf(s).activations}:${act.performed.length}`, 'act.resolved')) return
   afterActionResolved(ctx)
 }
 
@@ -581,7 +658,6 @@ export function afterActionResolved(ctx: Ctx): void {
   reconcilePools(ctx)
   onStepEvents(ctx)
   if (checkWipeout(ctx)) return
-  if (raiseStandby(ctx)) return
   continueActivation(ctx)
 }
 
@@ -606,7 +682,9 @@ function standbyEligible(state: GameState, trigger: Unit, skip: readonly string[
   })
 }
 
-function raiseStandby(ctx: Ctx): boolean {
+export function raiseStandby(ctx: Ctx, then: 'move.ended' | 'action.resolved'): boolean {
+  // the Move that triggered Standby: a response Move reuses the frame slot, so it is kept here until the chain is done
+  const frame = flowOf(ctx.state).standby?.frame ?? (then === 'move.ended' ? flowOf(ctx.state).move : null)
   const s = ctx.state
   const act = s.activation.current
   if (!act) return false
@@ -619,7 +697,7 @@ function raiseStandby(ctx: Ctx): boolean {
     flow.standby = null
     return false
   }
-  flow.standby = { triggerUnitId: trigger.id, done, responding: false }
+  flow.standby = { triggerUnitId: trigger.id, done, responding: false, then, frame }
   const seat = eligible[0]!.seat
   const options: { id: string; labelKey: string; type: 'activation.standby'; payload: { unitId: string; response: string } }[] = []
   for (const u of eligible) {
@@ -635,11 +713,22 @@ function raiseStandby(ctx: Ctx): boolean {
 /** A Standby response (free Move or free Attack) is over. */
 function standbyResponseDone(ctx: Ctx): void {
   const flow = flowOf(ctx.state)
+  const then = flow.standby?.then ?? 'action.resolved'
+  const frame = flow.standby?.frame ?? null
   if (flow.standby) flow.standby.responding = false
   onStepEvents(ctx)
   if (checkWipeout(ctx)) return
-  if (raiseStandby(ctx)) return
-  continueActivation(ctx)
+  if (raiseStandby(ctx, then)) return
+  afterStandby(ctx, then, frame)
+}
+
+/** Every Standby response is done (or declined): the effects that trigger after the Move / action now resolve. */
+function afterStandby(ctx: Ctx, then: 'move.ended' | 'action.resolved', frame: MoveFrame | null): void {
+  if (then === 'move.ended') {
+    flowOf(ctx.state).move = frame
+    return moveEndedWindow(ctx)
+  }
+  openActionResolved(ctx)
 }
 
 /** Movement hands back here when a Move (or a cancelled placement) is over. */
@@ -677,8 +766,10 @@ export const activationModule: ModuleDef = {
           return {
             run(ctx) {
               const f = flowOf(ctx.state)
+              const then = f.standby?.then ?? 'action.resolved'
+              const frame = f.standby?.frame ?? null
               f.standby = null
-              continueActivation(ctx)
+              afterStandby(ctx, then, frame)
             },
           }
         }

@@ -21,6 +21,10 @@ import {
   type EdgeName,
 } from './battle'
 import { beginRound } from './command'
+import { offerDivulges } from './keywords'
+import { barricadeSteps, nextBarricade } from './barricades'
+import { afterStartWindow } from './activation'
+import { registerFrameResume } from './hooks'
 import { makeAction } from './actions'
 import { footprintInsidePolygon, type Footprint } from './footprint'
 import { round3 } from './geometry'
@@ -154,6 +158,7 @@ export function buildUnit(data: GameData, seat: Seat, index: number, r: RosterUn
   const keywords = ud.keywords.map((k) => ({ id: k.id, ...(k.x !== undefined ? { x: k.x } : {}), ...(k.param !== undefined ? { params: { param: k.param } } : {}) }))
   const flags: Record<string, unknown> = {}
   let leader: Mini | null = null
+  const heavyWeaponTeam = ud.keywords.some((k) => k.id === 'kw.heavy-weapon-team')
   for (const uid of r.upgrades) {
     const up = upgradeData(data, uid)
     for (const k of up.keywords ?? []) keywords.push({ id: k.id, ...(k.x !== undefined ? { x: k.x } : {}) })
@@ -161,7 +166,8 @@ export function buildUnit(data: GameData, seat: Seat, index: number, r: RosterUn
     if (!a) continue
     for (let i = 0; i < a.count; i++) {
       const m = mk({ upgradeId: uid, ...(a.weapon ? { weaponId: a.weapon, weaponIds: [a.weapon] } : {}) })
-      if (a.leader && !leader) leader = m
+      // the figure a Heavy Weapon Team's heavy weapon card adds is the unit leader (CRB p51); so is a Captain-style leader figure
+      if ((a.leader || (heavyWeaponTeam && up.slot === 'heavy-weapon')) && !leader) leader = m
     }
     for (const k of a.persistent?.keywords ?? []) if (!keywords.some((x) => x.id === k.id)) keywords.push({ id: k.id, ...(k.x !== undefined ? { x: k.x } : {}) })
     for (const mod of a.persistent?.modifiers ?? []) if (mod.modifier === 'cohesionRange' && mod.op === 'set' && typeof mod.value === 'number') flags.cohesionRange = mod.value
@@ -302,8 +308,20 @@ function afterEdge(ctx: Ctx, edge: EdgeName): void {
   const territories = (polys: Polygon[]): Polygon[] => polys.map((p) => rotatePolygon(p, edge))
   d.territories = { [blue]: territories(map.territories.blue), [otherSeat(blue)]: territories(map.territories.red) } as Record<Seat, Polygon[]>
   resolveCardSetup(ctx)
+  // Fortified Position places its barricades in this step (CRB p12, Recon p6)
+  d.barricadeSteps = barricadeSteps(s, blueFirst(s))
+  if (nextBarricade(ctx)) return
+  afterBarricades(ctx)
+}
+
+/** Resolve Setup Effects also lets each player Divulge cards from the hand, blue first (CRB p20, p61). */
+function afterBarricades(ctx: Ctx): void {
+  if (offerDivulges(ctx)) return
   startDeployment(ctx)
 }
+
+registerFrameResume('setup.barricades', (ctx) => afterBarricades(ctx))
+registerFrameResume('setup.divulge', (ctx) => startDeployment(ctx))
 
 // ---------------------------------------------------------------------------
 // Prepared Position deployment (R-3.9)
@@ -437,7 +455,16 @@ export const setupModule: ModuleDef = {
 
   init: startSetup,
 
-  handle(state: GameState, action: Action, _pending: PendingDecision) {
+  handle(state: GameState, action: Action, pending: PendingDecision) {
+    // Infiltrate (CRB p51): at the start of its activation an undeployed unit may deploy anywhere inside allied Territory
+    const infiltrating = pending.context['infiltrate'] === true
+    if (action.type === 'pass' && infiltrating) {
+      return {
+        run(ctx) {
+          afterStartWindow(ctx)
+        },
+      }
+    }
     if (action.type === 'setup.battle') {
       const { cardId, auto } = action.payload
       return {
@@ -452,12 +479,14 @@ export const setupModule: ModuleDef = {
       const { unitId, leader, troopers } = action.payload
       const seat = action.seat
       const unit = state.units[unitId]
-      if (!unit || unit.seat !== seat || !preparedUnits(state, seat).some((u) => u.id === unitId)) return reject('E_INVALID_TARGET', 'that unit cannot be placed now')
+      const allowed = infiltrating ? (pending.context['unitIds'] as string[]).includes(unitId) && unit?.location === 'reserve' : preparedUnits(state, seat).some((u) => u.id === unitId)
+      if (!unit || unit.seat !== seat || !allowed) return reject('E_INVALID_TARGET', 'that unit cannot be placed now')
       const c = checkDeploy(state, seat, unit, leader, troopers)
       if (!c.ok) return reject(c.code, c.reason)
       return {
         run(ctx) {
           placeDeployed(ctx, ctx.state.units[unitId]!, c.plan.leader, c.plan.troopers)
+          if (infiltrating) return afterStartWindow(ctx)
           flowOf(ctx.state).deployTurn = alternate(ctx.state, seat)
           deployNext(ctx)
         },

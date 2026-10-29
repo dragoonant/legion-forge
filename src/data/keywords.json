@@ -1157,7 +1157,8 @@
           "self": true
         },
         "when": {
-          "role": "attacker"
+          "role": "attacker",
+          "suppressionDue": true
         },
         "do": [
           {
@@ -1173,7 +1174,7 @@
         }
       }
     ],
-    "text": "The defender gains 1 extra suppression.",
+    "text": "The defender gains 1 extra suppression, on top of the one a ranged attack with a hit or crit gives it.",
     "source": {
       "doc": "CRB",
       "page": 60,
