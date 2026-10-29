@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://legion-forge.dev/schemas/layout.schema.json",
+  "$defs": {
+    "layout": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "format": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "size": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "$ref": "common.schema.json#/$defs/Inches"
+            },
+            "z": {
+              "$ref": "common.schema.json#/$defs/Inches"
+            }
+          },
+          "required": [
+            "x",
+            "z"
+          ],
+          "additionalProperties": false
+        },
+        "pieces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Key"
+              },
+              "kind": {
+                "enum": [
+                  "area",
+                  "obstacle",
+                  "barricade",
+                  "building"
+                ]
+              },
+              "footprint": {
+                "$ref": "common.schema.json#/$defs/Polygon"
+              },
+              "heightIn": {
+                "$ref": "common.schema.json#/$defs/Inches"
+              },
+              "cover": {
+                "enum": [
+                  "none",
+                  "light",
+                  "heavy"
+                ]
+              },
+              "blocksLos": {
+                "type": "boolean"
+              },
+              "movement": {
+                "enum": [
+                  "open",
+                  "difficult",
+                  "impassable"
+                ]
+              },
+              "climbable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "footprint",
+              "heightIn",
+              "cover",
+              "blocksLos",
+              "movement",
+              "climbable"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "format",
+        "size",
+        "pieces",
+        "source"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

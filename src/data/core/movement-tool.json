@@ -1,0 +1,35 @@
+{
+  "id": "core.movement-tool",
+  "speeds": {
+    "1": {
+      "segments": [
+        2.25,
+        2.25
+      ],
+      "hingeAt": 2.25
+    },
+    "2": {
+      "segments": [
+        3.5,
+        3.5
+      ],
+      "hingeAt": 3.5
+    },
+    "3": {
+      "segments": [
+        4.75,
+        4.75
+      ],
+      "hingeAt": 4.75
+    }
+  },
+  "widthIn": 1,
+  "prongWidthIn": 0.2,
+  "hingeLimitDeg": 135,
+  "source": {
+    "doc": "primer",
+    "page": "Movement tool",
+    "kind": "fan",
+    "checked": "Unsourced: community measurements: 4.5/7.0/9.5 in, width 1 in, prong width placeholder (RULINGS R-6.2)"
+  }
+}

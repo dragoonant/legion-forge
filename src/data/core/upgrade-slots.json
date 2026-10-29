@@ -1,0 +1,90 @@
+[
+  {
+    "id": "core.slot.force",
+    "key": "force",
+    "name": "Force",
+    "icon": "slot-force",
+    "source": {
+      "doc": "CRB",
+      "page": 17,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.slot.command",
+    "key": "command",
+    "name": "Command",
+    "icon": "slot-command",
+    "source": {
+      "doc": "CRB",
+      "page": 17,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.slot.training",
+    "key": "training",
+    "name": "Training",
+    "icon": "slot-training",
+    "source": {
+      "doc": "CRB",
+      "page": 17,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.slot.gear",
+    "key": "gear",
+    "name": "Gear",
+    "icon": "slot-gear",
+    "source": {
+      "doc": "CRB",
+      "page": 17,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.slot.grenades",
+    "key": "grenades",
+    "name": "Grenades",
+    "icon": "slot-grenades",
+    "source": {
+      "doc": "CRB",
+      "page": 17,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.slot.comms",
+    "key": "comms",
+    "name": "Comms",
+    "icon": "slot-comms",
+    "source": {
+      "doc": "CRB",
+      "page": 17,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.slot.heavy-weapon",
+    "key": "heavy-weapon",
+    "name": "Heavy Weapon",
+    "icon": "slot-heavy-weapon",
+    "source": {
+      "doc": "CRB",
+      "page": 17,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.slot.personnel",
+    "key": "personnel",
+    "name": "Personnel",
+    "icon": "slot-personnel",
+    "source": {
+      "doc": "CRB",
+      "page": 17,
+      "kind": "primary"
+    }
+  }
+]

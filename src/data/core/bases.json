@@ -1,0 +1,15 @@
+[
+  {
+    "id": "core.base.small",
+    "name": "Small base",
+    "diameterMm": 27,
+    "notched": false,
+    "silhouette": "core.silhouette.small",
+    "source": {
+      "doc": "CRB",
+      "page": 5,
+      "kind": "primary",
+      "checked": "Fan-source: 27 mm from the product listing (RULING R-20.1)"
+    }
+  }
+]

@@ -1,0 +1,1217 @@
+[
+  {
+    "id": "kw.agile",
+    "name": "Agile",
+    "kind": "unit",
+    "param": "x",
+    "effects": [
+      {
+        "trigger": {
+          "window": "move.ended",
+          "self": true
+        },
+        "when": {
+          "moveKind": "standard"
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.dodge",
+              "n": {
+                "x": true
+              }
+            }
+          }
+        ],
+        "scope": "self",
+        "duration": "instant",
+        "optional": false,
+        "limit": "unlimited"
+      }
+    ],
+    "text": "After a standard Move the unit gains X Dodge tokens.",
+    "source": {
+      "doc": "CRB",
+      "page": 46,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.armor",
+    "name": "Armor",
+    "kind": "unit",
+    "param": "x",
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.modified",
+          "self": true
+        },
+        "when": {
+          "role": "defender"
+        },
+        "do": [
+          {
+            "cancelResult": {
+              "result": "hit",
+              "max": {
+                "x": true
+              }
+            }
+          }
+        ],
+        "scope": "self",
+        "duration": "instant",
+        "optional": false
+      }
+    ],
+    "text": "When defending, the unit may cancel up to X hit results while attack dice are modified.",
+    "source": {
+      "doc": "CRB",
+      "page": 46,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.block",
+    "name": "Block",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "modifier": "defenceSurge",
+        "op": "set",
+        "value": "block",
+        "when": {
+          "role": "defender",
+          "spent": {
+            "token": "core.token.dodge",
+            "min": 1
+          }
+        },
+        "scope": "self"
+      }
+    ],
+    "text": "If the unit spent a Dodge token while defending, its defence surges become blocks for that attack.",
+    "source": {
+      "doc": "CRB",
+      "page": 47,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.charge",
+    "name": "Charge",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "trigger": {
+          "window": "melee.charged",
+          "self": true
+        },
+        "do": [
+          {
+            "grantFreeAction": {
+              "action": "core.action.attack",
+              "weapons": "melee",
+              "target": "engaged"
+            }
+          }
+        ],
+        "scope": "self",
+        "optional": true
+      }
+    ],
+    "text": "After a Move action that starts a melee, the unit may make a free melee-only Attack against that unit.",
+    "source": {
+      "doc": "CRB",
+      "page": 47,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.compel",
+    "name": "Compel",
+    "kind": "unit",
+    "param": "rank",
+    "effects": [
+      {
+        "code": "compel",
+        "params": {
+          "unitType": "trooper",
+          "range": 2,
+          "excludeDroid": true
+        }
+      }
+    ],
+    "text": "An allied non-Droid Corps Trooper unit within range 2 that rallied while Suppressed but not Panicked may take 1 more suppression to make a free Move at the start of its actions.",
+    "source": {
+      "doc": "CRB",
+      "page": 47,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.deflect",
+    "name": "Deflect",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "code": "deflect"
+      }
+    ],
+    "text": "Against ranged attacks, defence surges become blocks, and the attacker suffers a wound if any surge was rolled.",
+    "source": {
+      "doc": "CRB",
+      "page": 49,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.demoralize",
+    "name": "Demoralize",
+    "kind": "unit",
+    "param": "x",
+    "effects": [
+      {
+        "trigger": {
+          "window": "activation.rallied",
+          "self": true
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.suppression",
+              "n": {
+                "x": true
+              },
+              "to": {
+                "aura": {
+                  "range": 2,
+                  "side": "enemy"
+                }
+              },
+              "distribute": true
+            }
+          }
+        ],
+        "scope": "self",
+        "optional": true
+      }
+    ],
+    "text": "After it rallies, the unit adds up to X suppression, spread over enemy units within range 2.",
+    "source": {
+      "doc": "CRB",
+      "page": 49,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.detachment",
+    "name": "Detachment",
+    "kind": "unit",
+    "param": "unit",
+    "effects": [
+      {
+        "native": "detachment"
+      }
+    ],
+    "text": "Does not count against its rank maximum, needs its own matching parent unit in the army, and shares that parent's Infiltrate or Prepared Position.",
+    "source": {
+      "doc": "CRB",
+      "page": 49,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.duelist",
+    "name": "Duelist",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.rerolled",
+          "self": true
+        },
+        "when": {
+          "attackKind": "melee",
+          "role": "attacker",
+          "spent": {
+            "token": "core.token.aim",
+            "min": 1
+          }
+        },
+        "do": [
+          {
+            "grantKeyword": {
+              "keyword": {
+                "id": "kw.pierce",
+                "x": 1
+              },
+              "duration": "attack"
+            }
+          }
+        ],
+        "scope": {
+          "pool": "all"
+        }
+      },
+      {
+        "trigger": {
+          "window": "attack.coverApplied",
+          "self": true
+        },
+        "when": {
+          "attackKind": "melee",
+          "role": "defender",
+          "spent": {
+            "token": "core.token.dodge",
+            "min": 1
+          }
+        },
+        "do": [
+          {
+            "grantKeyword": {
+              "keyword": {
+                "id": "kw.immune-pierce"
+              },
+              "duration": "attack"
+            }
+          }
+        ],
+        "scope": "self"
+      }
+    ],
+    "text": "A melee attack that spends an Aim on a reroll gains Pierce 1; defending in melee after spending a Dodge grants Immune: Pierce.",
+    "source": {
+      "doc": "CRB",
+      "page": 49,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.heavy-weapon-team",
+    "name": "Heavy Weapon Team",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "native": "heavyWeaponTeam"
+      }
+    ],
+    "text": "Must equip a heavy weapon upgrade; the figure carrying it is the unit leader.",
+    "source": {
+      "doc": "CRB",
+      "page": 51,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.immune-pierce",
+    "name": "Immune: Pierce",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "modifier": "pierceAllowed",
+        "op": "set",
+        "value": false,
+        "scope": "self"
+      }
+    ],
+    "text": "Attackers cannot use Pierce against this unit.",
+    "source": {
+      "doc": "CRB",
+      "page": 51,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.incognito",
+    "name": "Incognito",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "modifier": "targetableFrom",
+        "op": "max",
+        "value": 1,
+        "scope": "self"
+      },
+      {
+        "modifier": "canContest",
+        "op": "set",
+        "value": false,
+        "scope": "self"
+      },
+      {
+        "modifier": "canBackup",
+        "op": "set",
+        "value": false,
+        "scope": "self"
+      },
+      {
+        "trigger": {
+          "window": "attack.resolved",
+          "self": true
+        },
+        "do": [
+          {
+            "removeKeyword": {
+              "keyword": {
+                "id": "kw.incognito"
+              }
+            }
+          }
+        ],
+        "scope": "self",
+        "duration": "game"
+      },
+      {
+        "trigger": {
+          "window": "activation.start",
+          "self": true
+        },
+        "do": [
+          {
+            "removeKeyword": {
+              "keyword": {
+                "id": "kw.incognito"
+              }
+            }
+          }
+        ],
+        "scope": "self",
+        "duration": "game",
+        "optional": true
+      }
+    ],
+    "text": "Cannot be attacked from beyond range 1, cannot contest objectives or give Backup; lost for good when the unit attacks or defends, or by choice at the start of its activation.",
+    "source": {
+      "doc": "CRB",
+      "page": 51,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.indomitable",
+    "name": "Indomitable",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "modifier": "rallyDie",
+        "op": "set",
+        "value": "red",
+        "scope": "self"
+      }
+    ],
+    "text": "Rallies with red defence dice instead of white.",
+    "source": {
+      "doc": "CRB",
+      "page": 51,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.infiltrate",
+    "name": "Infiltrate",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "native": "infiltrate"
+      }
+    ],
+    "text": "While undeployed at the start of its activation the unit may deploy anywhere completely inside allied Territory, the rest in cohesion.",
+    "source": {
+      "doc": "CRB",
+      "page": 51,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.inspire",
+    "name": "Inspire",
+    "kind": "unit",
+    "param": "x",
+    "effects": [
+      {
+        "trigger": {
+          "window": "activation.end",
+          "self": true
+        },
+        "do": [
+          {
+            "removeToken": {
+              "token": "core.token.suppression",
+              "n": {
+                "x": true
+              },
+              "to": {
+                "aura": {
+                  "range": 2,
+                  "side": "ally",
+                  "excludeSelf": true
+                }
+              },
+              "distribute": true
+            }
+          }
+        ],
+        "scope": "self",
+        "optional": true
+      }
+    ],
+    "text": "At the end of its activation the unit removes up to X suppression in total from other allied units within range 2.",
+    "source": {
+      "doc": "CRB",
+      "page": 51,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.jump",
+    "name": "Jump",
+    "kind": "unit",
+    "param": "x",
+    "effects": [
+      {
+        "grant": {
+          "action": {
+            "id": "kw.jump.action",
+            "name": "Jump",
+            "kind": "card",
+            "effects": [
+              {
+                "native": "jump",
+                "params": {
+                  "ignoreHeight": {
+                    "x": true
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "text": "A card action usable whenever the unit could Move: a Move that ignores difficult terrain and terrain and figures of height X or less.",
+    "source": {
+      "doc": "CRB",
+      "page": 52,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.leader",
+    "name": "Leader",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "native": "leader"
+      }
+    ],
+    "text": "This figure is the unit leader; a unit may carry only one Leader upgrade.",
+    "source": {
+      "doc": "CRB",
+      "page": 61,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.low-profile",
+    "name": "Low Profile",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "modifier": "coverPool",
+        "op": "add",
+        "value": -1,
+        "then": {
+          "addResult": "block",
+          "n": 1
+        },
+        "scope": "self"
+      }
+    ],
+    "text": "Rolls one fewer cover die and adds one automatic block to its cover pool.",
+    "source": {
+      "doc": "CRB",
+      "page": 53,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.master-of-the-force",
+    "name": "Master of the Force",
+    "kind": "unit",
+    "param": "x",
+    "effects": [
+      {
+        "trigger": {
+          "window": "activation.end",
+          "self": true
+        },
+        "do": [
+          {
+            "readyCards": {
+              "slot": "force",
+              "max": {
+                "x": true
+              }
+            }
+          }
+        ],
+        "scope": "self"
+      }
+    ],
+    "text": "At the end of its activation the unit readies up to X exhausted Force upgrades.",
+    "source": {
+      "doc": "CRB",
+      "page": 53,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.nimble",
+    "name": "Nimble",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.resolved",
+          "self": true
+        },
+        "when": {
+          "role": "defender",
+          "spent": {
+            "token": "core.token.dodge",
+            "min": 1
+          }
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.dodge",
+              "n": 1
+            }
+          }
+        ],
+        "scope": "self"
+      }
+    ],
+    "text": "After defending, if the unit spent a Dodge in that attack, it gains 1 Dodge.",
+    "source": {
+      "doc": "CRB",
+      "page": 53,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.precise",
+    "name": "Precise",
+    "kind": "unit",
+    "param": "x",
+    "effects": [
+      {
+        "modifier": "aimRerolls",
+        "op": "add",
+        "value": {
+          "x": true
+        },
+        "scope": "self"
+      }
+    ],
+    "text": "Each Aim token spent lets the unit reroll X more dice.",
+    "source": {
+      "doc": "CRB",
+      "page": 53,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.prepared-position",
+    "name": "Prepared Position",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "native": "preparedPosition"
+      },
+      {
+        "trigger": {
+          "window": "setup.deploy",
+          "self": true
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.dodge",
+              "n": 1
+            }
+          }
+        ],
+        "scope": "self"
+      }
+    ],
+    "text": "Deploys during setup completely inside allied Territory, and starts with a Dodge token.",
+    "source": {
+      "doc": "CRB",
+      "page": 53,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.relentless",
+    "name": "Relentless",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "trigger": {
+          "window": "action.resolved",
+          "self": true
+        },
+        "when": {
+          "action": "core.action.move"
+        },
+        "do": [
+          {
+            "grantFreeAction": {
+              "action": "core.action.attack"
+            }
+          }
+        ],
+        "scope": "self",
+        "optional": true
+      }
+    ],
+    "text": "After a Move action in its activation, the unit may make a free Attack action.",
+    "source": {
+      "doc": "CRB",
+      "page": 54,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.reliable",
+    "name": "Reliable",
+    "kind": "unit",
+    "param": "x",
+    "effects": [
+      {
+        "trigger": {
+          "window": "activation.phaseStart",
+          "self": true
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.surge",
+              "n": {
+                "x": true
+              }
+            }
+          }
+        ],
+        "scope": "self"
+      }
+    ],
+    "text": "The unit gains X Surge tokens at the start of each Activation phase.",
+    "source": {
+      "doc": "CRB",
+      "page": 54,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.scale",
+    "name": "Scale",
+    "kind": "unit",
+    "param": "none",
+    "effects": [
+      {
+        "modifier": "climbHeight",
+        "op": "set",
+        "value": 2,
+        "scope": "self"
+      },
+      {
+        "modifier": "difficultTerrain",
+        "op": "set",
+        "value": false,
+        "scope": "self"
+      }
+    ],
+    "text": "Climbs up to height 2, and difficult terrain never reduces its speed.",
+    "source": {
+      "doc": "CRB",
+      "page": 55,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.scout",
+    "name": "Scout",
+    "kind": "unit",
+    "param": "x",
+    "effects": [
+      {
+        "native": "scout"
+      }
+    ],
+    "text": "While undeployed, may deploy at the start of its actions with a free Move of speed X that ignores difficult terrain; values add, to a maximum of 3.",
+    "source": {
+      "doc": "CRB",
+      "page": 54,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.sharpshooter",
+    "name": "Sharpshooter",
+    "kind": "unit",
+    "param": "x",
+    "effects": [
+      {
+        "modifier": "coverValue",
+        "op": "add",
+        "value": {
+          "sub": [
+            0,
+            {
+              "x": true
+            }
+          ]
+        },
+        "when": {
+          "role": "attacker"
+        },
+        "scope": "self"
+      }
+    ],
+    "text": "Subtract X from the defender's cover value.",
+    "source": {
+      "doc": "CRB",
+      "page": 55,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.assault",
+    "name": "Assault",
+    "kind": "weapon",
+    "param": "x",
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.poolFormed",
+          "self": true
+        },
+        "when": {
+          "role": "attacker",
+          "within": {
+            "range": 1,
+            "of": "leader"
+          }
+        },
+        "do": [
+          {
+            "upgradeDice": {
+              "n": {
+                "x": true
+              },
+              "weapons": "thisWeapon"
+            }
+          }
+        ],
+        "scope": {
+          "pool": "thisWeapon"
+        },
+        "optional": true
+      }
+    ],
+    "text": "If the defender is within range 1 of the attacking leader, the attacker may upgrade X dice of this weapon.",
+    "source": {
+      "doc": "CRB",
+      "page": 58,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.blast",
+    "name": "Blast",
+    "kind": "weapon",
+    "param": "none",
+    "effects": [
+      {
+        "modifier": "coverCancelsHits",
+        "op": "set",
+        "value": false,
+        "scope": "pool"
+      }
+    ],
+    "text": "Cover cannot cancel hits from this attack pool.",
+    "source": {
+      "doc": "CRB",
+      "page": 58,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.critical",
+    "name": "Critical",
+    "kind": "weapon",
+    "param": "x",
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.surgesConverted",
+          "self": true
+        },
+        "when": {
+          "role": "attacker"
+        },
+        "do": [
+          {
+            "convertSurge": {
+              "to": "crit",
+              "max": {
+                "x": true
+              }
+            }
+          }
+        ],
+        "scope": {
+          "pool": "thisWeapon"
+        }
+      }
+    ],
+    "text": "Converts up to X surge results to critical hits.",
+    "source": {
+      "doc": "CRB",
+      "page": 59,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.cumbersome",
+    "name": "Cumbersome",
+    "kind": "weapon",
+    "param": "none",
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.poolFormed",
+          "self": true
+        },
+        "when": {
+          "role": "attacker",
+          "unitMoved": true
+        },
+        "do": [
+          {
+            "downgradeDice": {
+              "n": "all",
+              "weapons": "thisWeapon"
+            }
+          }
+        ],
+        "scope": {
+          "pool": "thisWeapon"
+        }
+      }
+    ],
+    "text": "Each die of this weapon is downgraded if the unit has moved this activation.",
+    "source": {
+      "doc": "CRB",
+      "page": 59,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.high-velocity",
+    "name": "High Velocity",
+    "kind": "weapon",
+    "param": "none",
+    "effects": [
+      {
+        "modifier": "dodgeAllowed",
+        "op": "set",
+        "value": false,
+        "when": {
+          "role": "attacker",
+          "poolOnly": "kw.high-velocity"
+        },
+        "scope": "pool"
+      }
+    ],
+    "text": "If every weapon in the pool has it, the defender cannot spend Dodge tokens.",
+    "source": {
+      "doc": "CRB",
+      "page": 59,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.impact",
+    "name": "Impact",
+    "kind": "weapon",
+    "param": "x",
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.modified",
+          "self": true
+        },
+        "when": {
+          "role": "attacker",
+          "defenderHasKeyword": "kw.armor"
+        },
+        "do": [
+          {
+            "changeResult": {
+              "from": "hit",
+              "to": "crit",
+              "max": {
+                "x": true
+              }
+            }
+          }
+        ],
+        "scope": {
+          "pool": "thisWeapon"
+        }
+      }
+    ],
+    "text": "Against a defender with Armor, changes up to X hit results to critical hits.",
+    "source": {
+      "doc": "CRB",
+      "page": 59,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.ion",
+    "name": "Ion",
+    "kind": "weapon",
+    "param": "x",
+    "effects": [
+      {
+        "unimplemented": "no vehicle or droid unit in v1; returns with M2b"
+      }
+    ],
+    "text": "Wounds put Ion tokens on vehicles and Droid Troopers, costing them actions.",
+    "source": {
+      "doc": "CRB",
+      "page": 59,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.long-shot",
+    "name": "Long Shot",
+    "kind": "weapon",
+    "param": "none",
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.declaring",
+          "self": true
+        },
+        "do": [
+          {
+            "spendToken": {
+              "token": "core.token.aim",
+              "n": 1,
+              "noReroll": true
+            }
+          },
+          {
+            "changeRange": {
+              "max": 1,
+              "weapons": "kw.long-shot"
+            }
+          }
+        ],
+        "scope": "attack",
+        "optional": true,
+        "limit": "oncePerAttack"
+      }
+    ],
+    "text": "Before choosing a defender the unit may spend 1 Aim, which cannot reroll, for +1 maximum range on Long Shot weapons; once per attack.",
+    "source": {
+      "doc": "CRB",
+      "page": 59,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.overwhelm",
+    "name": "Overwhelm",
+    "kind": "weapon",
+    "param": "none",
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.suppression",
+          "self": true
+        },
+        "when": {
+          "role": "attacker",
+          "spent": {
+            "token": "core.token.aim",
+            "min": 1
+          }
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.suppression",
+              "n": 1,
+              "to": "defender"
+            }
+          }
+        ],
+        "scope": {
+          "pool": "thisWeapon"
+        }
+      }
+    ],
+    "text": "If at least one Aim was spent on a reroll, the defender gains 1 extra suppression.",
+    "source": {
+      "doc": "CRB",
+      "page": 59,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.pierce",
+    "name": "Pierce",
+    "kind": "weapon",
+    "param": "x",
+    "effects": [
+      {
+        "trigger": {
+          "window": "defence.modified",
+          "self": true
+        },
+        "when": {
+          "role": "attacker"
+        },
+        "do": [
+          {
+            "cancelResult": {
+              "result": "block",
+              "max": {
+                "x": true
+              }
+            }
+          }
+        ],
+        "scope": {
+          "pool": "thisWeapon"
+        }
+      }
+    ],
+    "text": "Cancels up to X block results while defence dice are modified.",
+    "source": {
+      "doc": "CRB",
+      "page": 59,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.sniper-team",
+    "name": "Sniper Team",
+    "kind": "weapon",
+    "param": "none",
+    "effects": [
+      {
+        "code": "sniperTeam"
+      }
+    ],
+    "text": "If the pool holds only Sniper Team weapons, the unit has not moved and every figure sees the target, the dice are upgraded, and the pool may be cancelled after surges convert.",
+    "source": {
+      "doc": "CRB",
+      "page": 60,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.suppressive",
+    "name": "Suppressive",
+    "kind": "weapon",
+    "param": "none",
+    "effects": [
+      {
+        "trigger": {
+          "window": "attack.suppression",
+          "self": true
+        },
+        "when": {
+          "role": "attacker"
+        },
+        "do": [
+          {
+            "gainToken": {
+              "token": "core.token.suppression",
+              "n": 1,
+              "to": "defender"
+            }
+          }
+        ],
+        "scope": {
+          "pool": "thisWeapon"
+        }
+      }
+    ],
+    "text": "The defender gains 1 extra suppression.",
+    "source": {
+      "doc": "CRB",
+      "page": 60,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.permanent",
+    "name": "Permanent",
+    "kind": "card",
+    "param": "none",
+    "effects": [
+      {
+        "native": "permanent"
+      }
+    ],
+    "text": "The command card stays in play instead of being discarded in the End phase.",
+    "source": {
+      "doc": "CRB",
+      "page": 62,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "kw.divulge",
+    "name": "Divulge",
+    "kind": "card",
+    "param": "none",
+    "effects": [
+      {
+        "native": "divulge"
+      }
+    ],
+    "text": "The card may be revealed at the named step for the text below its line; it is not played and returns to the hand.",
+    "source": {
+      "doc": "CRB",
+      "page": 61,
+      "kind": "primary"
+    }
+  }
+]

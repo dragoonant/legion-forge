@@ -1,0 +1,78 @@
+{
+  "id": "core.dice",
+  "attack": {
+    "red": {
+      "sides": 8,
+      "faces": {
+        "hit": 5,
+        "crit": 1,
+        "surge": 1,
+        "blank": 1
+      }
+    },
+    "black": {
+      "sides": 8,
+      "faces": {
+        "hit": 3,
+        "crit": 1,
+        "surge": 1,
+        "blank": 3
+      }
+    },
+    "white": {
+      "sides": 8,
+      "faces": {
+        "hit": 1,
+        "crit": 1,
+        "surge": 1,
+        "blank": 5
+      }
+    },
+    "faceOrder": [
+      "hit",
+      "crit",
+      "surge",
+      "blank"
+    ]
+  },
+  "defence": {
+    "red": {
+      "sides": 6,
+      "faces": {
+        "block": 3,
+        "surge": 1,
+        "blank": 2
+      }
+    },
+    "white": {
+      "sides": 6,
+      "faces": {
+        "block": 1,
+        "surge": 1,
+        "blank": 4
+      }
+    },
+    "faceOrder": [
+      "block",
+      "surge",
+      "blank"
+    ]
+  },
+  "ladder": {
+    "attack": [
+      "white",
+      "black",
+      "red"
+    ],
+    "defence": [
+      "white",
+      "red"
+    ]
+  },
+  "source": {
+    "doc": "primer",
+    "page": "Dice",
+    "kind": "fan",
+    "checked": "Unsourced: check physical dice (RULING R-13.1)"
+  }
+}

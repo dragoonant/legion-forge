@@ -1,0 +1,123 @@
+[
+  {
+    "id": "core.action.move",
+    "name": "Move",
+    "free": false,
+    "repeat": "unlimited",
+    "restrictions": [],
+    "text": "Move the unit with a movement tool no longer than its speed.",
+    "source": {
+      "doc": "CRB",
+      "page": 24,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.action.climb",
+    "name": "Climb",
+    "free": false,
+    "repeat": "unlimited",
+    "restrictions": [],
+    "text": "A speed-1 move that may rise or fall by up to one height band.",
+    "source": {
+      "doc": "CRB",
+      "page": 24,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.action.attack",
+    "name": "Attack",
+    "free": false,
+    "repeat": "once",
+    "restrictions": [],
+    "text": "Form attack pools and resolve one attack against a unit in range.",
+    "source": {
+      "doc": "CRB",
+      "page": 24,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.action.aim",
+    "name": "Aim",
+    "free": false,
+    "repeat": "once",
+    "restrictions": [],
+    "text": "Gain one Aim token.",
+    "source": {
+      "doc": "CRB",
+      "page": 24,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.action.dodge",
+    "name": "Dodge",
+    "free": false,
+    "repeat": "once",
+    "restrictions": [],
+    "text": "Gain one Dodge token.",
+    "source": {
+      "doc": "CRB",
+      "page": 24,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.action.recover",
+    "name": "Recover",
+    "free": false,
+    "repeat": "once",
+    "restrictions": [],
+    "text": "Remove any number of suppression tokens and ready exhausted upgrade cards.",
+    "source": {
+      "doc": "CRB",
+      "page": 24,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.action.standby",
+    "name": "Standby",
+    "free": false,
+    "repeat": "once",
+    "restrictions": [
+      {
+        "unitType": "trooper-any"
+      }
+    ],
+    "text": "Gain one Standby token; Trooper units only, never in the same activation as an Attack.",
+    "source": {
+      "doc": "CRB",
+      "page": 24,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.action.withdraw",
+    "name": "Withdraw",
+    "free": false,
+    "repeat": "once",
+    "restrictions": [],
+    "text": "A speed-1 move away from the enemy; forbids Attack and Standby in the same activation.",
+    "source": {
+      "doc": "CRB",
+      "page": 24,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.action.claim",
+    "name": "Claim",
+    "free": true,
+    "repeat": "once",
+    "restrictions": [],
+    "text": "Take an unclaimed Asset the unit is contesting (battle cards grant it).",
+    "source": {
+      "doc": "CRB",
+      "page": 20,
+      "kind": "primary"
+    }
+  }
+]

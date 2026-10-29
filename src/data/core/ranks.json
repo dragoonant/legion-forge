@@ -1,0 +1,74 @@
+[
+  {
+    "id": "core.rank.commander",
+    "key": "commander",
+    "name": "Commander",
+    "orderToken": "core.token.order",
+    "icon": "rank-commander",
+    "source": {
+      "doc": "CRB",
+      "page": 7,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.rank.operative",
+    "key": "operative",
+    "name": "Operative",
+    "orderToken": "core.token.order",
+    "icon": "rank-operative",
+    "source": {
+      "doc": "CRB",
+      "page": 7,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.rank.corps",
+    "key": "corps",
+    "name": "Corps",
+    "orderToken": "core.token.order",
+    "icon": "rank-corps",
+    "source": {
+      "doc": "CRB",
+      "page": 7,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.rank.special-forces",
+    "key": "special-forces",
+    "name": "Special Forces",
+    "orderToken": "core.token.order",
+    "icon": "rank-special-forces",
+    "source": {
+      "doc": "CRB",
+      "page": 7,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.rank.support",
+    "key": "support",
+    "name": "Support",
+    "orderToken": "core.token.order",
+    "icon": "rank-support",
+    "source": {
+      "doc": "CRB",
+      "page": 7,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.rank.heavy",
+    "key": "heavy",
+    "name": "Heavy",
+    "orderToken": "core.token.order",
+    "icon": "rank-heavy",
+    "source": {
+      "doc": "CRB",
+      "page": 7,
+      "kind": "primary"
+    }
+  }
+]

@@ -1,0 +1,96 @@
+[
+  {
+    "id": "recon",
+    "name": "Recon",
+    "maxPoints": 600,
+    "ranks": {
+      "commander": [
+        1,
+        1
+      ],
+      "operative": [
+        0,
+        1
+      ],
+      "corps": [
+        2,
+        4
+      ],
+      "special-forces": [
+        0,
+        2
+      ],
+      "support": [
+        0,
+        2
+      ],
+      "heavy": [
+        0,
+        1
+      ]
+    },
+    "table": {
+      "x": 36,
+      "z": 36
+    },
+    "rounds": 5,
+    "instantWinVp": 12,
+    "deck": "fixed",
+    "bluePlayer": "redDefenceDie",
+    "edgeChoice": "any",
+    "missionModification": false,
+    "playable": true,
+    "source": {
+      "doc": "RECON",
+      "page": 2,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "standard",
+    "name": "Standard",
+    "maxPoints": 1000,
+    "ranks": {
+      "commander": [
+        1,
+        2
+      ],
+      "operative": [
+        0,
+        2
+      ],
+      "corps": [
+        3,
+        6
+      ],
+      "special-forces": [
+        0,
+        3
+      ],
+      "support": [
+        0,
+        3
+      ],
+      "heavy": [
+        0,
+        2
+      ]
+    },
+    "table": {
+      "x": 72,
+      "z": 36
+    },
+    "rounds": 5,
+    "instantWinVp": 12,
+    "deck": "perPlayer",
+    "bluePlayer": "fourBlackDice",
+    "edgeChoice": "long",
+    "missionModification": true,
+    "playable": false,
+    "source": {
+      "doc": "CRB",
+      "page": "16-19",
+      "kind": "primary"
+    }
+  }
+]

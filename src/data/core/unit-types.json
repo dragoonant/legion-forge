@@ -1,0 +1,36 @@
+[
+  {
+    "id": "core.unittype.trooper",
+    "key": "trooper",
+    "name": "Trooper",
+    "base": "core.base.small",
+    "silhouette": "core.silhouette.small",
+    "flags": {
+      "barricadeCover": true,
+      "attackAfterWithdraw": false,
+      "trooper": true
+    },
+    "source": {
+      "doc": "CRB",
+      "page": 39,
+      "kind": "primary"
+    }
+  },
+  {
+    "id": "core.unittype.wookiee-trooper",
+    "key": "wookiee-trooper",
+    "name": "Wookiee Trooper",
+    "base": "core.base.small",
+    "silhouette": "core.silhouette.small",
+    "flags": {
+      "barricadeCover": true,
+      "attackAfterWithdraw": false,
+      "trooper": true
+    },
+    "source": {
+      "doc": "CRB",
+      "page": 39,
+      "kind": "primary"
+    }
+  }
+]

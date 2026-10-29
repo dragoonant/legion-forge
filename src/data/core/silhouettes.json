@@ -1,0 +1,19 @@
+[
+  {
+    "id": "core.silhouette.small",
+    "name": "Small trooper silhouette",
+    "radiusIn": 0.531,
+    "heightIn": 1.69,
+    "samples": {
+      "rings": 2,
+      "perRing": 8,
+      "axis": true
+    },
+    "source": {
+      "doc": "CRB",
+      "page": 65,
+      "kind": "primary",
+      "checked": "Unsourced: height measured from the printed template (RULING R-10.1); large template (2.70 in) returns with notched bases in M2b"
+    }
+  }
+]

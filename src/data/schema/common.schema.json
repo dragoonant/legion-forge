@@ -1,0 +1,1073 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://legion-forge.dev/schemas/common.schema.json",
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)*$"
+    },
+    "Key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "Name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "Text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "Source": {
+      "type": "object",
+      "properties": {
+        "doc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page": {
+          "type": [
+            "integer",
+            "string"
+          ]
+        },
+        "url": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "primary",
+            "fan"
+          ]
+        },
+        "checked": {
+          "type": "string"
+        },
+        "covers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "doc",
+        "kind"
+      ],
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "page"
+          ]
+        },
+        {
+          "required": [
+            "url"
+          ]
+        }
+      ]
+    },
+    "Sources": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/Source"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Source"
+          },
+          "minItems": 1
+        }
+      ]
+    },
+    "Inches": {
+      "type": "number",
+      "multipleOf": 0.001
+    },
+    "Band": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        {
+          "const": "beyond"
+        }
+      ]
+    },
+    "DicePool": {
+      "type": "object",
+      "properties": {
+        "red": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "black": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "white": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "red",
+        "black",
+        "white"
+      ],
+      "additionalProperties": false
+    },
+    "DefenceDie": {
+      "enum": [
+        "red",
+        "white"
+      ]
+    },
+    "SurgeChart": {
+      "type": "object",
+      "properties": {
+        "attack": {
+          "enum": [
+            null,
+            "hit",
+            "crit"
+          ]
+        },
+        "defence": {
+          "enum": [
+            null,
+            "block"
+          ]
+        }
+      },
+      "required": [
+        "attack",
+        "defence"
+      ],
+      "additionalProperties": false
+    },
+    "KeywordRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "x": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "param": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "Vec2": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "z": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "z"
+      ],
+      "additionalProperties": false
+    },
+    "Polygon": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/Vec2"
+      },
+      "minItems": 3
+    },
+    "TimingWindowId": {
+      "enum": [
+        "setup.deploy",
+        "setup.resolve",
+        "round.start",
+        "command.picked",
+        "command.revealed",
+        "command.priority",
+        "command.ordersIssued",
+        "activation.phaseStart",
+        "activation.start",
+        "activation.rallied",
+        "action.declared",
+        "move.started",
+        "move.ended",
+        "action.resolved",
+        "attack.declaring",
+        "attack.defenderDeclared",
+        "attack.poolFormed",
+        "attack.rolled",
+        "attack.rerolled",
+        "attack.surgesConverted",
+        "attack.coverApplied",
+        "attack.modified",
+        "defence.rolled",
+        "defence.surgesConverted",
+        "defence.modified",
+        "attack.compared",
+        "attack.woundsAssigned",
+        "attack.suppression",
+        "attack.resolved",
+        "melee.charged",
+        "mini.defeated",
+        "unit.defeated",
+        "activation.end",
+        "end.start",
+        "end.scoring",
+        "end.end",
+        "round.end",
+        "battle.end"
+      ]
+    },
+    "GameEventType": {
+      "enum": [
+        "OrderIssued",
+        "SuppressionChanged",
+        "UnitDefeated",
+        "WoundsSuffered"
+      ]
+    },
+    "CodeRef": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z][A-Za-z0-9]*$"
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "code"
+      ],
+      "additionalProperties": false
+    },
+    "Unimplemented": {
+      "type": "object",
+      "properties": {
+        "unimplemented": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "unimplemented"
+      ],
+      "additionalProperties": false
+    },
+    "UnitFilter": {
+      "type": "object",
+      "properties": {
+        "side": {
+          "enum": [
+            "ally",
+            "enemy"
+          ]
+        },
+        "ranks": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Key"
+          }
+        },
+        "notRanks": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Key"
+          }
+        },
+        "unitTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "units": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Id"
+          }
+        },
+        "within": {
+          "type": "object",
+          "properties": {
+            "range": {
+              "$ref": "common.schema.json#/$defs/Band"
+            },
+            "of": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "range",
+            "of"
+          ],
+          "additionalProperties": false
+        },
+        "excludeSelf": {
+          "type": "boolean"
+        },
+        "excludeSubject": {
+          "type": "boolean"
+        },
+        "suppressed": {
+          "type": "boolean"
+        },
+        "hasKeyword": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "notUnits": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Id"
+          }
+        },
+        "contesting": {
+          "type": "object"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "Expr": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "x": {
+              "const": true
+            }
+          },
+          "required": [
+            "x"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "stat": {
+              "enum": [
+                "courage",
+                "wounds",
+                "speed"
+              ]
+            }
+          },
+          "required": [
+            "stat"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "tokens": {
+              "$ref": "common.schema.json#/$defs/Id"
+            }
+          },
+          "required": [
+            "tokens"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sub": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Expr"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "min": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "sub"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "count": {
+              "enum": [
+                "woundsSuffered"
+              ]
+            }
+          },
+          "required": [
+            "count"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Condition": {
+      "type": "object",
+      "properties": {
+        "attackKind": {
+          "enum": [
+            "ranged",
+            "melee"
+          ]
+        },
+        "role": {
+          "enum": [
+            "attacker",
+            "defender"
+          ]
+        },
+        "side": {
+          "enum": [
+            "ally",
+            "enemy"
+          ]
+        },
+        "spent": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "$ref": "common.schema.json#/$defs/Id"
+            },
+            "min": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "token",
+            "min"
+          ],
+          "additionalProperties": false
+        },
+        "poolOnly": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "unitMoved": {
+          "type": "boolean"
+        },
+        "order": {
+          "enum": [
+            "faceUp",
+            "none"
+          ]
+        },
+        "rank": {
+          "oneOf": [
+            {
+              "$ref": "common.schema.json#/$defs/Key"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Key"
+              }
+            }
+          ]
+        },
+        "unitType": {
+          "type": "string"
+        },
+        "unit": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "notUnit": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Id"
+          }
+        },
+        "suppressed": {
+          "type": "boolean"
+        },
+        "panicked": {
+          "type": "boolean"
+        },
+        "within": {
+          "type": "object",
+          "properties": {
+            "range": {
+              "$ref": "common.schema.json#/$defs/Band"
+            },
+            "of": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "range",
+            "of"
+          ],
+          "additionalProperties": false
+        },
+        "defenderHasKeyword": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "defenderIsVehicle": {
+          "type": "boolean"
+        },
+        "round": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "integer"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "firstOfRound": {
+          "type": "boolean"
+        },
+        "contesting": {
+          "type": "object"
+        },
+        "holding": {
+          "type": "string"
+        },
+        "moveKind": {
+          "enum": [
+            "standard",
+            "climb",
+            "jump",
+            "deploy"
+          ]
+        },
+        "fromAction": {
+          "type": "boolean"
+        },
+        "startedMelee": {
+          "type": "boolean"
+        },
+        "poolHasWeapon": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "byThisCard": {
+          "type": "boolean"
+        },
+        "byCommandCard": {
+          "type": "boolean"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "action": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "woundsSuffered": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "min"
+          ],
+          "additionalProperties": false
+        },
+        "divulged": {
+          "type": "boolean"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "Trigger": {
+      "type": "object",
+      "properties": {
+        "trigger": {
+          "type": "object",
+          "properties": {
+            "window": {
+              "$ref": "common.schema.json#/$defs/TimingWindowId"
+            },
+            "event": {
+              "$ref": "common.schema.json#/$defs/GameEventType"
+            },
+            "self": {
+              "type": "boolean"
+            },
+            "aura": {
+              "type": "object",
+              "properties": {
+                "range": {
+                  "$ref": "common.schema.json#/$defs/Band"
+                },
+                "side": {
+                  "enum": [
+                    "ally",
+                    "enemy"
+                  ]
+                },
+                "filter": {
+                  "$ref": "common.schema.json#/$defs/UnitFilter"
+                },
+                "excludeSelf": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "range",
+                "side"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [],
+          "additionalProperties": false,
+          "oneOf": [
+            {
+              "required": [
+                "window"
+              ]
+            },
+            {
+              "required": [
+                "event"
+              ]
+            }
+          ]
+        },
+        "when": {
+          "$ref": "common.schema.json#/$defs/Condition"
+        },
+        "do": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Verb"
+          },
+          "minItems": 1
+        },
+        "scope": {
+          "oneOf": [
+            {
+              "enum": [
+                "self",
+                "pool",
+                "attack",
+                "chosen",
+                "aura",
+                "subject",
+                "named",
+                "opponent",
+                "seat"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "pool": {
+                  "enum": [
+                    "all",
+                    "otherRangedWeapons",
+                    "thisWeapon"
+                  ]
+                }
+              },
+              "required": [
+                "pool"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "duration": {
+          "enum": [
+            "instant",
+            "attack",
+            "activation",
+            "round",
+            "game",
+            "whileInPlay"
+          ]
+        },
+        "optional": {
+          "type": "boolean"
+        },
+        "limit": {
+          "oneOf": [
+            {
+              "enum": [
+                "unlimited",
+                "oncePerAttack",
+                "oncePerActivation",
+                "oncePerRound",
+                "oncePerGame"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "perRound": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "perRound"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "perGame": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "perGame"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "trigger",
+        "do"
+      ],
+      "additionalProperties": false
+    },
+    "Verb": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/CodeRef"
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "gainToken",
+              "spendToken",
+              "removeToken",
+              "grantKeyword",
+              "removeKeyword",
+              "grantFreeAction",
+              "extraAction",
+              "fewerActions",
+              "sufferWounds",
+              "dealWounds",
+              "upgradeDice",
+              "downgradeDice",
+              "convertSurge",
+              "changeResult",
+              "cancelResult",
+              "rollDice",
+              "readyCards",
+              "addPassToken",
+              "orderTokenTo",
+              "chooseUnits",
+              "placeToken",
+              "changeRange",
+              "applyModifier",
+              "choose",
+              "controlledMove",
+              "cardTokens"
+            ]
+          },
+          "minProperties": 1,
+          "maxProperties": 1
+        }
+      ]
+    },
+    "Modifier": {
+      "type": "object",
+      "properties": {
+        "modifier": {
+          "enum": [
+            "coverPool",
+            "coverValue",
+            "rallyDie",
+            "aimRerolls",
+            "pierceAllowed",
+            "dodgeAllowed",
+            "targetableFrom",
+            "canContest",
+            "canBackup",
+            "moveSpeed",
+            "climbHeight",
+            "difficultTerrain",
+            "defenceSurge",
+            "attackSurge",
+            "defenceDice",
+            "courage",
+            "cohesionRange",
+            "orderLimit",
+            "endPhaseSuppressionRemoval",
+            "panicImmuneAura",
+            "coverCancelsHits",
+            "tokenCap",
+            "suppressionRemovable",
+            "suppressible"
+          ]
+        },
+        "op": {
+          "enum": [
+            "add",
+            "set",
+            "min",
+            "max"
+          ]
+        },
+        "value": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "common.schema.json#/$defs/Expr"
+            }
+          ]
+        },
+        "then": {
+          "type": "object",
+          "properties": {
+            "addResult": {
+              "enum": [
+                "block",
+                "hit",
+                "crit"
+              ]
+            },
+            "n": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "addResult",
+            "n"
+          ],
+          "additionalProperties": false
+        },
+        "when": {
+          "$ref": "common.schema.json#/$defs/Condition"
+        },
+        "scope": {
+          "oneOf": [
+            {
+              "enum": [
+                "self",
+                "pool",
+                "attack",
+                "chosen",
+                "aura",
+                "subject",
+                "named",
+                "opponent",
+                "seat"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "pool": {
+                  "enum": [
+                    "all",
+                    "otherRangedWeapons",
+                    "thisWeapon"
+                  ]
+                }
+              },
+              "required": [
+                "pool"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "duration": {
+          "enum": [
+            "instant",
+            "attack",
+            "activation",
+            "round",
+            "game",
+            "whileInPlay"
+          ]
+        },
+        "token": {
+          "$ref": "common.schema.json#/$defs/Id"
+        }
+      },
+      "required": [
+        "modifier",
+        "op",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "ActionGrant": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "kind": {
+          "enum": [
+            "card",
+            "free"
+          ]
+        },
+        "exhaust": {
+          "enum": [
+            "none",
+            "exhaust",
+            "expend"
+          ]
+        },
+        "when": {
+          "$ref": "common.schema.json#/$defs/Condition"
+        },
+        "do": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Verb"
+          },
+          "minItems": 1
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Effect"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "Grant": {
+      "type": "object",
+      "properties": {
+        "grant": {
+          "type": "object",
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "$ref": "#/$defs/ActionGrant"
+                }
+              },
+              "required": [
+                "action"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "slot": {
+                  "$ref": "common.schema.json#/$defs/Key"
+                }
+              },
+              "required": [
+                "slot"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "grant"
+      ],
+      "additionalProperties": false
+    },
+    "Native": {
+      "type": "object",
+      "properties": {
+        "native": {
+          "enum": [
+            "detachment",
+            "heavyWeaponTeam",
+            "infiltrate",
+            "jump",
+            "leader",
+            "preparedPosition",
+            "scout",
+            "permanent",
+            "divulge"
+          ]
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "native"
+      ],
+      "additionalProperties": false
+    },
+    "Effect": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Trigger"
+        },
+        {
+          "$ref": "#/$defs/Modifier"
+        },
+        {
+          "$ref": "#/$defs/Grant"
+        },
+        {
+          "$ref": "#/$defs/Native"
+        },
+        {
+          "$ref": "#/$defs/CodeRef"
+        },
+        {
+          "$ref": "#/$defs/Unimplemented"
+        }
+      ]
+    },
+    "Effects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Effect"
+      }
+    }
+  }
+}

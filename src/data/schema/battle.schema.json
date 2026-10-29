@@ -1,0 +1,361 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://legion-forge.dev/schemas/battle.schema.json",
+  "$defs": {
+    "battleCard": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "type": {
+          "enum": [
+            "objective",
+            "secondary",
+            "advantage"
+          ]
+        },
+        "format": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "faction": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "map": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "setup": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "common.schema.json#/$defs/CodeRef"
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "enum": [
+                    "placeFromMap",
+                    "placeByPlayer",
+                    "chooseUnits",
+                    "placeTerrain",
+                    "cardTokens"
+                  ]
+                },
+                "minProperties": 1,
+                "maxProperties": 1
+              }
+            ]
+          }
+        },
+        "scoring": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "oneOf": [
+                  {
+                    "enum": [
+                      "end.start",
+                      "end.scoring",
+                      "end.end"
+                    ]
+                  },
+                  {
+                    "$ref": "common.schema.json#/$defs/TimingWindowId"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "event": {
+                        "$ref": "common.schema.json#/$defs/GameEventType"
+                      }
+                    },
+                    "required": [
+                      "event"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "fromRound": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "count": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "tokens": {
+                        "type": "object"
+                      },
+                      "state": {
+                        "enum": [
+                          "secured",
+                          "contested",
+                          "controlled",
+                          "held",
+                          "destroyedThisPhase"
+                        ]
+                      },
+                      "territory": {
+                        "enum": [
+                          "allied",
+                          "enemy",
+                          "contested",
+                          "notAllied"
+                        ]
+                      },
+                      "completely": {
+                        "type": "boolean"
+                      },
+                      "alsoWithin": {
+                        "type": "object"
+                      },
+                      "orContested": {
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "tokens",
+                      "state"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "units": {
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "units"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "compare": {
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "compare"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "table": {
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "table"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "vp": {
+                "oneOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "min": {
+                          "type": "integer"
+                        },
+                        "vp": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "min",
+                        "vp"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  }
+                ]
+              },
+              "cap": {
+                "type": "object",
+                "properties": {
+                  "perRound": {
+                    "type": "number"
+                  },
+                  "perGame": {
+                    "type": "number"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "then": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Verb"
+                }
+              }
+            },
+            "required": [
+              "at",
+              "count",
+              "vp"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "special": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Effect"
+          }
+        },
+        "grants": {
+          "type": "object",
+          "properties": {
+            "claim": {
+              "type": "object",
+              "properties": {
+                "asset": {
+                  "type": "string"
+                },
+                "ownerOnly": {
+                  "type": "boolean"
+                },
+                "maxHeld": {
+                  "type": "integer"
+                },
+                "eligible": {
+                  "$ref": "common.schema.json#/$defs/UnitFilter"
+                }
+              },
+              "required": [
+                "asset",
+                "ownerOnly",
+                "maxHeld"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "text": {
+          "$ref": "common.schema.json#/$defs/Text"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "format",
+        "faction",
+        "setup",
+        "scoring",
+        "special",
+        "text",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "map": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "format": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "territories": {
+          "type": "object",
+          "properties": {
+            "red": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Polygon"
+              },
+              "minItems": 1
+            },
+            "blue": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Polygon"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "red",
+            "blue"
+          ],
+          "additionalProperties": false
+        },
+        "pois": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Key"
+              },
+              "at": {
+                "$ref": "common.schema.json#/$defs/Vec2"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "at",
+              "tags"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "format",
+        "territories",
+        "pois",
+        "source"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

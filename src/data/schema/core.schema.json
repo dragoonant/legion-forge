@@ -1,0 +1,839 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://legion-forge.dev/schemas/core.schema.json",
+  "$defs": {
+    "dice": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "attack": {
+          "type": "object",
+          "properties": {
+            "red": {
+              "type": "object",
+              "properties": {
+                "sides": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "faces": {
+                  "type": "object",
+                  "properties": {
+                    "hit": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "crit": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "surge": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "blank": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "hit",
+                    "crit",
+                    "surge",
+                    "blank"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "sides",
+                "faces"
+              ],
+              "additionalProperties": false
+            },
+            "black": {
+              "type": "object",
+              "properties": {
+                "sides": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "faces": {
+                  "type": "object",
+                  "properties": {
+                    "hit": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "crit": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "surge": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "blank": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "hit",
+                    "crit",
+                    "surge",
+                    "blank"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "sides",
+                "faces"
+              ],
+              "additionalProperties": false
+            },
+            "white": {
+              "type": "object",
+              "properties": {
+                "sides": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "faces": {
+                  "type": "object",
+                  "properties": {
+                    "hit": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "crit": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "surge": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "blank": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "hit",
+                    "crit",
+                    "surge",
+                    "blank"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "sides",
+                "faces"
+              ],
+              "additionalProperties": false
+            },
+            "faceOrder": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 4,
+              "maxItems": 4
+            }
+          },
+          "required": [
+            "red",
+            "black",
+            "white",
+            "faceOrder"
+          ],
+          "additionalProperties": false
+        },
+        "defence": {
+          "type": "object",
+          "properties": {
+            "red": {
+              "type": "object",
+              "properties": {
+                "sides": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "faces": {
+                  "type": "object",
+                  "properties": {
+                    "block": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "surge": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "blank": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "block",
+                    "surge",
+                    "blank"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "sides",
+                "faces"
+              ],
+              "additionalProperties": false
+            },
+            "white": {
+              "type": "object",
+              "properties": {
+                "sides": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "faces": {
+                  "type": "object",
+                  "properties": {
+                    "block": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "surge": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "blank": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "block",
+                    "surge",
+                    "blank"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "sides",
+                "faces"
+              ],
+              "additionalProperties": false
+            },
+            "faceOrder": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "required": [
+            "red",
+            "white",
+            "faceOrder"
+          ],
+          "additionalProperties": false
+        },
+        "ladder": {
+          "type": "object",
+          "properties": {
+            "attack": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "defence": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "attack",
+            "defence"
+          ],
+          "additionalProperties": false
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "attack",
+        "defence",
+        "ladder",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "rank": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "key": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "orderToken": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "key",
+        "name",
+        "orderToken",
+        "icon",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "format": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "maxPoints": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ranks": {
+          "type": "object",
+          "properties": {
+            "commander": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "operative": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "corps": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "special-forces": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "support": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "heavy": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "commander",
+            "operative",
+            "corps",
+            "special-forces",
+            "support",
+            "heavy"
+          ],
+          "additionalProperties": false
+        },
+        "table": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "$ref": "common.schema.json#/$defs/Inches"
+            },
+            "z": {
+              "$ref": "common.schema.json#/$defs/Inches"
+            }
+          },
+          "required": [
+            "x",
+            "z"
+          ],
+          "additionalProperties": false
+        },
+        "rounds": {
+          "type": "integer"
+        },
+        "instantWinVp": {
+          "type": "integer"
+        },
+        "deck": {
+          "enum": [
+            "fixed",
+            "perPlayer"
+          ]
+        },
+        "bluePlayer": {
+          "enum": [
+            "redDefenceDie",
+            "fourBlackDice"
+          ]
+        },
+        "edgeChoice": {
+          "enum": [
+            "any",
+            "long"
+          ]
+        },
+        "missionModification": {
+          "type": "boolean"
+        },
+        "playable": {
+          "type": "boolean"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "maxPoints",
+        "ranks",
+        "table",
+        "rounds",
+        "instantWinVp",
+        "deck",
+        "bluePlayer",
+        "edgeChoice",
+        "missionModification",
+        "playable",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "token": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "lifetime": {
+          "enum": [
+            "endPhase",
+            "activation",
+            "untilRemoved",
+            "game"
+          ]
+        },
+        "cap": {
+          "type": "integer"
+        },
+        "sizeIn": {
+          "$ref": "common.schema.json#/$defs/Inches"
+        },
+        "kind": {
+          "enum": [
+            "unit",
+            "objective",
+            "advantage",
+            "card"
+          ]
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "lifetime",
+        "kind",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "base": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "diameterMm": {
+          "type": "number"
+        },
+        "notched": {
+          "type": "boolean"
+        },
+        "silhouette": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "diameterMm",
+        "notched",
+        "silhouette",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "silhouette": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "radiusIn": {
+          "$ref": "common.schema.json#/$defs/Inches"
+        },
+        "heightIn": {
+          "$ref": "common.schema.json#/$defs/Inches"
+        },
+        "samples": {
+          "type": "object",
+          "properties": {
+            "rings": {
+              "type": "integer"
+            },
+            "perRing": {
+              "type": "integer"
+            },
+            "axis": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "rings",
+            "perRing"
+          ],
+          "additionalProperties": false
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "radiusIn",
+        "heightIn",
+        "samples",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "constants": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "values": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "sources": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/Sources"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "values",
+        "sources"
+      ],
+      "additionalProperties": false
+    },
+    "movementTool": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "speeds": {
+          "type": "object",
+          "properties": {
+            "1": {
+              "type": "object",
+              "properties": {
+                "segments": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/Inches"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "hingeAt": {
+                  "$ref": "common.schema.json#/$defs/Inches"
+                }
+              },
+              "required": [
+                "segments",
+                "hingeAt"
+              ],
+              "additionalProperties": false
+            },
+            "2": {
+              "type": "object",
+              "properties": {
+                "segments": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/Inches"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "hingeAt": {
+                  "$ref": "common.schema.json#/$defs/Inches"
+                }
+              },
+              "required": [
+                "segments",
+                "hingeAt"
+              ],
+              "additionalProperties": false
+            },
+            "3": {
+              "type": "object",
+              "properties": {
+                "segments": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/Inches"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "hingeAt": {
+                  "$ref": "common.schema.json#/$defs/Inches"
+                }
+              },
+              "required": [
+                "segments",
+                "hingeAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "1",
+            "2",
+            "3"
+          ],
+          "additionalProperties": false
+        },
+        "prongWidthIn": {
+          "$ref": "common.schema.json#/$defs/Inches"
+        },
+        "widthIn": {
+          "$ref": "common.schema.json#/$defs/Inches"
+        },
+        "hingeLimitDeg": {
+          "type": "number"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "speeds",
+        "prongWidthIn",
+        "widthIn",
+        "hingeLimitDeg",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "action": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "free": {
+          "type": "boolean"
+        },
+        "repeat": {
+          "enum": [
+            "once",
+            "unlimited"
+          ]
+        },
+        "restrictions": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Condition"
+          }
+        },
+        "text": {
+          "$ref": "common.schema.json#/$defs/Text"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "free",
+        "repeat",
+        "restrictions",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "unitType": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "key": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "base": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "silhouette": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "flags": {
+          "type": "object",
+          "properties": {
+            "barricadeCover": {
+              "type": "boolean"
+            },
+            "attackAfterWithdraw": {
+              "type": "boolean"
+            },
+            "trooper": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "barricadeCover",
+            "attackAfterWithdraw",
+            "trooper"
+          ],
+          "additionalProperties": false
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "key",
+        "name",
+        "base",
+        "silhouette",
+        "flags",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "slot": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "key": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "key",
+        "name",
+        "icon",
+        "source"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

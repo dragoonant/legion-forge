@@ -1,0 +1,656 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://legion-forge.dev/schemas/army.schema.json",
+  "$defs": {
+    "faction": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "prefix": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "playable": {
+          "type": "boolean"
+        },
+        "forceAffinity": {
+          "enum": [
+            null,
+            "dark",
+            "light"
+          ]
+        },
+        "icon": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "prefix",
+        "playable",
+        "forceAffinity",
+        "icon",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "unit": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "subtitle": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "faction": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "rank": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "unitType": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "unique": {
+          "type": "boolean"
+        },
+        "points": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minis": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "wounds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "defence": {
+          "$ref": "common.schema.json#/$defs/DefenceDie"
+        },
+        "courage": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "speed": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "surge": {
+          "$ref": "common.schema.json#/$defs/SurgeChart"
+        },
+        "base": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "weapons": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Id"
+          },
+          "minItems": 1
+        },
+        "keywords": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/KeywordRef"
+          }
+        },
+        "upgradeBar": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Key"
+          }
+        },
+        "forceAffinity": {
+          "enum": [
+            null,
+            "dark",
+            "light"
+          ]
+        },
+        "figure": {
+          "type": "object",
+          "properties": {
+            "archetype": {
+              "$ref": "common.schema.json#/$defs/Key"
+            }
+          },
+          "required": [
+            "archetype"
+          ],
+          "additionalProperties": false
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "subtitle",
+        "faction",
+        "rank",
+        "unitType",
+        "unique",
+        "points",
+        "minis",
+        "wounds",
+        "defence",
+        "courage",
+        "speed",
+        "surge",
+        "base",
+        "weapons",
+        "keywords",
+        "upgradeBar",
+        "forceAffinity",
+        "figure",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "weapon": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "range": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "additionalProperties": false
+        },
+        "dice": {
+          "$ref": "common.schema.json#/$defs/DicePool"
+        },
+        "keywords": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/KeywordRef"
+          }
+        },
+        "flavour": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "range",
+        "dice",
+        "keywords",
+        "flavour",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "upgrade": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "slot": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "points": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unique": {
+          "type": "boolean"
+        },
+        "restrictions": {
+          "type": "object",
+          "properties": {
+            "units": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Id"
+              }
+            },
+            "unitTypes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ranks": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Key"
+              }
+            },
+            "faction": {
+              "$ref": "common.schema.json#/$defs/Key"
+            },
+            "forceAffinity": {
+              "enum": [
+                "dark",
+                "light"
+              ]
+            },
+            "hasKeyword": {
+              "$ref": "common.schema.json#/$defs/Id"
+            },
+            "not": {
+              "type": "object"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "forceAffinity": {
+          "enum": [
+            null,
+            "dark",
+            "light"
+          ]
+        },
+        "addsMinis": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "label": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "weapon": {
+              "$ref": "common.schema.json#/$defs/Id"
+            },
+            "leader": {
+              "type": "boolean"
+            },
+            "persistent": {
+              "type": "object",
+              "properties": {
+                "keywords": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/KeywordRef"
+                  }
+                },
+                "modifiers": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/Modifier"
+                  }
+                }
+              },
+              "required": [
+                "keywords",
+                "modifiers"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "count",
+            "label"
+          ],
+          "additionalProperties": false
+        },
+        "grantsSlots": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Key"
+          }
+        },
+        "keywords": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/KeywordRef"
+          }
+        },
+        "exhaust": {
+          "enum": [
+            "none",
+            "exhaust",
+            "expend"
+          ]
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Effect"
+          }
+        },
+        "sides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "$ref": "common.schema.json#/$defs/Name"
+              },
+              "keywords": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/KeywordRef"
+                }
+              },
+              "weapons": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Id"
+                }
+              },
+              "effects": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Effect"
+                }
+              }
+            },
+            "required": [
+              "name",
+              "keywords",
+              "weapons",
+              "effects"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "flip": {
+          "type": "object",
+          "properties": {
+            "window": {
+              "$ref": "common.schema.json#/$defs/TimingWindowId"
+            },
+            "optional": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "window",
+            "optional"
+          ],
+          "additionalProperties": false
+        },
+        "text": {
+          "$ref": "common.schema.json#/$defs/Text"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "slot",
+        "points",
+        "unique",
+        "exhaust",
+        "effects",
+        "text",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "commandCard": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "pips": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "faction": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "restriction": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "units": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/Id"
+                  }
+                },
+                "op": {
+                  "enum": [
+                    "or",
+                    "and"
+                  ]
+                }
+              },
+              "required": [
+                "units",
+                "op"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "orders": {
+          "type": "object",
+          "properties": {
+            "named": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Id"
+              }
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "filter": {
+              "type": "object",
+              "properties": {
+                "ranks": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/Key"
+                  }
+                },
+                "unitTypes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "units": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/Id"
+                  }
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "count"
+          ],
+          "additionalProperties": false
+        },
+        "keywords": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "permanent",
+              "divulge"
+            ]
+          }
+        },
+        "divulge": {
+          "type": "object",
+          "properties": {
+            "window": {
+              "$ref": "common.schema.json#/$defs/TimingWindowId"
+            },
+            "effects": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Effect"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "window",
+            "effects"
+          ],
+          "additionalProperties": false
+        },
+        "returnsToHand": {
+          "type": "boolean"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Effect"
+          }
+        },
+        "text": {
+          "$ref": "common.schema.json#/$defs/Text"
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "pips",
+        "faction",
+        "restriction",
+        "orders",
+        "effects",
+        "text",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "armyList": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "faction": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "format": {
+          "$ref": "common.schema.json#/$defs/Key"
+        },
+        "assumedSet": {
+          "type": "string"
+        },
+        "units": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "unit": {
+                "$ref": "common.schema.json#/$defs/Id"
+              },
+              "upgrades": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Id"
+                }
+              }
+            },
+            "required": [
+              "unit",
+              "upgrades"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "commandHand": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Id"
+          }
+        },
+        "points": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source": {
+          "$ref": "common.schema.json#/$defs/Sources"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "faction",
+        "format",
+        "assumedSet",
+        "units",
+        "commandHand",
+        "points",
+        "source"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

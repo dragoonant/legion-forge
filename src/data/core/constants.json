@@ -1,0 +1,92 @@
+{
+  "id": "core.constants",
+  "values": {
+    "rangeBand": 6,
+    "halfRange": 3,
+    "maxBand": 5,
+    "contactEpsilon": 0.002,
+    "cohesionDistance": 3,
+    "standbyRange": 2,
+    "standbyMax": 1,
+    "backupAttackerMinRange": 2,
+    "backupRange": 3,
+    "commanderCourageRange": 3,
+    "heightBandSize": 6,
+    "actionsPerActivation": 2,
+    "suppressedActions": 1,
+    "aimRerollDice": 2
+  },
+  "sources": {
+    "rangeBand": {
+      "doc": "CRB",
+      "page": 11,
+      "kind": "primary"
+    },
+    "halfRange": {
+      "doc": "CRB",
+      "page": 12,
+      "kind": "primary"
+    },
+    "maxBand": {
+      "doc": "CRB",
+      "page": 11,
+      "kind": "primary"
+    },
+    "contactEpsilon": {
+      "doc": "own design",
+      "page": "-",
+      "kind": "primary",
+      "checked": "Port choice: digital tolerance for CRB p5 base contact"
+    },
+    "cohesionDistance": {
+      "doc": "CRB",
+      "page": 23,
+      "kind": "primary"
+    },
+    "standbyRange": {
+      "doc": "CRB",
+      "page": 37,
+      "kind": "primary"
+    },
+    "standbyMax": {
+      "doc": "CRB",
+      "page": 37,
+      "kind": "primary"
+    },
+    "backupAttackerMinRange": {
+      "doc": "CRB",
+      "page": 31,
+      "kind": "primary"
+    },
+    "backupRange": {
+      "doc": "CRB",
+      "page": 31,
+      "kind": "primary"
+    },
+    "commanderCourageRange": {
+      "doc": "CRB",
+      "page": 24,
+      "kind": "primary"
+    },
+    "heightBandSize": {
+      "doc": "CRB",
+      "page": 14,
+      "kind": "primary"
+    },
+    "actionsPerActivation": {
+      "doc": "CRB",
+      "page": 23,
+      "kind": "primary"
+    },
+    "suppressedActions": {
+      "doc": "CRB",
+      "page": 23,
+      "kind": "primary"
+    },
+    "aimRerollDice": {
+      "doc": "CRB",
+      "page": 33,
+      "kind": "primary"
+    }
+  }
+}

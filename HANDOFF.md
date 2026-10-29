@@ -9,8 +9,7 @@ M0 is done: scaffold, sources, rules primer and leak list, all specs, RULING log
 ## Owner checks (not blocking; defaults in use)
 1. Two weapon dice disagree between the AMG card PDFs and Legion HQ 2 (DLT-19x / DH-447 sniper, SX-21): the AMG card reading is used (`14-armies.md` end).
 2. Battle card icons were read by eye from image-only PDFs; a spot-check against physical cards would settle `11-battle.md`.
-3. Dice face counts, movement tool lengths and silhouette heights are community values (RULINGs R-13.1, R-6.2, R-10.1); if you own the dice and tools, a count and a ruler settle them.
-4. Format: Recon first (PLAN D11, asked 2026-10-29).
+3. Settled 2026-10-29: Recon first (D11); community values for dice, tools and silhouettes (D17).
 
 ## Where things are
 `STATUS.md` (what exists), `PLAN.md` (decisions D1-D16, milestones), `KICKOFF.md`, `docs/spec/`, `docs/needs-rules-check.md`, `docs/knowledge-base/` (submodule: `git submodule update --init`).
