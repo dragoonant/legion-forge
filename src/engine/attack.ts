@@ -21,6 +21,7 @@ import {
   coverVerdict,
   attackOdds,
   distanceLeaderToUnit,
+  engagedUnitIds,
   minisSeenByUnit,
   poolDiceCounts,
   poolOptions,
@@ -973,7 +974,6 @@ function lookupPool(state: GameState, action: Extract<Action, { type: 'attack.po
   const af = frame(state)
   const atk = attackerOf(state)
   const defenderId = state.attack!.defenderId!
-  void defenderId
   const entries = Object.entries(action.payload.weaponIds)
   if (entries.length === 0) return { error: 'a pool needs at least one weapon', code: 'E_ACTION_RESTRICTED' }
   const kinds = new Set<AttackKind>()
@@ -987,9 +987,14 @@ function lookupPool(state: GameState, action: Extract<Action, { type: 'attack.po
     weapons.push({ miniId, weaponId })
     for (const t of weaponTypes(weaponDef(state, weaponId))) kinds.add(t)
   }
-  const types = weapons.map((w) => weaponTypes(weaponDef(state, w.weaponId))[0]!)
-  if (new Set(types).size > 1) return { error: 'melee and ranged weapons cannot share a pool', code: 'E_ACTION_RESTRICTED' }
-  const kind = types[0]!
+  // a weapon with both icons takes the kind of the pool: melee against a unit the attacker is engaged with, ranged otherwise
+  const allowed = new Set<AttackKind>(['melee', 'ranged'])
+  for (const w of weapons) {
+    const own = weaponTypes(weaponDef(state, w.weaponId))
+    for (const k of [...allowed]) if (!own.includes(k)) allowed.delete(k)
+  }
+  if (allowed.size === 0) return { error: 'melee and ranged weapons cannot share a pool', code: 'E_ACTION_RESTRICTED' }
+  const kind: AttackKind = allowed.size === 1 ? [...allowed][0]! : engagedUnitIds(state, atk).includes(defenderId) ? 'melee' : 'ranged'
   return { kind, weapons }
 }
 

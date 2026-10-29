@@ -16,8 +16,9 @@ describe('MEL melee and engagement', () => {
     const s = game([unit({ id: 'V', seat: 'A', data: 'emp.u.darth-vader-dlots', at: [[0, 0]] }), unit({ id: 'ST', seat: 'A', data: 'emp.u.stormtroopers', at: [[5, 0]] })])
     expect(canMoveIntoMelee(s, u(s, 'V'))).toBe(true)
     expect(canMoveIntoMelee(s, u(s, 'ST'))).toBe(true)
-    // a leader that carries only a ranged weapon may not
-    u(s, 'ST').minis[0]!.weaponIds = ['emp.w.e11']
+    // a unit card with only ranged weapons gives its leader nothing to charge with
+    const def = s.data.units['emp.u.stormtroopers']!
+    s.data = { ...s.data, units: { ...s.data.units, 'emp.u.stormtroopers': { ...def, weapons: ['emp.w.e11'] } } } as typeof s.data
     expect(canMoveIntoMelee(s, u(s, 'ST'))).toBe(false)
   })
 

@@ -148,6 +148,16 @@ function addKw(acc: Map<string, KwInst>, k: J): void {
   else acc.set(k.id, { id: k.id, x, ...(k.param ? { param: String(k.param) } : {}) })
 }
 
+/**
+ * Does the unit still have the rules of an equipped upgrade card? A card that added figures stops applying when every figure
+ * it added is defeated (CRB p18); the `persistent` block of a Squad card stays by its own text. A unit whose figures carry no
+ * upgrade marker (a hand-built test unit) keeps every card.
+ */
+export function upgradeLive(unit: Unit, upId: string): boolean {
+  const mine = unit.minis.filter((m) => m.upgradeId === upId)
+  return mine.length === 0 || mine.some((m) => m.alive)
+}
+
 /** Keywords of a unit: its card, equipped upgrades (current side), persistent upgrade rules, granted keywords. X values add. */
 export function unitKeywords(state: GameState, unit: Unit): KwInst[] {
   const acc = new Map<string, KwInst>()
@@ -156,9 +166,11 @@ export function unitKeywords(state: GameState, unit: Unit): KwInst[] {
   for (const upId of unit.upgrades) {
     const ud = upgradeDef(state, upId)
     if (!ud) continue
-    for (const k of ud.keywords ?? []) addKw(acc, k)
-    const side = ud.sides?.[upgradeSide(unit, upId)]
-    for (const k of side?.keywords ?? []) addKw(acc, k)
+    if (upgradeLive(unit, upId)) {
+      for (const k of ud.keywords ?? []) addKw(acc, k)
+      const side = ud.sides?.[upgradeSide(unit, upId)]
+      for (const k of side?.keywords ?? []) addKw(acc, k)
+    }
     for (const k of ud.addsMinis?.persistent?.keywords ?? []) addKw(acc, k)
   }
   const derived = new Set(acc.keys())
@@ -183,26 +195,35 @@ export function keywordParam(state: GameState, unit: Unit, kwId: string): string
   return unitKeywords(state, unit).find((k) => k.id === kwId)?.param
 }
 
-/** Weapons a model may add (R-12.3): its own upgrade weapons, or the unit's card weapons. */
+/**
+ * Weapons a model may add (R-12.3): the weapon its upgrade card gave it (the current side of a two-sided card) in addition
+ * to the weapons on the unit card (CRB p17); a model with no upgrade weapon has the unit card's.
+ */
 export function miniWeapons(state: GameState, unit: Unit, miniId: string): string[] {
   const m = unit.minis.find((x) => x.id === miniId)
   if (!m) return []
+  const def: J = state.data.units[unit.unitTypeId]
+  const card: string[] = [...(def?.weapons ?? unit.weapons)]
+  let own: string[] = []
   if (m.upgradeId) {
     const ud = upgradeDef(state, m.upgradeId)
     const side = ud?.sides?.[upgradeSide(unit, m.upgradeId)]
-    if (side?.weapons) return [...side.weapons]
+    if (side?.weapons) own = [...side.weapons]
   }
-  if (m.weaponIds) return [...m.weaponIds]
-  const def: J = state.data.units[unit.unitTypeId]
-  return [...(def?.weapons ?? unit.weapons)]
+  if (own.length === 0 && m.weaponIds) own = [...m.weaponIds]
+  return [...own, ...card.filter((w) => !own.includes(w))]
 }
 
 export type WeaponType = 'melee' | 'ranged'
 
-/** Melee weapons have range 0-0; everything else is ranged (a dual-icon weapon is not in the slice data). */
+/**
+ * Melee weapons have range 0-0 and ranged weapons start at range 1; a weapon with both icons (Sonic Charge, Proton Charge:
+ * melee and range 1, range 0-1 in the data) is chosen as melee or ranged when it is added to a pool (CRB p31).
+ */
 export function weaponTypes(w: J): WeaponType[] {
   const r = w.range ?? { min: 1, max: 1 }
-  return r.max === 0 ? ['melee'] : ['ranged']
+  if (r.max === 0) return ['melee']
+  return (r.min ?? 1) === 0 ? ['melee', 'ranged'] : ['ranged']
 }
 
 // ---------------------------------------------------------------------------
@@ -322,7 +343,7 @@ export function unitEffects(state: GameState, unit: Unit, pf?: PoolFrame | null)
   }
   for (const upId of unit.upgrades) {
     const ud = upgradeDef(state, upId)
-    if (!ud) continue
+    if (!ud || !upgradeLive(unit, upId)) continue
     ;(ud.effects ?? []).forEach((effect: J, ei: number) => out.push({ ref: { src: 'upgrade', id: upId, ei, x: 0 }, effect, owner: unit, seat: unit.seat }))
     const side = upgradeSide(unit, upId)
     ;(ud.sides?.[side]?.effects ?? []).forEach((effect: J, ei: number) => out.push({ ref: { src: 'upgrade', id: upId, ei, side, x: 0 }, effect, owner: unit, seat: unit.seat }))
@@ -1385,7 +1406,7 @@ export function grantedActions(state: GameState, unit: Unit): GrantedAction[] {
   const out: GrantedAction[] = []
   for (const upId of unit.upgrades) {
     const ud = upgradeDef(state, upId)
-    if (!ud) continue
+    if (!ud || !upgradeLive(unit, upId)) continue
     for (const e of ud.effects ?? []) {
       const a = e.grant?.action
       if (!a) continue

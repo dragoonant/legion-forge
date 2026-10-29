@@ -154,6 +154,7 @@ export function buildUnit(data: GameData, seat: Seat, index: number, r: RosterUn
   const keywords = ud.keywords.map((k) => ({ id: k.id, ...(k.x !== undefined ? { x: k.x } : {}), ...(k.param !== undefined ? { params: { param: k.param } } : {}) }))
   const flags: Record<string, unknown> = {}
   let leader: Mini | null = null
+  const heavyWeaponTeam = ud.keywords.some((k) => k.id === 'kw.heavy-weapon-team')
   for (const uid of r.upgrades) {
     const up = upgradeData(data, uid)
     for (const k of up.keywords ?? []) keywords.push({ id: k.id, ...(k.x !== undefined ? { x: k.x } : {}) })
@@ -161,7 +162,8 @@ export function buildUnit(data: GameData, seat: Seat, index: number, r: RosterUn
     if (!a) continue
     for (let i = 0; i < a.count; i++) {
       const m = mk({ upgradeId: uid, ...(a.weapon ? { weaponId: a.weapon, weaponIds: [a.weapon] } : {}) })
-      if (a.leader && !leader) leader = m
+      // the figure a Heavy Weapon Team's heavy weapon card adds is the unit leader (CRB p51); so is a Captain-style leader figure
+      if ((a.leader || (heavyWeaponTeam && up.slot === 'heavy-weapon')) && !leader) leader = m
     }
     for (const k of a.persistent?.keywords ?? []) if (!keywords.some((x) => x.id === k.id)) keywords.push({ id: k.id, ...(k.x !== undefined ? { x: k.x } : {}) })
     for (const mod of a.persistent?.modifiers ?? []) if (mod.modifier === 'cohesionRange' && mod.op === 'set' && typeof mod.value === 'number') flags.cohesionRange = mod.value
