@@ -695,6 +695,23 @@ export function orderLimit(state: GameState, seat: Seat): number {
   return lim
 }
 
+/** The exhaust / expend state of an upgrade card on a unit: spent cards cannot be used (CRB p17). */
+export function cardSpent(state: GameState, unit: Unit, upId: string): boolean {
+  const kind = upgradeDef(state, upId)?.exhaust ?? 'none'
+  if (kind === 'exhaust') return ((unit.flags.exhausted as string[] | undefined) ?? []).includes(upId) || ((unit.flags.expended as string[] | undefined) ?? []).includes(upId)
+  if (kind === 'expend') return ((unit.flags.expended as string[] | undefined) ?? []).includes(upId)
+  return false
+}
+
+/** Exhaust or expend the card after one of its effects was used. */
+function spendCard(unit: Unit, upId: string, state: GameState): void {
+  const kind = upgradeDef(state, upId)?.exhaust ?? 'none'
+  const key = kind === 'exhaust' ? 'exhausted' : kind === 'expend' ? 'expended' : null
+  if (!key) return
+  const list = (unit.flags[key] as string[] | undefined) ?? []
+  if (!list.includes(upId)) unit.flags[key] = [...list, upId]
+}
+
 /** Net extra actions from effects (extraAction minus fewerActions) for a unit's current activation. */
 export function actionDelta(state: GameState, unitId: string): number {
   let d = 0
@@ -811,6 +828,8 @@ export function collectSteps(state: GameState, run: WindowRun): Step[] {
   const consider = (inst: EffInst, owner: Unit | null): void => {
     const e = inst.effect
     if (!e) return
+    // an exhausted (or expended) card cannot be used until it is readied (CRB p17): its triggered effects wait
+    if (inst.ref.src === 'upgrade' && !inst.ref.action && owner && cardSpent(state, owner, inst.ref.id)) return
     if (e.unimplemented) {
       // reached only when the unit actually carries the effect in a running window
       throw new EngineInvariantError(`unimplemented effect reached (${inst.ref.id}): ${String(e.unimplemented)}`)
@@ -983,6 +1002,8 @@ function execStep(ctx: Ctx, run: WindowRun, step: Step): VerbResult {
     step.vi++
   }
   if (effect.limit) markLimit(ctx, inst, effect.limit, owner)
+  // using a card with an exhaust icon exhausts it; a granted action did that when it was declared
+  if (step.ref.src === 'upgrade' && !step.ref.action && owner) spendCard(owner, step.ref.id, state)
   run.fired.push(step.key)
   emitFired(ctx, step)
   const hookName = step.ref.src === 'keyword' ? step.ref.id : step.ref.id

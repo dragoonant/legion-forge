@@ -830,7 +830,8 @@
             "coverCancelsHits",
             "tokenCap",
             "suppressionRemovable",
-            "suppressible"
+            "suppressible",
+            "notSuppressed"
           ]
         },
         "op": {

@@ -10,10 +10,11 @@ import { round3 } from './geometry'
 import { runHook } from './hooks'
 import { miniLosBody, type LosBody } from './los'
 import { makeAction } from './actions'
-import { miniBody } from './measure'
+import { inBaseContact, miniBody, refreshEngagement } from './measure'
+import { canMoveIntoMelee, placeIntoContact } from './melee'
 import { refreshPanic } from './morale'
 import { reject, type Ctx, type Handled, type ModuleDef } from './registry'
-import { constants, EngineInvariantError, leaderOf, unitsOnTable } from './state'
+import { aliveMinis, constants, EngineInvariantError, leaderOf, unitsOnTable } from './state'
 import { piecesOverlapping } from './table'
 import {
   checkBasePlacement,
@@ -35,6 +36,7 @@ import {
 import type {
   Action,
   GameState,
+  Mini,
   MoveFrame,
   PendingDecision,
   Pose2,
@@ -69,7 +71,7 @@ export function worldFor(state: GameState, seat: Seat, excludeUnitId: string | n
     if (u.id === excludeUnitId) continue
     for (const m of u.minis) {
       if (!m.alive) continue
-      others.push({ id: m.id, pos: { x: m.pos.x, z: m.pos.z }, baseRadius: miniBody(state, m).baseRadius, enemy: u.seat !== seat })
+      others.push({ id: m.id, pos: { x: m.pos.x, z: m.pos.z }, baseRadius: miniBody(state, m).baseRadius, enemy: u.seat !== seat, unitId: u.id })
     }
   }
   const pois = markersOf(state, 'poi').map((m) => markerFootprint(state, m))
@@ -92,9 +94,17 @@ export function moverFor(state: GameState, unit: Unit, frame: MoveFrame): Mover 
     baseRadius: body.baseRadius,
     silhouetteHeight: silhouetteHeight(state, unit),
     maxSpeed: frame.kind === 'climb' || frame.kind === 'withdraw' ? 1 : frame.maxSpeed,
-    canEngage: false,
+    // a unit with a melee weapon may end its Move in base contact with an enemy, unless it Withdrew this activation (CRB p28, p29)
+    canEngage: frame.kind !== 'withdraw' && frame.kind !== 'controlled' && canMoveIntoMelee(state, unit) && !withdrewThisActivation(state, unit),
     startsInDifficult,
+    ...(frame.ignoreDifficult ? { ignoreDifficult: true } : {}),
+    ...(frame.jumpHeight !== undefined ? { jumpHeight: frame.jumpHeight } : {}),
   }
+}
+
+function withdrewThisActivation(state: GameState, unit: Unit): boolean {
+  const act = state.activation.current
+  return !!act && act.unitId === unit.id && act.performed.some((p) => p.action === 'withdraw')
 }
 
 function deployStarts(state: GameState, seat: Seat): DeployStart[] {
@@ -270,6 +280,43 @@ interface TrooperOpts {
   region?: readonly (readonly Vec2[])[]
   /** keep the models out of difficult terrain (the tool used would not fit the reduced speed) */
   avoidDifficult?: boolean
+  /** the leader ended in base contact with this enemy unit: the other models go into base contact with it too (CRB p28 step 1) */
+  melee?: string
+}
+
+const TOUCH = 0.0003
+
+/**
+ * A legal spot for a model of a unit Moving into Melee: in base contact with a model of the enemy unit, in cohesion with the
+ * leader, never touching a second enemy unit; the one nearest `prefer`. Null when none exists.
+ */
+function contactSpot(
+  state: GameState,
+  world: ToolWorld,
+  leader: LosBody,
+  tr: LosBody,
+  enemy: Unit,
+  c: { prefer: Vec2; fromY: number; height: number },
+): { pos: Vec2; y: number } | null {
+  let best: { pos: Vec2; y: number; score: number } | null = null
+  const targets = aliveMinis(enemy)
+    .map((m) => ({ m, d: Math.hypot(m.pos.x - c.prefer.x, m.pos.z - c.prefer.z) }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, 6)
+  for (const { m: t } of targets) {
+    const dist = tr.baseRadius + miniBody(state, t).baseRadius + TOUCH
+    for (let k = 0; k < 36; k++) {
+      const a = (2 * Math.PI * k) / 36
+      const pos = { x: round3(t.pos.x + Math.sin(a) * dist), z: round3(t.pos.z + Math.cos(a) * dist) }
+      const score = Math.hypot(pos.x - c.prefer.x, pos.z - c.prefer.z)
+      if (best && score >= best.score) continue
+      const placed = checkBasePlacement(world, { pos, baseRadius: tr.baseRadius }, { fromY: c.fromY, silhouetteHeight: c.height, climb: false, canEngage: true })
+      if (!placed.ok || placed.info.touchingEnemies.some((id) => !enemy.minis.some((m) => m.id === id))) continue
+      if (!checkCohesion(world.table, world.constants, leader, { ...tr, pos: { x: pos.x, y: placed.info.surface, z: pos.z } }).ok) continue
+      best = { pos, y: placed.info.surface, score }
+    }
+  }
+  return best ? { pos: best.pos, y: best.y } : null
 }
 
 function trooperWorld(state: GameState, unit: Unit, leaderPos: Vec2, placed: readonly Obstacle[]): ToolWorld {
@@ -329,7 +376,9 @@ export function planTroopers(state: GameState, unit: Unit, opts: TrooperOpts): T
     let pos: Vec2
     let y: number
     let cohesive: boolean
-    const found = searchSpot(world, lb, body, { ...(opts.region ? { region: opts.region } : {}), avoidDifficult: opts.avoidDifficult === true, prefer, fromY: opts.leader.y, height })
+    const foe = opts.melee ? state.units[opts.melee] : undefined
+    const contact = foe ? contactSpot(state, world, lb, body, foe, { prefer, fromY: opts.leader.y, height }) : null
+    const found = contact ?? searchSpot(world, lb, body, { ...(opts.region ? { region: opts.region } : {}), avoidDifficult: opts.avoidDifficult === true, prefer, fromY: opts.leader.y, height })
     if (found) {
       pos = found.pos
       y = found.y
@@ -375,9 +424,19 @@ export function checkTroopers(state: GameState, unit: Unit, placements: readonly
     if (opts.region && !opts.region.some((poly) => footprintInsidePolygon(f, poly as Vec2[]))) {
       return { ok: false, code: 'E_OUT_OF_RANGE', reason: 'a deploying model must lie completely inside the allied Territory' }
     }
-    const placed = checkBasePlacement(world, f, { fromY: opts.leader.y, silhouetteHeight: height, climb: false, canEngage: false })
+    const placed = checkBasePlacement(world, f, { fromY: opts.leader.y, silhouetteHeight: height, climb: false, canEngage: opts.melee !== undefined })
     if (!placed.ok) return { ok: false, code: placed.code as 'E_OVERLAP', reason: placed.reason }
     const lb = leaderBody(state, unit, opts.leader)
+    const foe = opts.melee ? state.units[opts.melee] : undefined
+    if (foe) {
+      // Moving into Melee (CRB p28): every model goes into base contact with the enemy unit when it can, and never touches a second one
+      if (placed.info.touchingEnemies.some((id) => !foe.minis.some((m) => m.id === id))) {
+        return { ok: false, code: 'E_ENGAGED', reason: 'a model may never end in base contact with models of two enemy units' }
+      }
+      if (placed.info.touchingEnemies.length === 0 && contactSpot(state, world, lb, body, foe, { prefer: pos, fromY: opts.leader.y, height })) {
+        return { ok: false, code: 'E_COHESION', reason: `${m.id} can be placed in base contact with the enemy unit in cohesion, so it must be` }
+      }
+    }
     const verdict = checkCohesion(world.table, world.constants, lb, { ...body, pos: { x: pos.x, y: placed.info.surface, z: pos.z } })
     let outOfCohesion = false
     if (!verdict.ok) {
@@ -441,9 +500,16 @@ function finishMove(ctx: Ctx, unit: Unit, info: { toolSpeed: number; toolPath: V
   if (wasReserve) ctx.emit({ type: 'UnitDeployed', unitId: unit.id, minis: snapshot(unit) }, unit.seat)
   // Cumbersome / Sniper Team read this; the activation clears it. Allied Commander range may have changed: re-derive Panicked.
   if (ctx.state.activation.current?.unitId === unit.id) unit.flags.movedThisActivation = true
+  const frame = flowOf(ctx.state).move
+  // a leader that ends in base contact with an enemy has Moved into Melee: the enemy unit places its models (CRB p28 steps 2 and 3)
+  const foe = frame ? contactEnemy(ctx.state, unit) : null
+  if (foe) {
+    resolveMeleeEntry(ctx, unit, foe)
+    refreshEngagement(ctx)
+    frame!.meleeWith = foe.id
+  }
   refreshPanic(ctx)
   // Standby tokens are spent before any effect that triggers after a Move is resolved (CRB p37)
-  const frame = flowOf(ctx.state).move
   const activationMove = !!frame && frame.kind !== 'standby' && frame.kind !== 'controlled' && ctx.state.activation.current?.unitId === unit.id
   if (activationMove && raiseStandby(ctx, 'move.ended')) return
   moveEndedWindow(ctx)
@@ -459,7 +525,61 @@ export function moveEndedWindow(ctx: Ctx): void {
   if (!frame) throw new EngineInvariantError('move.ended with no Move in progress')
   const info = { unitId: frame.unitId, moveKind: frame.kind === 'climb' ? 'climb' : frame.kind === 'controlled' ? 'forced' : 'standard', fromAction: frame.kind !== 'controlled' }
   if (openWindow(ctx, 'move.ended', info, `m${ctx.state.seq}`, 'move.ended')) return
+  afterMoveEndedWindow(ctx)
+}
+
+/** Charge: a Move action during the unit's Activation that put it in base contact with an enemy opens `melee.charged` (CRB p47). */
+export function afterMoveEndedWindow(ctx: Ctx): void {
+  const frame = flowOf(ctx.state).move
+  if (frame?.meleeWith && frame.kind !== 'standby' && frame.kind !== 'controlled' && ctx.state.activation.current?.unitId === frame.unitId) {
+    const info = { unitId: frame.unitId, targetId: frame.meleeWith, startedMelee: true, fromAction: true }
+    if (openWindow(ctx, 'melee.charged', info, `c${ctx.state.seq}`, 'move.charged')) return
+  }
   resumeAfterMove(ctx)
+}
+
+/** The enemy unit with a model in base contact with the unit's leader, if any. */
+function contactEnemy(state: GameState, unit: Unit): Unit | null {
+  const c = constants(state)
+  const lead = miniBody(state, leaderOf(unit))
+  for (const o of unitsOnTable(state)) {
+    if (o.seat === unit.seat) continue
+    if (aliveMinis(o).some((m) => inBaseContact(lead, miniBody(state, m), c))) return o
+  }
+  return null
+}
+
+/**
+ * Steps 2 and 3 of a Move into Melee (CRB p28): if the enemy leader is not in base contact it is placed into contact with
+ * the mover; then every other enemy model that is out of contact or out of cohesion goes into contact with the mover's unit.
+ * RULING Port choice: the opponent's placements are made by the engine (the nearest legal spot to where the model stands,
+ * never touching a third unit); a model that cannot reach contact stays put and is flagged out of cohesion.
+ */
+function resolveMeleeEntry(ctx: Ctx, mover: Unit, foe: Unit): void {
+  const s = ctx.state
+  const c = constants(s)
+  const touching = (m: Mini, other: Unit): boolean => aliveMinis(other).some((o) => inBaseContact(miniBody(s, m), miniBody(s, o), c))
+  const moved: { miniId: string; pos: { x: number; y: number; z: number } }[] = []
+  const place = (m: Mini): void => {
+    const pl = placeIntoContact(s, foe, [m], mover).placements[0]
+    if (!pl) return
+    m.pos = { x: pl.x, y: m.pos.y, z: pl.z }
+    moved.push({ miniId: m.id, pos: { ...m.pos } })
+  }
+  const lead = leaderOf(foe)
+  if (!touching(lead, mover)) place(lead)
+  const cohesion = { cohesionDistance: cohesionOf(s, foe) }
+  const cohesive = (m: Mini): boolean => checkCohesion(s.table.def, cohesion, miniLosBody(s, lead), miniLosBody(s, m)).ok
+  for (const m of aliveMinis(foe)) {
+    if (m.id === foe.leaderId) continue
+    if (!touching(m, mover) || !cohesive(m)) place(m)
+  }
+  for (const m of aliveMinis(foe)) {
+    if (m.id === foe.leaderId) continue
+    if (cohesive(m)) delete m.outOfCohesion
+    else m.outOfCohesion = true
+  }
+  if (moved.length > 0) ctx.emit({ type: 'MeleeContact', unitId: foe.id, targetId: mover.id, minis: moved }, foe.seat)
 }
 
 /** The `move.ended` window is done: hand back to the activation (or the Standby response). */
@@ -521,9 +641,11 @@ export const movementModule: ModuleDef = {
           const oldPos = new Map(rest.map((m) => [m.id, { x: m.pos.x, z: m.pos.z }]))
           const maxSp = frame.kind === 'climb' || frame.kind === 'withdraw' ? 1 : frame.maxSpeed
           const diffAlready = v.touchesDifficult || v.endsInDifficult || startedDifficult
+          const foeUnit = v.touchingEnemies.length > 0 ? unitsOnTable(ctx.state).find((o) => o.minis.some((m) => m.id === v.touchingEnemies[0])) : undefined
           const plan = planTroopers(ctx.state, u, {
             leader: lead.pos,
-            avoidDifficult: !diffAlready && frame.kind !== 'climb' && v.speed > Math.max(1, maxSp - 1),
+            ...(foeUnit ? { melee: foeUnit.id } : {}),
+            avoidDifficult: !frame.ignoreDifficult && !diffAlready && frame.kind !== 'climb' && v.speed > Math.max(1, maxSp - 1),
             ...(deploying ? {} : { prefer: (id: string) => ({ x: oldPos.get(id)!.x + delta.x, z: oldPos.get(id)!.z + delta.z }) }),
           })
           ctx.raise({
@@ -540,6 +662,7 @@ export const movementModule: ModuleDef = {
               toolPath: v.toolPath,
               leaderFrom: from,
               suggestion: plan.placements.map(({ miniId, x, z, yaw }) => ({ miniId, x, z, yaw })),
+              ...(foeUnit ? { meleeEnemyId: foeUnit.id } : {}),
             },
             constraints: { kind: 'troopers', unitId: u.id, cohesion: { distance: cohesionOf(ctx.state, u), vertical: silhouetteHeight(ctx.state, u) } },
             canPass: true,
@@ -558,15 +681,16 @@ export const movementModule: ModuleDef = {
       toolPath: Vec2[]
       leaderFrom: { x: number; y: number; z: number }
       suggestion: TrooperPlacement[]
+      meleeEnemyId?: string
     }
     const lead = leaderOf(unit)
-    const opts: TrooperOpts = { leader: { x: lead.pos.x, y: lead.pos.y, z: lead.pos.z } }
+    const opts: TrooperOpts = { leader: { x: lead.pos.x, y: lead.pos.y, z: lead.pos.z }, ...(ctxInfo.meleeEnemyId ? { melee: ctxInfo.meleeEnemyId } : {}) }
     const placements = action.type === 'pass' ? ctxInfo.suggestion : action.type === 'move.troopers' ? action.payload.placements : null
     if (!placements) return reject('E_WRONG_DECISION', 'expected trooper placements')
     const check = checkTroopers(state, unit, placements, opts)
     if (!check.ok) return reject(check.code, check.reason)
     const difficult = check.anyDifficult || ctxInfo.touchesDifficult || ctxInfo.endsInDifficult || ctxInfo.startedDifficult
-    if (frame.kind !== 'climb') {
+    if (frame.kind !== 'climb' && !frame.ignoreDifficult) {
       const d = troopersDifficultCheck(ctxInfo.maxSpeed, ctxInfo.toolSpeed, difficult)
       if (!d.ok) return reject(d.code, d.reason)
     }

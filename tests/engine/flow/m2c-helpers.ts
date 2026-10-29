@@ -40,9 +40,9 @@ export function startOf(state: GameState, unitId: string, rng?: ScriptedRng): St
 }
 
 /** Everyone else is moved out of the way: `atk` at (x, z) and `def` `distance` inches further along z, both in the open. */
-export function duelOf(first: StepResult, atkType: string, defType: string, distance: number, at: [number, number] = [-14, -14]): { state: GameState; atk: string; def: string } {
-  const atk = unitBy(first.state, 'A', atkType, 0).id
-  const def = unitBy(first.state, 'B', defType, 0).id
+export function duelOf(first: StepResult, atkType: string, defType: string, distance: number, at: [number, number] = [-14, -14], atkSeat: Seat = 'A'): { state: GameState; atk: string; def: string } {
+  const atk = unitBy(first.state, atkSeat, atkType, 0).id
+  const def = unitBy(first.state, atkSeat === 'A' ? 'B' : 'A', defType, 0).id
   const state = ready(first.state, atk, at, (x) => {
     Object.values(x.units).filter((u) => u.location === 'table' && u.id !== atk && u.id !== def).forEach((u, i) => place(u, 16, 16 - 3.5 * i))
     place(x.units[def]!, at[0], at[1] + distance)
@@ -57,4 +57,20 @@ export function soloOf(first: StepResult, seat: Seat, dataId: string, at: [numbe
     Object.values(x.units).filter((u) => u.location === 'table' && u.id !== id).forEach((u, i) => place(u, 30 - 4 * Math.floor(i / 8), 16 - 3.5 * (i % 8)))
   })
   return { state, id }
+}
+
+/** The unit's leader at (x, z) and its other figures in a row 1.4" behind it (further along +z), so the leader's front is clear. */
+export function lineUp(state: GameState, unitId: string, x: number, z: number): GameState {
+  return edit(state, (s) => {
+    const u = s.units[unitId]!
+    u.location = 'table'
+    let k = 0
+    for (const m of u.minis) {
+      if (m.id === u.leaderId) m.pos = { x, y: 0, z }
+      else {
+        k++
+        m.pos = { x: x + (k % 2 === 0 ? -1 : 1) * 1.3 * Math.ceil(k / 2), y: 0, z: z + 1.4 }
+      }
+    }
+  })
 }

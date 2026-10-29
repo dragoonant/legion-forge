@@ -4,7 +4,7 @@ import { runBattleHook } from '../../../src/engine/armies'
 import { checkCodeParams, hookFireCount, registeredCodeHooks, resetFireCounts } from '../../../src/engine/code-hooks'
 import { cardActions } from '../../../src/engine/commandCards'
 import { miniWeapons, unitKeywords } from '../../../src/engine/keywords'
-import { applySuppression } from '../../../src/engine/morale'
+import { actionsFor, applySuppression, isPanicked, isSuppressed, removeSuppression } from '../../../src/engine/morale'
 import { createCtx } from '../../../src/engine/registry'
 import { atk, beginAttack, choose, def, eventsOf, game, menu, ok, optionIds, script, u, unit, uninstallModules } from './harness'
 import type { GameState } from '../../../src/engine/types'
@@ -56,14 +56,27 @@ describe('UPG upgrade cards', () => {
     expect(eventsOf(r, 'ActionResolved')).toHaveLength(1)
   })
 
-  it('UPG-005 Captain: at activation start the unit may become unable to gain or lose suppression this activation', () => {
-    const st = unit({ id: 'ST', seat: 'A', data: 'emp.u.stormtroopers', at: [[0, 0]], upgrades: ['emp.up.stormtrooper-captain'] })
-    let r = fire(game([st]), 'activation.start', { unitId: 'ST' })
+  it('UPG-005 Captain: the unit is not Suppressed (or Panicked) this activation and keeps both actions, it cannot remove suppression, and the card is then exhausted', () => {
+    const st = unit({ id: 'ST', seat: 'A', data: 'emp.u.stormtroopers', at: [[0, 0]], upgrades: ['emp.up.stormtrooper-captain'], suppression: 2 })
+    const s0 = game([st])
+    expect(isSuppressed(s0, u(s0, 'ST'))).toBe(true)
+    expect(isPanicked(s0, u(s0, 'ST'))).toBe(true)
+    expect(actionsFor(s0, u(s0, 'ST'))).toBe(0)
+    let r = fire(s0, 'activation.start', { unitId: 'ST' })
     expect(r.pending!.kind).toBe('keyword.choice')
     r = ok(choose(r.state, 'use'))
-    const c = createCtx(r.state, stubRng, null, 0)
-    expect(applySuppression(c, 'ST', 2, 'test')).toBe(0)
-    expect(u(c.state, 'ST').suppression).toBe(0)
+    const s1 = r.state
+    expect(isSuppressed(s1, u(s1, 'ST'))).toBe(false)
+    expect(isPanicked(s1, u(s1, 'ST'))).toBe(false)
+    expect(actionsFor(s1, u(s1, 'ST'))).toBe(2)
+    const c = createCtx(s1, stubRng, null, 0)
+    expect(removeSuppression(c, 'ST', 2, 'rally')).toBe(0)
+    expect(u(c.state, 'ST').suppression).toBe(2)
+    // tokens still accumulate, they just do not make the unit Suppressed this activation
+    expect(applySuppression(c, 'ST', 1, 'test')).toBe(1)
+    // the card is exhausted: it cannot be used again until a Recover readies it
+    expect(u(s1, 'ST').flags['exhausted']).toEqual(['emp.up.stormtrooper-captain'])
+    expect(fire(s1, 'activation.start', { unitId: 'ST' }).pending!.kind).toBe('action.choose')
   })
 
   it('UPG-006 Anger: whenever the unit suffers wounds it gains an Aim', () => {
@@ -85,6 +98,18 @@ describe('UPG upgrade cards', () => {
     r = ok(choose(r.state, 'opt:1', script(def('white', 'blank'))))
     expect(eventsOf(r, 'ResultsCancelled').find((e) => e.source === 'neu.up.force-barrier')).toMatchObject({ result: 'hit', n: 2 })
     expect(eventsOf(r, 'Compared')[0]).toMatchObject({ hits: 1 })
+    // using it exhausts the card (CRB p17)
+    expect(u(r.state, 'L').flags['exhausted']).toEqual(['neu.up.force-barrier'])
+  })
+
+  it('UPG-007b Force Barrier: an exhausted card is not offered again until a Recover readies it', () => {
+    const luke = unit({ id: 'L', seat: 'B', data: 'reb.u.luke-hotr', at: [[3, 3]], upgrades: ['neu.up.force-barrier'] })
+    luke.flags['exhausted'] = ['neu.up.force-barrier']
+    const target = rt({ at: [[0, 3], [1.5, 3.5]] })
+    const shooter = unit({ id: 'S', seat: 'A', data: 'emp.u.stormtroopers', at: [[0, -5], [-1.5, -5.5], [1.5, -5.5]] })
+    let r = beginAttack(game([luke, target, shooter]), 'S', 'RT')
+    r = ok(choose(r.state, 'pool:ranged:all', script(atk('white', 'hit', 'hit', 'hit'), def('white', 'blank', 'blank', 'blank'))))
+    expect(r.pending?.context['keyword']).not.toBe('neu.up.force-barrier')
   })
 
   it('UPG-008 Force Guidance: up to two allied units within range 2 gain a Surge token', () => {

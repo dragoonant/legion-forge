@@ -13,6 +13,8 @@ import type { MovementToolDef, Polygon, Pose2, RejectionCode, RuleConstants, Seg
 export interface Obstacle extends Footprint {
   id: string
   enemy: boolean
+  /** the unit the base belongs to: a model may never touch bases of two enemy units (CRB p28) */
+  unitId?: string
 }
 
 export interface ToolWorld {
@@ -37,6 +39,10 @@ export interface Mover {
   canEngage: boolean
   /** any miniature of the unit starts in difficult terrain (R-6.7) */
   startsInDifficult?: boolean
+  /** a Scout or Jump Move ignores difficult terrain (CRB p52, p54) */
+  ignoreDifficult?: boolean
+  /** a Jump X Move: terrain of height X or lower is ignored, may be stood on, and impassable terrain may lie under the tool (CRB p52) */
+  jumpHeight?: number
 }
 
 /** Where a deploying unit's tool starts: a span on the table edge and the inward normal (R-6.6). */
@@ -194,6 +200,8 @@ export interface PlacementRules {
   canEngage: boolean
   /** ignore the vertical-change rule (deploying: measured from the edge) */
   skipVertical?: boolean
+  /** a Jump X Move may end on terrain up to this height */
+  jumpHeight?: number
   /** ids of obstacles to ignore (the mover itself) */
   ignore?: ReadonlySet<string>
 }
@@ -231,7 +239,7 @@ export function checkBasePlacement(world: ToolWorld, base: Footprint, r: Placeme
     }
   }
   if (!r.skipVertical) {
-    const limit = r.climb ? world.constants.heightBandSize : r.silhouetteHeight
+    const limit = Math.max(r.climb ? world.constants.heightBandSize : r.silhouetteHeight, r.jumpHeight ?? 0)
     const change = Math.abs(surface - r.fromY)
     if (change > limit + 1e-9) {
       return { ok: false, code: 'E_TERRAIN', reason: `height change ${round3(change)}" is more than ${round3(limit)}"${r.climb ? '' : ' (a Climb is needed)'}`, check: 4 }
@@ -242,6 +250,11 @@ export function checkBasePlacement(world: ToolWorld, base: Footprint, r: Placeme
     .map((o) => o.id)
   if (touchingEnemies.length > 0 && !r.canEngage) {
     return { ok: false, code: 'E_ENGAGED', reason: 'this leader has no melee weapon and may not end in base contact with an enemy', check: 5 }
+  }
+  // a model never touches bases of two enemy units, though several units may join a Melee later (CRB p28)
+  const touchedUnits = new Set(world.others.filter((o) => touchingEnemies.includes(o.id)).map((o) => o.unitId ?? o.id))
+  if (touchedUnits.size > 1) {
+    return { ok: false, code: 'E_ENGAGED', reason: 'a model may never end in base contact with models of two enemy units', check: 5 }
   }
   return { ok: true, info: { surface, difficult, touchingEnemies } }
 }
@@ -296,8 +309,9 @@ export function validateToolPose(world: ToolWorld, mover: Mover, pose: ToolPose,
   const reach = pose.climb ? band : mover.silhouetteHeight
   let touchesDifficult = false
   for (const p of piecesUnderTool(world.table, shape)) {
-    if (p.movement === 'impassable') return fail('E_TERRAIN', 2, `the tool crosses impassable terrain (${p.id})`)
-    if ((p.kind === 'obstacle' || p.kind === 'building' || p.kind === 'barricade') && p.heightIn - mover.y > reach + 1e-9) {
+    const jumped = mover.jumpHeight !== undefined && p.heightIn <= mover.jumpHeight + 1e-9
+    if (p.movement === 'impassable' && mover.jumpHeight === undefined) return fail('E_TERRAIN', 2, `the tool crosses impassable terrain (${p.id})`)
+    if (!jumped && (p.kind === 'obstacle' || p.kind === 'building' || p.kind === 'barricade') && p.heightIn - mover.y > reach + 1e-9) {
       return fail('E_TERRAIN', 2, `the tool crosses ${p.id}, taller than ${round3(reach)}"${pose.climb ? '' : ' (a Climb is needed)'}`)
     }
     if (p.movement === 'difficult') touchesDifficult = true
@@ -316,12 +330,13 @@ export function validateToolPose(world: ToolWorld, mover: Mover, pose: ToolPose,
     silhouetteHeight: mover.silhouetteHeight,
     climb: pose.climb === true,
     canEngage: mover.canEngage,
+    ...(mover.jumpHeight !== undefined ? { jumpHeight: mover.jumpHeight } : {}),
     ...(deploy ? { skipVertical: true } : {}),
   })
   if (!placed.ok) return fail(placed.code, placed.check, placed.reason)
 
   // difficult terrain: starting in it, the tool crossing it or ending in it costs one speed (min 1) (R-6.7)
-  const difficult = touchesDifficult || placed.info.difficult || mover.startsInDifficult === true
+  const difficult = mover.ignoreDifficult !== true && (touchesDifficult || placed.info.difficult || mover.startsInDifficult === true)
   const effectiveSpeed = difficult ? Math.max(1, mover.maxSpeed - 1) : mover.maxSpeed
   if (!pose.climb && pose.speed > effectiveSpeed) {
     return fail('E_TERRAIN', 6, `difficult terrain limits this move to the Speed-${effectiveSpeed} tool`)

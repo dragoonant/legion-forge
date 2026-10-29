@@ -10,7 +10,7 @@ import { battleModule } from './battle'
 import { afterOrders, afterReveal, commandModule } from './command'
 import { afterRoundEnd, afterScoring, afterStart, endphaseModule } from './endphase'
 import { registerFrameResume, registerWindowOpener } from './hooks'
-import { movementModule, resumeAfterMove } from './movement'
+import { afterMoveEndedWindow, movementModule, resumeAfterMove } from './movement'
 import { setupModule as setupModuleDef } from './setup'
 import { EngineInvariantError } from './state'
 import { stubModule, type Ctx, type ModuleDef } from './registry'
@@ -43,7 +43,8 @@ const RESUMERS: Record<string, (ctx: Ctx) => void> = {
   'act.rallied': afterRallied,
   'act.ended': afterEndWindow,
   'act.resolved': afterActionResolved,
-  'move.ended': resumeAfterMove,
+  'move.ended': afterMoveEndedWindow,
+  'move.charged': resumeAfterMove,
   'end.started': afterStart,
   'end.scored': afterScoring,
   'round.ended': afterRoundEnd,

@@ -216,7 +216,8 @@ export interface Activation {
   seat: Seat
   via: 'order' | 'pool'
   actionsLeft: number
-  performed: { action: string; free: boolean }[]
+  /** `move`: the action was a Move action (a Move, Climb, Withdraw, free Move or a Jump), what Relentless and Standby read */
+  performed: { action: string; free: boolean; move?: boolean }[]
   declared: { action: string; params?: Record<string, unknown> } | null
   /** the unit began its Make Actions step Panicked (CRB p23): it is tested once, then fixed for the activation */
   panickedAtStart?: boolean
@@ -596,6 +597,12 @@ export interface MoveFrame {
   kind: 'move' | 'climb' | 'withdraw' | 'standby' | 'deploy' | 'controlled'
   maxSpeed: number
   free: boolean
+  /** a Scout or Jump Move: difficult terrain does not slow it (CRB p52, p54) */
+  ignoreDifficult?: boolean
+  /** a Jump X Move: terrain up to this height is ignored or stood on (CRB p52) */
+  jumpHeight?: number
+  /** the enemy unit this Move put the leader in base contact with (a Move into Melee, CRB p28) */
+  meleeWith?: string
 }
 
 /** The flow machine's private state, kept in `state.battle.data.flow`. */
