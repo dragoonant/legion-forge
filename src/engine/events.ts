@@ -11,6 +11,7 @@ export interface EventBase {
 }
 
 export type GameEventBody =
+  | FlowEventBody
   // game
   | { type: 'GameCreated'; seed: string; engineVersion: string }
   | { type: 'RoundStarted'; round: number }
@@ -86,3 +87,15 @@ export type GameEventBody =
 
 export type GameEvent = GameEventBody & EventBase
 export type EventType = GameEventBody['type']
+
+// --- M2b-flow ---
+// Events the flow modules add (docs/spec/00-architecture.md section 11). Folded into GameEventBody above.
+export type FlowEventBody =
+  | { type: 'BluePlayerDecided'; blue: Seat; method: 'redDie' | 'blackDice' | 'forced' }
+  | { type: 'EdgeChosen'; edge: string; rotation: number }
+  | { type: 'PoolTokenRemoved'; seat: Seat; rank: string; reason: 'deadDraw' | 'unitDefeated' }
+  | { type: 'PassTokensGranted'; seat: Seat; n: number }
+  | { type: 'Passed'; seat: Seat; spentToken: boolean }
+  | { type: 'UnitPromoted'; unitId: string }
+  | { type: 'CardDiscarded'; seat: Seat; cardId: string }
+  | { type: 'CardReturned'; seat: Seat; cardId: string }

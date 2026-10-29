@@ -23,7 +23,7 @@ import {
   type GameState,
 } from '../../src/engine'
 import { computeEngagement } from '../../src/engine/measure'
-import { resetModules, setModule } from '../../src/engine/modules'
+import { resetModules, setModule, useStubModules } from '../../src/engine/modules'
 import { createCtx, endGame, reject, type ModuleDef } from '../../src/engine/registry'
 import { canon, cloneState, hashState } from '../../src/engine/state'
 import { compileTable } from '../../src/engine/table'
@@ -109,8 +109,9 @@ function pick(state: GameState, seat: Seat, cardId: string): Action {
 }
 
 describe('contract: stub flow', () => {
+  beforeEach(useStubModules)
+  afterEach(resetModules)
   it('createGame wires the whole flow with stubbed rules modules: one open decision, answers rejected with E_TODO, state untouched', () => {
-    resetModules()
     const r = createGame(FIXTURE_SETUP, 'seed-1', FIXTURE_BUNDLE)
     expect(r.pending).toMatchObject({ kind: 'setup.battle', seat: 'A' })
     expect(r.state.phase).toBe('setup')
@@ -310,6 +311,8 @@ describe('contract: simultaneous hidden picks', () => {
 })
 
 describe('contract: plumbing', () => {
+  beforeEach(useStubModules)
+  afterEach(resetModules)
   it('rng: the seeded stream is deterministic and unbiased in range; a scripted stream is exact and throws when dry', () => {
     const a = SeededRng.fromSeed('s')
     const b = SeededRng.fromSeed('s')

@@ -552,3 +552,89 @@ export interface SaveFile {
   actions: Action[]
   finalHash: string
 }
+
+// --- M2b-flow ---
+// Additive (docs/spec/00-architecture.md section 11, 2026-10-29 M2b-flow row). Interfaces merge with the declarations above.
+
+/** Tables the flow modules read beyond the first bundle (bundleFromData fills them; optional so older fixtures stay valid). */
+export interface GameData {
+  formats?: Record<string, RuntimeRecord>
+  maps?: Record<string, RuntimeRecord>
+  unitTypes?: Record<string, RuntimeRecord>
+  actions?: Record<string, RuntimeRecord>
+  ranks?: Record<string, RuntimeRecord>
+  tokens?: Record<string, RuntimeRecord>
+  armyLists?: Record<string, RuntimeRecord>
+  factions?: Record<string, RuntimeRecord>
+}
+
+export interface GameSetup {
+  /** `core/formats.json` key; default 'recon' */
+  format?: string
+  /** force the blue player (tests and the sim); the blue roll is skipped */
+  blue?: Seat
+}
+
+export interface PlayerState {
+  /** Advantage tokens in the pass pool (R-4.9) */
+  passTokens?: number
+}
+
+export interface Mini {
+  /** the upgrade card that added this model (squad, heavy weapon, captain...) */
+  upgradeId?: string
+  /** the one weapon only this model may use (heavy-weapon trooper) */
+  weaponId?: string
+}
+
+/** One Move in progress (the `move.tool` then `move.troopers` pair). `free`: a free Move (Standby) that costs no action. */
+export interface MoveFrame {
+  unitId: string
+  seat: Seat
+  kind: 'move' | 'climb' | 'withdraw' | 'standby' | 'deploy'
+  maxSpeed: number
+  free: boolean
+}
+
+/** The flow machine's private state, kept in `state.battle.data.flow`. */
+export interface FlowState {
+  /** name of the continuation a suspended timing window resumes (see modules.ts `resumeFlow`) */
+  resume: string | null
+  /** timing windows already offered (`<window>|<scope>`), so each is offered once */
+  opened: string[]
+  lastPass: Record<Seat, boolean>
+  /** the last pool draw found no unit: the next pass is free (R-5.3) */
+  deadDraw: boolean
+  /** seats still to nominate a commander and issue orders, priority first */
+  issueSeats: Seat[]
+  /** activations started so far (scopes activation windows) */
+  activations: number
+  move: MoveFrame | null
+  /** a Standby window in progress: the triggering enemy unit, the standby units that already answered, and whether one is mid-response */
+  standby: { triggerUnitId: string; done: string[]; responding: boolean } | null
+  /** setup deployment cursor: the seat that places next */
+  deployTurn: Seat | null
+}
+
+/** Battle bookkeeping in `state.battle.data` (Recon cards, territories, caps, marks). */
+export interface BattleData {
+  format: string
+  /** the table edge blue sits on: 'zMax' | 'xMax' | 'zMin' | 'xMin' (canonical map frame: blue at +z) */
+  edge: string
+  rotation: number
+  territories: Record<Seat, Polygon[]>
+  objective: string
+  secondary: string
+  advantage: Record<Seat, string>
+  /** Wound tokens on POIs (Bunker Assault) */
+  wounds: Record<string, number>
+  /** POIs destroyed in the current End phase: id -> its tags (the marker itself is removed) */
+  destroyedThisPhase: Record<string, string[]>
+  /** scoring caps used: `<card>|<rule>|<seat>|game` or `...|r<round>` */
+  caps: Record<string, number>
+  /** marked rows of scoring tables: `<card>|<seat>|<row>` -> round marked */
+  marks: Record<string, number>
+  /** chooseUnits results by name */
+  picks: Record<string, string[]>
+  flow: FlowState
+}

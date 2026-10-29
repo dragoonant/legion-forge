@@ -1,34 +1,62 @@
 // Namespace -> module table. Exactly one owner per decision-kind namespace. Every module exists from M2a as a stub that
 // owns its namespaces and rejects every answer with E_TODO; a later stage replaces its stub here and edits only its own
 // module file. `setModule` / `resetModules` let tests install a fixture module in place of a stub.
+import { activationModule, afterActionResolved, afterEndWindow, afterRallied, afterStartWindow, nextTurn } from './activation'
+import { battleModule } from './battle'
+import { afterOrders, afterReveal, commandModule } from './command'
+import { afterRoundEnd, afterScoring, afterStart, endphaseModule } from './endphase'
+import { registerFrameResume } from './hooks'
+import { movementModule, resumeAfterMove } from './movement'
+import { setupModule as setupModuleDef } from './setup'
 import { EngineInvariantError } from './state'
 import { stubModule, type Ctx, type ModuleDef } from './registry'
+import { flowOf } from './battle'
 
-/** SET: army lists, battle selection, deployment. The stub raises the first decision so the flow is wired end to end. */
-const setupStub: ModuleDef = {
-  ...stubModule('setup', ['setup']),
-  init(ctx: Ctx) {
-    ctx.raise({
-      kind: 'setup.battle',
-      seat: 'A',
-      window: 'setup.*',
-      options: [{ id: 'auto', labelKey: 'setup.battle.auto', type: 'setup.battle', payload: { auto: true } }],
-    })
-  },
+// M2b-flow: setup, command, activation, movement, battle and endphase are real. The four combat modules below stay stubs
+// until the coordinator merges M2b-combat; each TODO is the one line that replaces its stub.
+const DEFAULT_MODULES: ModuleDef[] = [
+  setupModuleDef, // SET: army lists, blue player, mission draw, Prepared Position deployment
+  commandModule, // CMD: hidden simultaneous pick, priority, orders, order pool
+  activationModule, // ACT: turn alternation, order use or pool draw, action ledger, standby
+  movementModule, // MOV: tool moves, trooper placement, cohesion, climb
+  stubModule('attack', ['attack']), // TODO(merge): import { attackModule } from './attack'
+  stubModule('melee', ['melee']), // TODO(merge): import { meleeModule } from './melee'
+  stubModule('keywords', ['keyword']), // TODO(merge): import { keywordsModule } from './keywords'
+  stubModule('commandCards', ['card']), // TODO(merge): import { commandCardsModule } from './commandCards'
+  battleModule, // BTL: objectives, scoring, victory
+  endphaseModule, // END
+]
+
+/**
+ * A timing window offered to the registered window opener (`registerWindowOpener`) may raise a decision of the card or
+ * keyword modules; whoever answers it calls `getFrameResume('flow')?.(ctx, 'finished', {})` and the flow continues at the
+ * step that offered the window.
+ */
+const RESUMERS: Record<string, (ctx: Ctx) => void> = {
+  'cmd.revealed': afterReveal,
+  'cmd.issued': afterOrders,
+  'act.phaseStarted': nextTurn,
+  'act.started': afterStartWindow,
+  'act.rallied': afterRallied,
+  'act.ended': afterEndWindow,
+  'act.resolved': afterActionResolved,
+  'move.ended': resumeAfterMove,
+  'end.started': afterStart,
+  'end.scored': afterScoring,
+  'round.ended': afterRoundEnd,
 }
 
-const DEFAULT_MODULES: ModuleDef[] = [
-  setupStub,
-  stubModule('command', ['command']), // CMD: hidden simultaneous pick, priority, orders, order pool
-  stubModule('activation', ['activation', 'action']), // ACT: turn alternation, order use or pool draw, action ledger
-  stubModule('movement', ['move']), // MOV: tool moves, trooper placement, cohesion, climb
-  stubModule('attack', ['attack']), // ATK: the attack pipeline
-  stubModule('melee', ['melee']), // MEL: charge, engagement
-  stubModule('keywords', ['keyword']), // KEY
-  stubModule('commandCards', ['card']), // CC
-  stubModule('battle', ['battle', 'confirm']), // BTL: objectives, scoring, victory
-  stubModule('endphase', ['end']), // END
-]
+export function resumeFlow(ctx: Ctx): void {
+  const flow = flowOf(ctx.state)
+  const name = flow.resume
+  if (!name) throw new EngineInvariantError('resumeFlow with nothing suspended')
+  const fn = RESUMERS[name]
+  if (!fn) throw new EngineInvariantError(`unknown flow continuation ${name}`)
+  flow.resume = null
+  fn(ctx)
+}
+
+registerFrameResume('flow', (ctx) => resumeFlow(ctx))
 
 let modules: ModuleDef[] = DEFAULT_MODULES.slice()
 let table: Map<string, ModuleDef> | null = null
@@ -53,6 +81,28 @@ export function setModule(def: ModuleDef): void {
   const i = modules.findIndex((m) => m.id === def.id)
   if (i < 0) throw new EngineInvariantError(`no module ${def.id} to replace`)
   modules = modules.map((m, j) => (j === i ? def : m))
+  table = null
+}
+
+/**
+ * Replace every module with the M2a stub (the setup stub raises the first decision, everything else rejects with E_TODO):
+ * the contract tests exercise the plumbing with the bare fixture bundle, which has no formats, units or battle cards.
+ */
+export function useStubModules(): void {
+  modules = [
+    {
+      ...stubModule('setup', ['setup']),
+      init(ctx: Ctx) {
+        ctx.raise({
+          kind: 'setup.battle',
+          seat: 'A',
+          window: 'setup.*',
+          options: [{ id: 'auto', labelKey: 'setup.battle.auto', type: 'setup.battle', payload: { auto: true } }],
+        })
+      },
+    },
+    ...DEFAULT_MODULES.slice(1).map((m) => stubModule(m.id, m.namespaces)),
+  ]
   table = null
 }
 
