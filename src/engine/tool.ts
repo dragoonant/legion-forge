@@ -149,11 +149,28 @@ export function polygonsOverlap(a: Polygon, b: Polygon): boolean {
 
 /** Terrain pieces the tool's footprint overlaps. */
 export function piecesUnderTool(table: TableDef, shape: ToolShape): TerrainPiece[] {
+  // pieces whose box misses the tool's box cannot overlap it
+  let minX = shape.hinge.x - shape.hingeRadius
+  let maxX = shape.hinge.x + shape.hingeRadius
+  let minZ = shape.hinge.z - shape.hingeRadius
+  let maxZ = shape.hinge.z + shape.hingeRadius
+  for (const r of shape.rects) {
+    for (const v of r) {
+      if (v.x < minX) minX = v.x
+      if (v.x > maxX) maxX = v.x
+      if (v.z < minZ) minZ = v.z
+      if (v.z > maxZ) maxZ = v.z
+    }
+  }
   return table.pieces.filter(
     (p) =>
-      polygonsOverlap(shape.rects[0], p.footprint) ||
+      p.bbox.maxX >= minX &&
+      p.bbox.minX <= maxX &&
+      p.bbox.maxZ >= minZ &&
+      p.bbox.minZ <= maxZ &&
+      (polygonsOverlap(shape.rects[0], p.footprint) ||
       polygonsOverlap(shape.rects[1], p.footprint) ||
-      footprintOverlapsPolygon({ pos: shape.hinge, baseRadius: shape.hingeRadius }, p.footprint),
+      footprintOverlapsPolygon({ pos: shape.hinge, baseRadius: shape.hingeRadius }, p.footprint)),
   )
 }
 

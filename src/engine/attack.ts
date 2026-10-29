@@ -13,6 +13,7 @@ import { aliveMinis, constants, EngineInvariantError, getUnit, leaderOf, unitsOn
 import { reject, type Ctx, type ModuleDef, type OptionInput } from './registry'
 import {
   attackTargets,
+  canAttackAny,
   backupHits,
   blankAttack,
   blankPool,
@@ -158,8 +159,9 @@ registerFrameResume(FRAME, (ctx) => advance(ctx))
 // attack calls back through the 'activation.action' frame-resume when it ends.
 registerAttackSeam({
   canStart(state, unitId, opts) {
-    const targets = attackTargets(state, unitId, { ...(opts.weapons === 'ranged' ? { rangedOnly: true } : {}), ...(opts.weapons === 'melee' ? { meleeOnly: true } : {}) }).filter((t) => t.ok)
-    return opts.against ? targets.some((t) => t.unitId === opts.against) : targets.length > 0
+    // a yes / no question: no cover or odds are computed, and the first legal target answers it
+    const o = { ...(opts.weapons === 'ranged' ? { rangedOnly: true } : {}), ...(opts.weapons === 'melee' ? { meleeOnly: true } : {}) }
+    return canAttackAny(state, unitId, o, opts.against)
   },
   start(ctx, unitId, opts) {
     startAttack(ctx, {

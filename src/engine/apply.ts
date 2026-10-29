@@ -6,6 +6,7 @@ import { moduleFor } from './modules'
 import { SeededRng, type Rng } from './rng'
 import { canon, cloneState, EngineInvariantError, hashState, SEATS } from './state'
 import { createCtx, endGame, reject, type Ctx, type Handled } from './registry'
+import { fnv1a } from './rng'
 import type { Action, GameState, PendingDecision, Rejection, Seat, StepResult } from './types'
 import type { GameEvent } from './events'
 
@@ -37,6 +38,16 @@ function matchesOption(pending: PendingDecision, action: Action): boolean {
 }
 
 export { endGame }
+
+/**
+ * Hash the whole state after every step (1, the default and what the contract says), or only after every Nth step and when
+ * the game ends; the steps between chain the previous hash with the accepted action. A tool-only setting for simulations:
+ * a replay under the same setting reproduces every value, and a state that diverges is caught at the next full hash.
+ */
+let hashEvery = 1
+export function setHashEvery(n: number): void {
+  hashEvery = Math.max(1, Math.floor(n))
+}
 
 /** Envelope + dispatch. Returns either a rejection or the closure that applies the action. */
 function evaluate(state: GameState, action: Action): Handled {
@@ -89,10 +100,22 @@ function afterAction(ctx: Ctx): void {
 }
 
 export function step(state: GameState, action: Action, rng?: Rng): StepResult {
+  return stepWith(state, action, rng, false)
+}
+
+/**
+ * `step` that applies the action to `state` itself instead of a copy and returns it: for folding a whole log (replay, load,
+ * undo) where nobody keeps the intermediate states. A rejection leaves the state untouched.
+ */
+export function stepInPlace(state: GameState, action: Action, rng?: Rng): StepResult {
+  return stepWith(state, action, rng, true)
+}
+
+function stepWith(state: GameState, action: Action, rng: Rng | undefined, inPlace: boolean): StepResult {
   const handled = evaluate(state, action)
   if ('rejection' in handled) return rejectionResult(state, action, handled.rejection)
 
-  const draft = cloneState(state)
+  const draft = inPlace ? state : cloneState(state)
   const source = rng ?? SeededRng.restore(state.rng)
   const seq = state.seq
   const ctx = createCtx(draft, source, action, seq)
@@ -130,6 +153,6 @@ export function step(state: GameState, action: Action, rng?: Rng): StepResult {
   if (ctx.rolled || ctx.revealed) draft.undoFence = seq
   const serialised = source.serialize()
   if (serialised) draft.rng = serialised
-  draft.hash = hashState(draft)
+  draft.hash = hashEvery === 1 || draft.seq % hashEvery === 0 || draft.phase === 'ended' ? hashState(draft) : fnv1a(`${state.hash}|${canon(draft.log[draft.log.length - 1])}`)
   return { state: draft, events: ctx.events, pending: draft.pending }
 }

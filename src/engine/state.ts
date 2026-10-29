@@ -168,13 +168,68 @@ export function canon(value: unknown): string {
 
 const HASH_EXCLUDED = new Set(['data', 'origin', 'log', 'hash'])
 
+// The state hash streams the canonical form straight into FNV-1a (no big strings): the value is exactly
+// `fnv1a(canon(...))` of the old string-building version.
+let HASH = 0x811c9dc5
+function feed(text: string): void {
+  let h = HASH
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  HASH = h
+}
+
+function feedCanon(value: unknown): void {
+  if (value === null) return feed('null')
+  switch (typeof value) {
+    case 'number':
+      return feed(Number.isFinite(value) ? String(value) : 'null')
+    case 'boolean':
+      return feed(value ? 'true' : 'false')
+    case 'string':
+      return feed(JSON.stringify(value))
+    case 'object': {
+      if (Array.isArray(value)) {
+        feed('[')
+        for (let i = 0; i < value.length; i++) {
+          if (i > 0) feed(',')
+          const v = value[i]
+          if (v === undefined) feed('null')
+          else feedCanon(v)
+        }
+        return feed(']')
+      }
+      const rec = value as Record<string, unknown>
+      const keys = Object.keys(rec)
+      if (keys.length > 1) keys.sort()
+      feed('{')
+      let first = true
+      for (const k of keys) {
+        const v = rec[k]
+        if (v === undefined) continue
+        if (!first) feed(',')
+        first = false
+        feed(keyString(k))
+        feed(':')
+        feedCanon(v)
+      }
+      return feed('}')
+    }
+    default:
+      return feed('null')
+  }
+}
+
 /** fnv1a of the canonical state minus the log, the static data/origin, the compiled table definition and the hash itself. */
 export function hashState(state: GameState): string {
   const src = state as unknown as Record<string, unknown>
   const keys = Object.keys(src)
     .filter((k) => !HASH_EXCLUDED.has(k))
     .sort()
-  const parts: string[] = []
+  HASH = 0x811c9dc5
+  feed('{')
+  let first = true
   for (const k of keys) {
     let v = src[k]
     if (v === undefined) continue
@@ -182,7 +237,12 @@ export function hashState(state: GameState): string {
       const { def: _def, ...dynamic } = state.table
       v = dynamic
     }
-    parts.push(JSON.stringify(k) + ':' + canon(v))
+    if (!first) feed(',')
+    first = false
+    feed(keyString(k))
+    feed(':')
+    feedCanon(v)
   }
-  return fnv1a('{' + parts.join(',') + '}')
+  feed('}')
+  return (HASH >>> 0).toString(16).padStart(8, '0')
 }

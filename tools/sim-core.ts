@@ -27,7 +27,7 @@ import { footprintOverlapsPolygon, type Footprint } from '../src/engine/footprin
 import { miniLosBody } from '../src/engine/los'
 import { miniBody } from '../src/engine/measure'
 import { checkCohesion } from '../src/engine/tool'
-import { leaderOf } from '../src/engine/state'
+import { hashState, leaderOf } from '../src/engine/state'
 import { canMoveIntoMelee } from '../src/engine/melee'
 
 export interface Violation {
@@ -562,7 +562,7 @@ export function playGame(setup: GameSetup, bundle: EngineBundle, seed: string, g
   // SIM-006: replay reproduces every hash; a save file survives JSON and replays to the same final hash
   if (violations.length === 0 && game % replayEvery === 0) {
     const rep = replay(setup, seed, state.log, bundle)
-    if (rep.rejection || rep.hashes.length !== hashes.length || rep.hashes.some((h, i) => h !== hashes[i])) {
+    if (rep.rejection || rep.hashes.length !== hashes.length || rep.hashes.some((h, i) => h !== hashes[i]) || hashState(rep.state) !== hashState(state)) {
       hashMismatch = true
       violate('SIM-006', 'replay did not reproduce the recorded hashes')
     } else {
@@ -593,8 +593,9 @@ export interface SimOptions {
   onGame?: (r: GameReport) => void
 }
 
-export function runSim(opts: SimOptions): SimReport {
-  const t0 = Date.now()
+/** Fold game reports (in any order) into the sim report; games are reported in index order. */
+export function mergeReports(reports: readonly GameReport[], ms: number): SimReport {
+  const sorted = [...reports].sort((a, b) => a.game - b.game)
   const failing: GameReport[] = []
   const stats: Record<string, number> = {}
   const summaries: GameSummary[] = []
@@ -602,8 +603,7 @@ export function runSim(opts: SimOptions): SimReport {
   let decisions = 0
   let rejections = 0
   let violations = 0
-  for (let g = 0; g < opts.games; g++) {
-    const r = playGame(opts.setupFor(g), opts.bundle, `${opts.seed}-${g}`, g, opts.replayEvery ?? 1)
+  for (const r of sorted) {
     summaries.push(r.summary)
     if (r.ended && r.violations.length === 0) completed++
     decisions += r.decisions
@@ -611,7 +611,17 @@ export function runSim(opts: SimOptions): SimReport {
     violations += r.violations.length
     for (const [k, v] of Object.entries(r.stats)) bump(stats, k, v)
     if (r.violations.length > 0 || !r.ended) failing.push(r)
+  }
+  return { games: sorted.length, completed, decisions, rejections, violations, failing, stats, summaries, ms }
+}
+
+export function runSim(opts: SimOptions): SimReport {
+  const t0 = Date.now()
+  const reports: GameReport[] = []
+  for (let g = 0; g < opts.games; g++) {
+    const r = playGame(opts.setupFor(g), opts.bundle, `${opts.seed}-${g}`, g, opts.replayEvery ?? 1)
+    reports.push(r)
     opts.onGame?.(r)
   }
-  return { games: opts.games, completed, decisions, rejections, violations, failing, stats, summaries, ms: Date.now() - t0 }
+  return mergeReports(reports, Date.now() - t0)
 }

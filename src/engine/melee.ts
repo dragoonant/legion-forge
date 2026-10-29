@@ -10,6 +10,7 @@ import { reject, type Ctx, type ModuleDef } from './registry'
 import { aliveMinis, constants, getUnit, leaderOf, unitsOnTable } from './state'
 import { isVehicle, miniWeapons, unitDef, weaponDef, weaponTypes } from './keywords'
 import { piecesOverlapping } from './table'
+import { markerFootprint } from './battle'
 import type { GameState, Mini, Unit, Vec2 } from './types'
 
 export const meleeModule: ModuleDef = {
@@ -83,6 +84,7 @@ export function placeIntoContact(state: GameState, moverUnit: Unit, minis: Mini[
   const placements: ContactPlacement[] = []
   const failed: string[] = []
   const targetMinis = aliveMinis(targetUnit)
+  const tokens = Object.values(state.table.objectives).filter((o) => o.kind === 'poi').map((o) => markerFootprint(state, o))
   const moving = new Set(minis.map((m) => m.id))
   for (const m of minis) {
     const body = miniBody(state, m)
@@ -98,7 +100,9 @@ export function placeIntoContact(state: GameState, moverUnit: Unit, minis: Mini[
         const fp = { pos: p, baseRadius: body.baseRadius }
         const bd = state.table.def.bounds
         if (p.x - body.baseRadius < bd.minX || p.x + body.baseRadius > bd.maxX || p.z - body.baseRadius < bd.minZ || p.z + body.baseRadius > bd.maxZ) continue
-        if (piecesOverlapping(state.table.def, fp).some((pc) => pc.movement === 'impassable')) continue
+        // never on impassable terrain, a barricade or an obstacle (a model that cannot stand there is placed elsewhere), never on a token
+        if (piecesOverlapping(state.table.def, fp).some((pc) => pc.movement === 'impassable' || pc.kind === 'barricade' || pc.kind === 'obstacle' || pc.kind === 'building')) continue
+        if (tokens.some((tk) => Math.hypot(tk.pos.x - p.x, tk.pos.z - p.z) < tk.baseRadius + body.baseRadius - 1e-6)) continue
         let ok = true
         for (const o of all) {
           if (o.id === m.id) continue
