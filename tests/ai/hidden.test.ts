@@ -58,8 +58,10 @@ describe('AI sees only view(state, seat)', () => {
       const v2 = view(twin, s.seat)
       expect(JSON.stringify(v2.players)).toBe(JSON.stringify(v1.players))
       expect(JSON.stringify(v2.command)).toBe(JSON.stringify(v1.command))
-      const a1 = createAiDecider('normal', { seed: 'h' }).decideSync(v1, s.pending, s.legal).action
-      const a2 = createAiDecider('normal', { seed: 'h' }).decideSync(v2, s.pending, s.legal).action
+      // a frozen clock leaves only the deterministic work cap: under CPU load the wall-clock hard stop cut one of the two
+      // searches short and the answers differed for reasons unrelated to hidden information
+      const a1 = createAiDecider('normal', { seed: 'h', now: () => 0 }).decideSync(v1, s.pending, s.legal).action
+      const a2 = createAiDecider('normal', { seed: 'h', now: () => 0 }).decideSync(v2, s.pending, s.legal).action
       expect(a2).toEqual(a1)
       compared++
     })
