@@ -6,6 +6,7 @@ Fan-made 3D browser game of Star Wars: Legion (current Atomic Mass Games rules, 
 - **Playable first.** Every stage ends in something the owner can run and see (screenshot in the check-in).
 - **Fidelity is the product.** Mechanics 1:1 from the current edition (sources in gitignored `docs/sources/`). Never tune printed numbers. Ambiguities never block: append `RULING: <rule> | <what we did> | <why> | <status>` to `docs/needs-rules-check.md` (status: Confirmed, Corrected, Unsourced, Fan-source, Port choice) and keep going.
 - **Answer before building.** When the owner asks questions, answer and propose, then wait. Explicit instructions mean act. Questions go through the multiple-choice tool, at most two batches of four, recommended option first, everything else stated as a default.
+- **Questions never block development** (owner, 2026-10-28). Record the recommended option as the default in `PLAN.md` (`by: default, asked <date>`), keep building on it, and ask while background agents run; when the answer arrives, update the row and adjust. Ask whenever a wrong guess would cost rework; the owner answers quickly.
 - **Keep the knowledge base current.** At the end of every milestone, in the same commit as `STATUS.md`: update `docs/knowledge-base/legion-forge.md` (what landed, real token spend, what worked, what bit) and add any lesson that applies to other games to `docs/knowledge-base/README.md` (owner rules, gotchas) marked `(added <date>, Legion Forge)`.
 
 ## Token rules (metered plan; not optional)

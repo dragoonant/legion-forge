@@ -18,6 +18,7 @@ This file owns every decision (with date and who made it). The owner's answers a
 | D11 | 2026-10-28 | default | Table | 6'x3' (72"x36"), 1 world unit = 1 inch, y up, centred at the origin; range band = 6" | Legion standard; series conventions |
 | D12 | 2026-10-28 | default | UI skin | Starbound Legions palette and colour roles on the Mallet/Mancermundo HUD layout | Owner liked it for Star Wars (KB rule 16) |
 | D13 | 2026-10-28 | default | Where stages run | M0-M4, M7, M8 in a cloud session; M5 art and M6 audio from a session on the owner's Windows PC | No GPU, Gemini or studios in the cloud container |
+| D14 | 2026-10-28 | owner | Questions | Ask during development without blocking: build on the recommended default, revise when the answer lands | |
 
 ## Milestones
 | # | Milestone | Done when | Est. tokens |
