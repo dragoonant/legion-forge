@@ -28,6 +28,7 @@ import { miniLosBody } from '../src/engine/los'
 import { miniBody } from '../src/engine/measure'
 import { checkCohesion } from '../src/engine/tool'
 import { leaderOf } from '../src/engine/state'
+import { canMoveIntoMelee } from '../src/engine/melee'
 
 export interface Violation {
   rule: string
@@ -115,7 +116,7 @@ export class RandomBot {
       const frame = state.battle.data.flow as { move: { unitId: string } | null }
       const unitId = frame.move?.unitId
       if (unitId) {
-        const target = this.target(state, seat)
+        const target = this.chargeTarget(state, unitId) ?? this.target(state, seat)
         const a = suggestToolToward(state, pending, seat, unitId, target, true) ?? suggestToolToward(state, pending, seat, unitId, null, true)
         if (a) return a
       }
@@ -125,6 +126,28 @@ export class RandomBot {
     if (s) return s
     if (pending.canPass) return act.pass(pending, seat)
     throw new Error(`bot cannot answer ${pending.kind}`)
+  }
+
+  /**
+   * A unit that may move into melee goes for the nearest enemy within a Move or two about half the time: the point where its
+   * leader would stand touching the enemy leader, approached straight on (CRB p28). Null otherwise.
+   */
+  private chargeTarget(state: GameState, unitId: string): { x: number; z: number } | null {
+    const u = state.units[unitId]
+    if (!u || u.location !== 'table' || !canMoveIntoMelee(state, u) || this.float() >= 0.5) return null
+    const lead = leaderOf(u)
+    const lb = miniBody(state, lead)
+    let best: { d: number; x: number; z: number; gap: number } | null = null
+    for (const e of Object.values(state.units)) {
+      if (e.seat === u.seat || e.location !== 'table') continue
+      const el = leaderOf(e)
+      const d = Math.hypot(el.pos.x - lead.pos.x, el.pos.z - lead.pos.z)
+      if (d > 9 || (best && d >= best.d)) continue
+      best = { d, x: el.pos.x, z: el.pos.z, gap: lb.baseRadius + miniBody(state, el).baseRadius + 0.0003 }
+    }
+    if (!best || best.d <= best.gap) return null
+    const f = (best.d - best.gap) / best.d
+    return { x: lead.pos.x + (best.x - lead.pos.x) * f, z: lead.pos.z + (best.z - lead.pos.z) * f }
   }
 
   /** Mostly a point of interest, sometimes a random point on the table. */
@@ -445,6 +468,9 @@ function countEvent(stats: Record<string, number>, ev: GameEvent): void {
       break
     case 'MeleeContact':
       bump(stats, 'meleeContacts')
+      break
+    case 'WeaponsAdded':
+      if (ev.kind === 'melee') bump(stats, 'meleePools')
       break
     case 'DodgeSpent':
       bump(stats, 'dodgesSpent', ev.cancelled)

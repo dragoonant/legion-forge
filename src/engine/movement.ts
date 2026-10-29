@@ -296,13 +296,14 @@ function contactSpot(
   leader: LosBody,
   tr: LosBody,
   enemy: Unit,
-  c: { prefer: Vec2; fromY: number; height: number },
+  c: { prefer: Vec2; fromY: number; height: number; avoidDifficult?: boolean },
 ): { pos: Vec2; y: number } | null {
   let best: { pos: Vec2; y: number; score: number } | null = null
   const targets = aliveMinis(enemy)
     .map((m) => ({ m, d: Math.hypot(m.pos.x - c.prefer.x, m.pos.z - c.prefer.z) }))
     .sort((a, b) => a.d - b.d)
-    .slice(0, 6)
+  // every enemy figure is a candidate, nearest first: the engine's suggestion and the check of a player's answer must agree on
+  // whether a contact spot exists, whatever the figure's own position
   for (const { m: t } of targets) {
     const dist = tr.baseRadius + miniBody(state, t).baseRadius + TOUCH
     for (let k = 0; k < 36; k++) {
@@ -312,6 +313,7 @@ function contactSpot(
       if (best && score >= best.score) continue
       const placed = checkBasePlacement(world, { pos, baseRadius: tr.baseRadius }, { fromY: c.fromY, silhouetteHeight: c.height, climb: false, canEngage: true })
       if (!placed.ok || placed.info.touchingEnemies.some((id) => !enemy.minis.some((m) => m.id === id))) continue
+      if (c.avoidDifficult && placed.info.difficult) continue
       if (!checkCohesion(world.table, world.constants, leader, { ...tr, pos: { x: pos.x, y: placed.info.surface, z: pos.z } }).ok) continue
       best = { pos, y: placed.info.surface, score }
     }
@@ -377,7 +379,7 @@ export function planTroopers(state: GameState, unit: Unit, opts: TrooperOpts): T
     let y: number
     let cohesive: boolean
     const foe = opts.melee ? state.units[opts.melee] : undefined
-    const contact = foe ? contactSpot(state, world, lb, body, foe, { prefer, fromY: opts.leader.y, height }) : null
+    const contact = foe ? contactSpot(state, world, lb, body, foe, { prefer, fromY: opts.leader.y, height, avoidDifficult: opts.avoidDifficult === true }) : null
     const found = contact ?? searchSpot(world, lb, body, { ...(opts.region ? { region: opts.region } : {}), avoidDifficult: opts.avoidDifficult === true, prefer, fromY: opts.leader.y, height })
     if (found) {
       pos = found.pos
@@ -433,7 +435,7 @@ export function checkTroopers(state: GameState, unit: Unit, placements: readonly
       if (placed.info.touchingEnemies.some((id) => !foe.minis.some((m) => m.id === id))) {
         return { ok: false, code: 'E_ENGAGED', reason: 'a model may never end in base contact with models of two enemy units' }
       }
-      if (placed.info.touchingEnemies.length === 0 && contactSpot(state, world, lb, body, foe, { prefer: pos, fromY: opts.leader.y, height })) {
+      if (placed.info.touchingEnemies.length === 0 && contactSpot(state, world, lb, body, foe, { prefer: pos, fromY: opts.leader.y, height, avoidDifficult: opts.avoidDifficult === true })) {
         return { ok: false, code: 'E_COHESION', reason: `${m.id} can be placed in base contact with the enemy unit in cohesion, so it must be` }
       }
     }
@@ -663,6 +665,7 @@ export const movementModule: ModuleDef = {
               leaderFrom: from,
               suggestion: plan.placements.map(({ miniId, x, z, yaw }) => ({ miniId, x, z, yaw })),
               ...(foeUnit ? { meleeEnemyId: foeUnit.id } : {}),
+              avoidDifficult: !frame.ignoreDifficult && !diffAlready && frame.kind !== 'climb' && v.speed > Math.max(1, maxSp - 1),
             },
             constraints: { kind: 'troopers', unitId: u.id, cohesion: { distance: cohesionOf(ctx.state, u), vertical: silhouetteHeight(ctx.state, u) } },
             canPass: true,
@@ -682,9 +685,10 @@ export const movementModule: ModuleDef = {
       leaderFrom: { x: number; y: number; z: number }
       suggestion: TrooperPlacement[]
       meleeEnemyId?: string
+      avoidDifficult?: boolean
     }
     const lead = leaderOf(unit)
-    const opts: TrooperOpts = { leader: { x: lead.pos.x, y: lead.pos.y, z: lead.pos.z }, ...(ctxInfo.meleeEnemyId ? { melee: ctxInfo.meleeEnemyId } : {}) }
+    const opts: TrooperOpts = { leader: { x: lead.pos.x, y: lead.pos.y, z: lead.pos.z }, ...(ctxInfo.meleeEnemyId ? { melee: ctxInfo.meleeEnemyId } : {}), ...(ctxInfo.avoidDifficult ? { avoidDifficult: true } : {}) }
     const placements = action.type === 'pass' ? ctxInfo.suggestion : action.type === 'move.troopers' ? action.payload.placements : null
     if (!placements) return reject('E_WRONG_DECISION', 'expected trooper placements')
     const check = checkTroopers(state, unit, placements, opts)
