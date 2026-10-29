@@ -1418,13 +1418,26 @@ export interface GrantedAction {
   name: string
   kind: 'card' | 'free'
   exhaust: 'none' | 'exhaust' | 'expend'
+  /** the upgrade card (or, for a keyword grant, the keyword id) the action belongs to */
   upgradeId: string
   available: boolean
   whyNot?: string
+  /** Jump X: the action is a Move that ignores terrain up to this height (CRB p52) */
+  jump?: number
 }
 
 export function grantedActions(state: GameState, unit: Unit): GrantedAction[] {
   const out: GrantedAction[] = []
+  // actions a keyword grants (Jump X): usable whenever the unit could make a Move action
+  for (const k of unitKeywords(state, unit)) {
+    for (const e of keywordDef(state, k.id)?.effects ?? []) {
+      const a = e.grant?.action
+      if (!a) continue
+      const native = (a.effects ?? []).find((x: J) => x.native === 'jump')
+      const canMove = unit.location === 'table' && unit.engagedWith.length === 0
+      out.push({ id: a.id, name: a.name, kind: a.kind, exhaust: 'none', upgradeId: k.id, available: canMove, ...(canMove ? {} : { whyNot: 'engaged' }), ...(native ? { jump: Math.max(1, k.x) } : {}) })
+    }
+  }
   for (const upId of unit.upgrades) {
     const ud = upgradeDef(state, upId)
     if (!ud || !upgradeLive(unit, upId)) continue
@@ -1446,6 +1459,7 @@ export function runGrantedAction(ctx: Ctx, unitId: string, actionId: string, res
   const unit = getUnit(ctx.state, unitId)
   const ga = grantedActions(ctx.state, unit).find((g) => g.id === actionId)
   if (!ga) throw new EngineInvariantError(`unit ${unitId} has no action ${actionId}`)
+  if (ga.jump !== undefined) throw new EngineInvariantError(`${actionId} is a Move: the activation runs it`)
   if (!ga.available) throw new EngineInvariantError(`action ${actionId} is ${ga.whyNot}`)
   if (ga.exhaust === 'exhaust') unit.flags.exhausted = [...((unit.flags.exhausted as string[] | undefined) ?? []), ga.upgradeId]
   if (ga.exhaust === 'expend') unit.flags.expended = [...((unit.flags.expended as string[] | undefined) ?? []), ga.upgradeId]

@@ -309,8 +309,12 @@ export function validateToolPose(world: ToolWorld, mover: Mover, pose: ToolPose,
   const reach = pose.climb ? band : mover.silhouetteHeight
   let touchesDifficult = false
   for (const p of piecesUnderTool(world.table, shape)) {
+    if (p.movement === 'impassable') {
+      // a Jump may lay the tool over impassable terrain (it may still not end there, checked with the leader's base)
+      if (mover.jumpHeight === undefined) return fail('E_TERRAIN', 2, `the tool crosses impassable terrain (${p.id})`)
+      continue
+    }
     const jumped = mover.jumpHeight !== undefined && p.heightIn <= mover.jumpHeight + 1e-9
-    if (p.movement === 'impassable' && mover.jumpHeight === undefined) return fail('E_TERRAIN', 2, `the tool crosses impassable terrain (${p.id})`)
     if (!jumped && (p.kind === 'obstacle' || p.kind === 'building' || p.kind === 'barricade') && p.heightIn - mover.y > reach + 1e-9) {
       return fail('E_TERRAIN', 2, `the tool crosses ${p.id}, taller than ${round3(reach)}"${pose.climb ? '' : ' (a Climb is needed)'}`)
     }

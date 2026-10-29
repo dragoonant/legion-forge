@@ -145,7 +145,7 @@ describe('flow and combat together', () => {
     st = advance(must(st.state, optionAction(st.state, `free:${eff.id}`)), (p) => p.kind === 'action.choose')
     expect(st.state.effects.some((e) => e.id === eff.id)).toBe(false)
     expect(st.state.activation.current!.actionsLeft).toBe(2)
-    expect(st.state.activation.current!.performed).toEqual([{ action: 'free.move', free: true }])
+    expect(st.state.activation.current!.performed).toEqual([{ action: 'free.move', free: true, move: true }])
     expect(hasOption(st.state, 'move')).toBe(true)
     expect(hasOption(st.state, 'end')).toBe(true)
   })

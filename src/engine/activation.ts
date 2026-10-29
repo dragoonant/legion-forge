@@ -29,6 +29,7 @@ import { beginMove, moveEndedWindow, planMove, unitSpeed } from './movement'
 import { reject, type Ctx, type ModuleDef } from './registry'
 import { constants, EngineInvariantError, leaderOf, otherSeat, poolCounts, seatUnits } from './state'
 import { hasLos, miniLosBody } from './los'
+import { keywordX } from './keywords'
 import type { Action, FreeActionGrant, GameState, MoveFrame, PendingDecision, Seat, Unit } from './types'
 
 // ---------------------------------------------------------------------------
@@ -225,10 +226,16 @@ export function actionMenu(state: GameState, unit: Unit): Menu {
     }
   }
 
+  // Scout X: an undeployed unit may deploy with a free Speed-X Move at the start of its Make Actions step (CRB p54)
+  const scout = Math.min(3, keywordX(state, unit, 'kw.scout'))
+  if (!deployed && scout > 0 && (act?.performed.length ?? 0) === 0 && !panicked) {
+    items.push({ id: 'scout', action: 'scout', free: true, data: { maxSpeed: scout, ignoreDifficult: true } })
+  }
+
   // R-5.11: an undeployed unit may only Move (and free Moves)
   if (!deployed) {
-    const keep = items.filter((i) => i.action === 'move')
-    for (const i of items) if (i.action !== 'move') hold(i.action, 'undeployed')
+    const keep = items.filter((i) => i.action === 'move' || i.action === 'scout')
+    for (const i of items) if (i.action !== 'move' && i.action !== 'scout') hold(i.action, 'undeployed')
     return { items: keep, withheld }
   }
   return { items, withheld }
@@ -458,14 +465,25 @@ export function afterRallied(ctx: Ctx): void {
 function declare(ctx: Ctx, unit: Unit, action: string, params: Record<string, unknown> | undefined): void {
   const s = ctx.state
   const act = s.activation.current!
-  const free = actionData(s.data, `core.action.${action}`)?.free ?? false
+  const free = (actionData(s.data, `core.action.${action}`)?.free ?? false) || action === 'scout'
   act.declared = { action, ...(params ? { params } : {}) }
   if (action !== 'cardAction') ctx.emit({ type: 'ActionDeclared', unitId: unit.id, action, free }, unit.seat)
   loseStandby(ctx, unit)
   switch (action) {
+    case 'scout': {
+      // a free Move that deploys the unit; it counts as a Move action for Relentless and the like (CRB p54)
+      act.declared = { action: 'free.move', params: { free: true, move: true, source: 'kw.scout' } }
+      return beginMove(ctx, { unitId: unit.id, seat: unit.seat, kind: 'move', maxSpeed: Math.min(3, keywordX(s, unit, 'kw.scout')), free: true, ignoreDifficult: true })
+    }
     case 'cardAction': {
       const actionId = String(params?.actionId)
       const a = cardActions({ state: s }, unit).find((x) => x.id === actionId)
+      if (a?.jump !== undefined) {
+        // Jump X: a Move action as normal that ignores difficult terrain and terrain of height X or lower (CRB p52)
+        act.declared = { action: actionId, params: { ...params, free: false, move: true } }
+        ctx.emit({ type: 'ActionDeclared', unitId: unit.id, action: actionId, free: false }, unit.seat)
+        return beginMove(ctx, { unitId: unit.id, seat: unit.seat, kind: 'move', maxSpeed: unitSpeed(s, unit), free: false, ignoreDifficult: true, jumpHeight: a.jump })
+      }
       // recorded under the card action's own id so the once-per-activation ledger and the sim can tell them apart
       act.declared = { action: actionId, params: { ...params, card: true, free: a?.kind === 'free' } }
       if (runCardAction(ctx, unit.id, actionId, { name: CARD_ACTION })) return
@@ -573,14 +591,15 @@ export function completeAction(ctx: Ctx): void {
   const act = s.activation.current
   if (!act || !act.declared) throw new EngineInvariantError('completeAction with no declared action')
   const free = (actionData(s.data, `core.action.${act.declared.action}`)?.free ?? false) || act.declared.params?.free === true
-  act.performed.push({ action: act.declared.action, free })
+  const isMove = MOVE_LEDGER.has(act.declared.action) || act.declared.params?.move === true
+  act.performed.push({ action: act.declared.action, free, ...(isMove ? { move: true } : {}) })
   if (!free) act.actionsLeft = Math.max(0, act.actionsLeft - 1)
   // a card action emitted its own ActionResolved (keywords.ts / commandCards.ts)
   if (!act.declared.params?.card) ctx.emit({ type: 'ActionResolved', unitId: act.unitId, action: act.declared.action }, act.seat)
   act.declared = null
   // a Standby token is spent before any effect that triggers after the action resolves (CRB p37); a Move already gave its
   // Standby units their chance when it ended (movement.finishMove), before the move.ended effects
-  if (!MOVE_LEDGER.has(act.performed[act.performed.length - 1]!.action) && raiseStandby(ctx, 'action.resolved')) return
+  if (!isMove && raiseStandby(ctx, 'action.resolved')) return
   openActionResolved(ctx)
 }
 
@@ -588,8 +607,8 @@ export function completeAction(ctx: Ctx): void {
 const MOVE_LEDGER = new Set(['move', 'climb', 'withdraw', 'free.move'])
 
 /** The ledger name of a performed action as the core action id the declarative triggers read. */
-function coreActionId(ledger: string): string {
-  if (MOVE_LEDGER.has(ledger)) return 'core.action.move'
+function coreActionId(ledger: string, move: boolean): string {
+  if (move || MOVE_LEDGER.has(ledger)) return 'core.action.move'
   return ledger.startsWith('free.') ? `core.action.${ledger.slice(5)}` : ledger.includes('.') ? ledger : `core.action.${ledger}`
 }
 
@@ -597,7 +616,7 @@ function openActionResolved(ctx: Ctx): void {
   const s = ctx.state
   const act = s.activation.current!
   const last = act.performed[act.performed.length - 1]!
-  const info = { unitId: act.unitId, action: coreActionId(last.action), free: last.free }
+  const info = { unitId: act.unitId, action: coreActionId(last.action, last.move === true), free: last.free }
   if (openWindow(ctx, 'action.resolved', info, `a${flowOf(s).activations}:${act.performed.length}`, 'act.resolved')) return
   afterActionResolved(ctx)
 }
