@@ -1,7 +1,7 @@
 # HANDOFF (2026-10-29, end of M7)
 
 ## Play it
-On the PC: `git pull`, `npm install`, `npm run dev`, open the printed URL. Pick a side and a Recon list, Normal AI is the default. `?seats=bot,bot` watches two AIs; `&speed=instant|fast`, `&seed=<any>`.
+https://dragoonant.github.io/legion-forge/ (or locally: `npm install`, `npm run dev`). Pick a side and a Recon list, Normal AI is the default. `?seats=bot,bot` watches two AIs; `&speed=instant|fast`, `&seed=<any>`.
 
 ## What to look at while playtesting
 1. **Rules feel:** command-card priority, orders and the pool draw, movement tool (click a spot, drag the hinge), rolled cover, suppression and panic, melee charges.

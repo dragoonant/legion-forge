@@ -1,7 +1,7 @@
 # STATUS (rewritten each milestone; last: M7, 2026-10-29)
 
 ## Playable
-Recon (600 pts, 36"x36") Galactic Empire vs Rebel Alliance starter armies, human vs the utility AI (Normal default, Easy, Random) or AI vs AI watch mode (`?seats=bot,bot`). Run on the PC: `npm install`, `npm run dev`. No Pages while the repo is private (D6). Figures are procedural stand-ins until the PC art session (M5) pushes models.
+Recon (600 pts, 36"x36") Galactic Empire vs Rebel Alliance starter armies, human vs the utility AI (Normal default, Easy, Random) or AI vs AI watch mode (`?seats=bot,bot`). Play at https://dragoonant.github.io/legion-forge/ (deployed from `main`, D21), or locally with `npm install`, `npm run dev`. Figures are procedural stand-ins until the PC art session (M5) pushes models.
 
 ## What exists
 - **Data (M1):** 196 records — 9 units, 26 weapons, 31 upgrades, 20 command cards, 4 Recon lists, 41 keywords, Recon battle deck, maps, one layout; schema frozen; `validate:data` requires every code hook to be registered.

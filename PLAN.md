@@ -26,6 +26,7 @@ This file owns every decision (with date and who made it). The owner's answers a
 | D18 | 2026-10-29 | owner | Art timing | Art (Gemini concepts + Hunyuan3D) starts now in parallel from a session on the owner's Windows PC, streaming from the M1 figure list; procedural stand-ins until GLBs land | Murder Squad pattern: art from the first hours |
 | D19 | 2026-10-29 | owner | Insignia | Figures carry original faction insignia similar in spirit to the Imperial crest, Rebel starbird and rank markings, designed for this project; no Lucasfilm emblem is reproduced | "Create a similar insignia for all, respect copyrights" |
 | D20 | 2026-10-29 | owner | Figure uniqueness | Each figure unique where possible: at most 2-3 copies of the same body per army (target 2). Pools sized from the worst Recon list (55 bodies instead of 40); bodies assigned round-robin per army in unit order | "I want each one to be unique if at all possible, maybe at most 2 or 3 of the same figure for each army" |
+| D21 | 2026-11-02 | owner | Deployment | Repository public; GitHub Pages at dragoonant.github.io/legion-forge from `main` via `.github/workflows/ci.yml`; NOTICE.md and docs/takedown.md kept in sync with any deployment change. Supersedes the private part of D6 | Owner chose public + Pages after the Disney/Pixelborn concern was stated |
 
 ## Milestones
 | # | Milestone | Done when | Est. tokens |

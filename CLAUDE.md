@@ -21,7 +21,7 @@ Fan-made 3D browser game of Star Wars: Legion (current Atomic Mass Games rules, 
 - Data is declarative JSON validated by ajv, with a `source` per record. `{"code": "<hook>"}` escape hatches are registered in code, and every hook has a test proving it fires in a real game. A keyword the engine cannot express is `{"unimplemented": "<why>"}`, and `validate:data` refuses it in any army marked playable.
 - Every displayed unit, weapon, keyword and card name comes from data, never a string literal in the client.
 - Client: the game store is the only caller of `step`; presentation runs through the director and presented-state cursor; the bot waits for presentation idle; no native `title=` tooltips; prompts name what they decide and show engine odds.
-- Commit messages: `M<n>: <what>`, then a blank line, then the attribution lines the session provides. Pushing to `main` after each stage is pre-approved (repo private).
+- Commit messages: `M<n>: <what>`, then a blank line, then the attribution lines the session provides. Pushing to `main` after each stage is pre-approved; every push to `main` deploys to GitHub Pages (public repo, D21), so a red build never reaches `main`. A deployment change updates `NOTICE.md` and `docs/takedown.md` in the same commit.
 
 ## Where work runs
 Cloud sessions (Linux container) do engine, data, AI, client and docs. Art (Gemini concepts through Claude in Chrome, Hunyuan3D) and audio (local Audio Studio) run only from a session on the owner's Windows PC; see `docs/knowledge-base/local-ai-studios.md`.
