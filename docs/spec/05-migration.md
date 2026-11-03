@@ -241,7 +241,7 @@ Rows are ordered by stage, then source (`src/`, `tests/`, `tools/`, `public/`). 
 | Legacy path | Verdict | What changes for Legion | Stage |
 |---|---|---|---|
 | `tools/art/{contact_sheet,decode_bundle,hf-concepts}.py (3)` | KEEP | Contact sheet, Gemini bundle decoder and Hugging Face concept helper; generic. | M5 |
-| `tools/art/{v2_prompts,v2_promptsmd}.py (2)` | ADAPT | MGSD Star Wars miniature prompts, one standalone prompt per unit with the per-item reference gate; gang and house wording and the project name go. | M5 |
+| `tools/art/{v2_prompts,v2_promptsmd}.py (2)` | ADAPT | Painted-miniature Star Wars prompts, one standalone prompt per unit with the per-item reference gate; gang and house wording and the project name go. | M5 |
 | `tools/models/{finalize-attachments,measure-sockets}.py (2)` | KEEP | Weapon-attachment finishing and socket measuring on fused body GLBs; generic. | M5 |
 | `tools/models/finalize-terrain.py` | ADAPT | Terrain GLB finishing for Legion terrain pieces (footprint and height from data); slug handling kept. | M5 |
 | `tools/models/shoot-figures.mjs` | ADAPT | QC screenshots of `?gallery` per faction and unit instead of per team. | M5 |

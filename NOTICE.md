@@ -6,7 +6,7 @@ What the project contains, and where:
 
 - **Names.** Unit, weapon, keyword, command-card and battle-card names of the published game appear in the data files under `src/data/`, to identify the units and cards whose mechanics are implemented, the way a list builder or a rules reference names them.
 - **Rules text.** None of the publisher's text is stored or shown. Every description, help entry, prompt and guide in the game is written in our own words from the mechanics. The official rules documents used for research are never committed (`docs/sources/` is excluded from the repository).
-- **Art.** All artwork is original: 3D figures and terrain generated for this project from descriptions written for it, in an original super-deformed style, with original faction insignia. No official artwork, photography, logo, icon or emblem of the published game or the Star Wars franchise is included or traced.
+- **Art.** All artwork is original: 3D figures and terrain generated for this project from descriptions written for it, in an original serious painted-miniature style, with original faction insignia. No official artwork, photography, logo, icon or emblem of the published game or the Star Wars franchise is included or traced.
 - **Audio.** All audio is original, generated for this project; no film, game or franchise sound or music is used or imitated.
 - **Points and statistics** come from the publisher's freely downloadable documents and a public community list builder, cross-checked by hand; they are facts about the game, not creative expression.
 

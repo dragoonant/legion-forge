@@ -1,6 +1,6 @@
 # Legion Forge — agent orientation
 
-Fan-made 3D browser game of Star Wars: Legion (current Atomic Mass Games rules, mechanics 1:1), MGSD figures, player vs AI first, hot-seat later. Read in this order, nothing else up front: `HANDOFF.md` (current state, next steps; from M0) → `STATUS.md` (what exists; from M0) → `PLAN.md` (decisions, milestones) → `KICKOFF.md` (owner's answers and reasoning) → the `docs/spec/` sections a task names. Cross-project lessons are in `docs/knowledge-base/README.md`; read only the section a task needs.
+Fan-made 3D browser game of Star Wars: Legion (current Atomic Mass Games rules, mechanics 1:1), serious detailed miniature-style figures, player vs AI first, hot-seat later. Read in this order, nothing else up front: `HANDOFF.md` (current state, next steps; from M0) → `STATUS.md` (what exists; from M0) → `PLAN.md` (decisions, milestones) → `KICKOFF.md` (owner's answers and reasoning) → the `docs/spec/` sections a task names. Cross-project lessons are in `docs/knowledge-base/README.md`; read only the section a task needs.
 
 ## Owner priorities
 - **Playable first.** Every stage ends in something the owner can run and see (screenshot in the check-in).
@@ -27,7 +27,7 @@ Fan-made 3D browser game of Star Wars: Legion (current Atomic Mass Games rules, 
 Cloud sessions (Linux container) do engine, data, AI, client and docs. Art (Gemini concepts through Claude in Chrome, Hunyuan3D) and audio (local Audio Studio) run only from a session on the owner's Windows PC; see `docs/knowledge-base/local-ai-studios.md`.
 
 ## IP and privacy
-Mechanics are ported 1:1. Unit, weapon, keyword and card names may match; all prose (rules text, lore, UI copy) is our own wording, never Atomic Mass Games, FFG or Lucasfilm text. No official art, icons or logos. Figures are original MGSD renderings of recognizable Star Wars designs, never copied from official images. `docs/sources/` is gitignored and never published. Credit the owner as **evilgouki**; never write the owner's real name, email or home path into any file, and grep the staged diff before every commit.
+Mechanics are ported 1:1. Unit, weapon, keyword and card names may match; all prose (rules text, lore, UI copy) is our own wording, never Atomic Mass Games, FFG or Lucasfilm text. No official art, icons or logos. Figures are original miniature-style renderings of recognizable Star Wars designs, never copied from official images. `docs/sources/` is gitignored and never published. Credit the owner as **evilgouki**; never write the owner's real name, email or home path into any file, and grep the staged diff before every commit.
 
 ## Edition leak list
 Written at M0 after source research, into `docs/knowledge-base/star-wars-legion-rules-primer.md`, and pasted into every rules prompt.

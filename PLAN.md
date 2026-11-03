@@ -9,7 +9,7 @@ This file owns every decision (with date and who made it). The owner's answers a
 | D2 | 2026-10-28 | owner | Modes | Versus AI first; hot-seat later; no online yet | |
 | D3 | 2026-10-28 | owner | AI timing | Random bot in the first playable (M3), utility AI right after (M4) | "Early" |
 | D4 | 2026-10-28 | owner | IP | Mallet posture: real names, own-words prose, no official art/icons/logos; "unofficial, non-commercial fan project" in README and UI; sources in gitignored `docs/sources/` | |
-| D5 | 2026-10-28 | owner | Figures | MGSD, recognizable Star Wars designs, dynamic poses with weapons fused in; locked now, not re-litigated | |
+| D5 | 2026-10-28 | owner | Figures | Figure style: the earlier large-head style (since replaced by the house style in tabletop-kb rule 7 and mallet-42k docs/FIGURE-STYLE.md (owner, 2026-10-31)), recognizable Star Wars designs, dynamic poses with weapons fused in; locked now, not re-litigated | |
 | D6 | 2026-10-28 | owner | Repo | Push to `main` after each stage; private; Pages when going public | |
 | D7 | 2026-10-28 | owner | KB | `docs/knowledge-base/` updated at the end of every milestone | |
 | D8 | 2026-10-28 | default | Stack | Copy Mancermundo `origin/main` (Vite 8, React 19, three 0.186, R3F 9, drei 10, zustand 5, TS 7 strict, Vitest 5, Playwright, ajv, tsx); its code goes into `legacy/` and is ported by a KEEP/ADAPT/DELETE table | Newest proven scaffold; KB section "proven build recipe" |
@@ -37,7 +37,7 @@ This file owns every decision (with date and who made it). The owner's answers a
 | M3 | Playable vs random bot | Board, procedural stand-in figures, start screen, briefing, dice tray, prompts with engine odds, presentation director; one full game in Playwright; screenshot | 0.9M |
 | M4 | Utility AI | Bench normal beats random in >= 95%, zero-action activations < 2%, both seats, holdout seeds, no fallbacks | 0.6M |
 | M2b | Vehicles | After M4, with the first army that has vehicles: notched bases, repulsor/ground rules, damage, turret yaw | 0.5M |
-| M5 | Art (on the PC) | MGSD concepts with per-item reference gate, Hunyuan GLBs, `?gallery` check, terrain | GPU |
+| M5 | Art (on the PC) | Painted-miniature concepts with per-item reference gate, Hunyuan GLBs, `?gallery` check, terrain | GPU |
 | M6 | Audio (on the PC) | Weapon-flavour map, Audio Studio SFX and music, measured trims, `sounds.html` | GPU |
 | M7 | Polish | Keyword hover help, settings, end screen, phone layout, save/continue | 0.5M |
 | M8 | Hot-seat | Two humans on one screen with hidden command-card picks handled | 0.2M |

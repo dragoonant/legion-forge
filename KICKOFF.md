@@ -23,7 +23,7 @@ A squad-scale miniatures battle on a 6'x3' table between two armies of units (a 
 | When the AI matters | **Early** |
 | Distribution | **Maybe public later** |
 | IP posture | **Mallet posture**: real unit, weapon, keyword and card names; all prose in our own words; no official art, icons or logos. (Starbound posture offered because Disney shut down Pixelborn in 2024; declined. Concern stated once, here.) |
-| Figure look | **MGSD** (series standard, about 2-2.5 heads, dynamic poses with weapons fused in) |
+| Figure look | **Painted-miniature look** (about 2.8 head-heights, head about 35% of height, very broad armoured shoulders, short thick legs, stern covered face, matte realistic paint; the earlier large-head style (about 2-2.5 heads) was replaced by the house style in tabletop-kb rule 7 and mallet-42k docs/FIGURE-STYLE.md (owner, 2026-10-31)), dynamic poses with weapons fused in |
 | Figure subjects | **Recognizable Star Wars designs**, generated in our style, never copied from official art |
 | Pushes | **Push to `main` after each stage; repo stays private**; Pages when the owner decides to go public |
 | Knowledge base | Review it now and **keep it updated throughout development** for the next games |

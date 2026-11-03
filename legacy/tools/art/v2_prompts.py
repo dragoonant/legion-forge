@@ -9,10 +9,10 @@ import json, os, sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT = os.path.join(ROOT, "art", "concepts", "v2")
 
-STYLE = ("Proportions: a super-deformed heroic figure with bobblehead proportions and a gigantic round head, exactly two and a half heads tall, "
-         "the enormous head alone about half of the total height (almost as tall as the whole body below it, about 50%) and as wide as the shoulders, "
-         "a tiny very short compact chest, chunky limbs, very short thick legs with big feet, short arms with oversized hands; dense layered "
-         "hard-surface panel detail with fine panel lines, rivets and small accents; glossy painted tabletop-miniature finish, crisp edges, saturated colours.")
+STYLE = ("Proportions: a highly detailed painted miniature figure, about 2.8 head-heights tall: a large helmeted head about a third of its height, "
+         "very broad armoured shoulders almost twice the head's width, a deep armoured chest, short thick legs about one head long with big boots in a wide planted stance, "
+         "gloved hands and an oversized weapon, a stern face (covered by a helmet, visor or hood where the design has one), crisp panel lines, rivets, straps and pouches, "
+         "matte realistic paint with edge highlights.")
 FRAME = ("Whole figure standing on a plain round black base, studio product photo, three-quarter view from slightly "
          "below, soft even lighting, pure white seamless background, no text, no lettering, no logos, no emblems.")
 

@@ -129,7 +129,7 @@ def variants(cell):
         yield m.group(1), m.group(2).strip()
 
 
-EDIT = ("Start from the approved {base} image. Keep exactly the same proportions (two and a half heads tall), "
+EDIT = ("Start from the approved {base} image. Keep exactly the same proportions (about 2.8 head-heights tall), "
         "style, finish, base and framing; change only the gear, pose and weapon as described: ")
 
 out = ["# Legion Forge prompt pack (hand-run)",
@@ -139,7 +139,7 @@ out = ["# Legion Forge prompt pack (hand-run)",
        "",
        "## How to run",
        "1. **Gemini, one chat per faction.** First message: attach the on-style proportion reference "
-       "(our own Murder Squad `aod-intercessor-sergeant.png`) and paste the faction's **base** prompt "
+       "(`figure-style-reference.jpg` from Mallet 42k `docs/`) and paste the faction's **base** prompt "
        "(`stormtrooper` for Empire, `rebel-trooper` for Rebels). Regenerate until it passes the gate.",
        "2. Every other figure in that chat: paste the **Edit** line plus the full prompt, so the style never drifts. "
        "If Gemini returns text only, resend once; then reword the gear.",
@@ -212,13 +212,13 @@ for line in SPEC.splitlines():
                     f"for 28mm figures.{plate} {tail}", "```", ""]
 
 TOKENS = {
-    "comms-tower": "a small sci-fi comms tower objective marker: a stubby lattice mast with a dish and blinking lights, under 3 inches",
+    "comms-tower": "a small sci-fi comms tower objective marker: a short thick lattice mast with a dish and blinking lights, under 3 inches",
     "bunker": "a squat domed military bunker with a narrow firing slit and a hatch, 1.5 inches tall",
     "stockpile": "a compact pile of supply crates, ammo cases and a tarp, under 2 inches",
     "scanner": "a single chunky handheld sci-fi field scanner with a small screen and antenna, lying flat",
     "ordnance": "a small bundle of three ordnance shells strapped together",
     "air-support": "a small handheld beacon for calling air support, with a folded antenna and a bright light",
-    "comms-scrambler": "a small box-shaped signal scrambler device with dials and a stubby antenna",
+    "comms-scrambler": "a small box-shaped signal scrambler device with dials and a short thick antenna",
     "lab": "a compact field laboratory module with sample racks and a glowing tank",
     "flag": "a planted battle standard on a tall pole with a plain cloth banner, no symbols",
     "listening-post": "a small listening post: a dish antenna on a tripod beside a console",
